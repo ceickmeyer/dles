@@ -3,6 +3,7 @@
 create table if not exists players (
   id uuid primary key default gen_random_uuid(),
   name text not null unique,
+  pin text not null default '0000',
   created_at timestamptz default now()
 );
 
@@ -52,7 +53,7 @@ alter table sessions enable row level security;
 alter table session_games enable row level security;
 alter table scores enable row level security;
 
--- Players: anyone can read/insert (no auth needed)
+-- Players: anyone can read/insert; PIN is readable (it's a casual 4-digit code, not a secret)
 create policy "players_select" on players for select using (true);
 create policy "players_insert" on players for insert with check (true);
 
@@ -74,7 +75,7 @@ create policy "session_games_insert" on session_games for insert with check (aut
 create policy "session_games_update" on session_games for update using (auth.role() = 'authenticated');
 create policy "session_games_delete" on session_games for delete using (auth.role() = 'authenticated');
 
--- Scores: anyone can insert/read; only authenticated admin can delete
+-- Scores: anyone can insert/read/update; only authenticated admin can delete
 create policy "scores_select" on scores for select using (true);
 create policy "scores_insert" on scores for insert with check (true);
 create policy "scores_upsert" on scores for update using (true);
@@ -83,7 +84,7 @@ create policy "scores_delete" on scores for delete using (auth.role() = 'authent
 -- Enable realtime for scores
 alter publication supabase_realtime add table scores;
 
--- Seed some starter games
+-- Seed starter games
 insert into games (name, url, icon_emoji, scoring_direction, share_parser) values
   ('Wordle', 'https://www.nytimes.com/games/wordle/index.html', '🟩', 'lower_is_better', 'wordle'),
   ('Framed', 'https://framed.wtf', '🎥', 'lower_is_better', 'framed'),

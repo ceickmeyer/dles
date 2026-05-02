@@ -5,7 +5,7 @@
 	import { rankScores, computeSessionTally, sortTally } from '$lib/scoring';
 	import type { ScoreWithPlayer } from '$lib/database.types';
 	import PlayerName from '$components/PlayerName.svelte';
-	import GameCard from '$components/GameCard.svelte';
+	import LobbyCard from '$components/LobbyCard.svelte';
 	import Podium from '$components/Podium.svelte';
 	import MedalTally from '$components/MedalTally.svelte';
 
@@ -13,8 +13,8 @@
 
 	let scores = $state<ScoreWithPlayer[]>([]);
 	$effect(() => { scores = data.scores as ScoreWithPlayer[]; });
-	let subscription: ReturnType<typeof supabase.channel> | null = null;
 
+	let subscription: ReturnType<typeof supabase.channel> | null = null;
 	const player = $derived($playerStore);
 	const session = $derived(data.session);
 
@@ -36,41 +36,30 @@
 			: []
 	);
 
-	const tally = $derived(
-		sortTally([...computeSessionTally(gameResults).values()])
-	);
+	const tally = $derived(sortTally([...computeSessionTally(gameResults).values()]));
 
 	const myScores = $derived(
 		new Map(scores.filter((s) => s.player_id === player.id).map((s) => [s.game_id, s.raw_score]))
 	);
 
+	async function refreshScores() {
+		if (!session) return;
+		const { data: fresh } = await supabase
+			.from('scores')
+			.select('*, player:players(name)')
+			.eq('session_id', session.id);
+		if (fresh) scores = fresh as ScoreWithPlayer[];
+	}
+
 	onMount(() => {
 		if (!session) return;
-
 		subscription = supabase
 			.channel(`scores:${session.id}`)
-			.on(
-				'postgres_changes',
-				{
-					event: '*',
-					schema: 'public',
-					table: 'scores',
-					filter: `session_id=eq.${session.id}`
-				},
-				async () => {
-					const { data: fresh } = await supabase
-						.from('scores')
-						.select('*, player:players(name)')
-						.eq('session_id', session.id);
-					if (fresh) scores = fresh as ScoreWithPlayer[];
-				}
-			)
+			.on('postgres_changes', { event: '*', schema: 'public', table: 'scores', filter: `session_id=eq.${session.id}` }, refreshScores)
 			.subscribe();
 	});
 
-	onDestroy(() => {
-		subscription?.unsubscribe();
-	});
+	onDestroy(() => { subscription?.unsubscribe(); });
 </script>
 
 {#if !player.name}
@@ -78,54 +67,69 @@
 {/if}
 
 {#if !session}
-	<div class="py-16 text-center">
-		<p class="text-5xl mb-4">🎮</p>
-		<h1 class="text-2xl font-bold text-white mb-2">No active session</h1>
-		<p class="text-zinc-400">Ask the host to start a new game night!</p>
+	<div class="py-20 text-center">
+		<p class="mb-4 text-6xl">🏅</p>
+		<h1 class="mb-2 text-2xl font-bold text-white">No active session</h1>
+		<p class="text-ayu-muted">Ask the host to start a new game night!</p>
 	</div>
 {:else}
 	<div class="space-y-8">
+		<!-- Session header -->
 		<div>
-			<div class="flex items-center justify-between mb-1">
+			<div class="flex items-baseline justify-between">
 				<h1 class="text-2xl font-bold text-white">{session.name}</h1>
 				<span
-					class="rounded-full px-2.5 py-0.5 text-xs font-medium"
-					class:bg-green-900={session.status === 'active'}
-					class:text-green-400={session.status === 'active'}
-					class:bg-zinc-800={session.status === 'lobby'}
-					class:text-zinc-400={session.status === 'lobby'}
+					class="rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider"
+					class:bg-ayu-green={session.status === 'active'}
+					class:text-ayu-bg={session.status === 'active'}
+					class:bg-ayu-surface2={session.status === 'lobby'}
+					class:text-ayu-muted={session.status === 'lobby'}
 				>
 					{session.status === 'active' ? '● Live' : 'Lobby'}
 				</span>
 			</div>
-			<p class="text-sm text-zinc-500">{new Date(session.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+			<p class="mt-0.5 text-sm text-ayu-muted">
+				{new Date(session.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+			</p>
 		</div>
 
-		<!-- Games -->
+		<!-- Game cards -->
 		<div>
-			<h2 class="mb-3 text-sm font-semibold uppercase tracking-wider text-zinc-500">Tonight's Games</h2>
+			<h2 class="mb-3 text-xs font-semibold uppercase tracking-widest text-ayu-muted">Tonight's Games</h2>
 			<div class="space-y-2">
-				{#each session.session_games as { game }}
-					<GameCard
-						{game}
-						sessionId={session.id}
-						submitted={myScores.has(game.id)}
-						myScore={myScores.get(game.id) ?? null}
-					/>
-				{/each}
+				{#if player.id}
+					{#each session.session_games as { game }}
+						<LobbyCard
+							{game}
+							sessionId={session.id}
+							playerId={player.id}
+							myScore={myScores.get(game.id) ?? null}
+							onscored={refreshScores}
+						/>
+					{/each}
+				{:else}
+					{#each session.session_games as { game }}
+						<div class="flex items-center gap-3 rounded-xl border border-ayu-border bg-ayu-surface px-4 py-3">
+							<span class="text-2xl">{game.icon_emoji ?? '🎮'}</span>
+							<span class="text-white">{game.name}</span>
+						</div>
+					{/each}
+				{/if}
 			</div>
 		</div>
 
+		<!-- Live standings -->
 		{#if tally.length > 0}
-			<!-- Podium -->
 			<div>
-				<h2 class="mb-4 text-sm font-semibold uppercase tracking-wider text-zinc-500">Standings</h2>
+				<h2 class="mb-4 text-xs font-semibold uppercase tracking-widest text-ayu-muted">Live Standings</h2>
 				{#if tally.length >= 2}
-					<div class="mb-6">
+					<div class="mb-6 rounded-xl border border-ayu-border bg-ayu-surface p-6">
 						<Podium {tally} />
 					</div>
 				{/if}
-				<MedalTally {tally} currentPlayerId={player.id} />
+				<div class="rounded-xl border border-ayu-border bg-ayu-surface p-4">
+					<MedalTally {tally} currentPlayerId={player.id} />
+				</div>
 			</div>
 		{/if}
 	</div>

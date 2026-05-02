@@ -7,9 +7,9 @@ export interface Database {
 	public: {
 		Tables: {
 			players: {
-				Row: { id: string; name: string; created_at: string };
-				Insert: { id?: string; name: string; created_at?: string };
-				Update: { id?: string; name?: string; created_at?: string };
+				Row: { id: string; name: string; pin: string; created_at: string };
+				Insert: { id?: string; name: string; pin: string; created_at?: string };
+				Update: { id?: string; name?: string; pin?: string; created_at?: string };
 				Relationships: [];
 			};
 			games: {

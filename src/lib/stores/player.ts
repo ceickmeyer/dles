@@ -11,7 +11,7 @@ function createPlayerStore() {
 		? { id: localStorage.getItem('playerId'), name: localStorage.getItem('playerName') }
 		: { id: null, name: null };
 
-	const { subscribe, set, update } = writable<PlayerState>(initial);
+	const { subscribe, set } = writable<PlayerState>(initial);
 
 	return {
 		subscribe,
@@ -33,3 +33,7 @@ function createPlayerStore() {
 }
 
 export const playerStore = createPlayerStore();
+
+export function generatePin(): string {
+	return String(Math.floor(1000 + Math.random() * 9000));
+}

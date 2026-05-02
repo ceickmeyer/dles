@@ -10,13 +10,16 @@
 	<title>Dle Night</title>
 </svelte:head>
 
-<div class="min-h-screen bg-zinc-950 text-white">
-	<nav class="border-b border-zinc-800 px-4 py-3">
+<div class="min-h-screen bg-ayu-bg text-ayu-text">
+	<nav class="border-b border-ayu-border bg-ayu-surface/80 px-4 py-3 backdrop-blur-sm">
 		<div class="mx-auto flex max-w-3xl items-center justify-between">
-			<a href="/" class="text-lg font-bold tracking-tight text-amber-400">🎮 Dle Night</a>
-			<div class="flex gap-4 text-sm text-zinc-400">
-				<a href="/leaderboard" class="transition hover:text-white">All-Time</a>
-				<a href="/admin" class="transition hover:text-white">Admin</a>
+			<a href="/" class="flex items-center gap-2 font-bold tracking-tight text-ayu-gold">
+				<span class="text-xl">🏅</span>
+				<span class="text-lg">Dle Night</span>
+			</a>
+			<div class="flex gap-5 text-sm text-zinc-400">
+				<a href="/leaderboard" class="transition hover:text-ayu-gold">All-Time</a>
+				<a href="/admin" class="transition hover:text-ayu-gold">Admin</a>
 			</div>
 		</div>
 	</nav>

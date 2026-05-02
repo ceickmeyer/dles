@@ -1,2 +1,49 @@
 @import 'tailwindcss';
 @plugin '@tailwindcss/forms';
+
+@theme {
+  /* AYU Dark base palette */
+  --color-ayu-bg:      #0a0e14;
+  --color-ayu-surface: #0d1520;
+  --color-ayu-surface2:#13203a;
+  --color-ayu-border:  #1a2e44;
+  --color-ayu-muted:   #4a6272;
+  --color-ayu-text:    #b3b1ad;
+  --color-ayu-gold:    #e6b450;
+  --color-ayu-silver:  #8ba0b4;
+  --color-ayu-bronze:  #c87941;
+  --color-ayu-blue:    #39bae6;
+  --color-ayu-green:   #91b362;
+  --color-ayu-red:     #f07178;
+
+  /* Remap zinc scale → AYU dark palette so existing classes just work */
+  --color-zinc-950: #0a0e14;
+  --color-zinc-900: #0d1520;
+  --color-zinc-800: #13203a;
+  --color-zinc-700: #1a2e44;
+  --color-zinc-600: #244060;
+  --color-zinc-500: #4a6272;
+  --color-zinc-400: #7a9ab4;
+  --color-zinc-300: #b3b1ad;
+  --color-zinc-200: #cccac2;
+  --color-zinc-100: #e8e6e0;
+
+  /* Remap amber → AYU gold */
+  --color-amber-400:   #e6b450;
+  --color-amber-300:   #ffd06e;
+  --color-amber-700:   #c87941;
+  --color-amber-900:   #2a1a08;
+
+  /* Green overrides for submitted state */
+  --color-green-400:   #91b362;
+  --color-green-700:   #3a5c28;
+  --color-green-900:   #1a2e14;
+
+  /* Red */
+  --color-red-400:     #f07178;
+}
+
+body {
+  background-color: var(--color-ayu-bg);
+  color: var(--color-ayu-text);
+}

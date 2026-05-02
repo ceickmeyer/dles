@@ -1,54 +1,134 @@
 <script lang="ts">
-	import { playerStore } from '$lib/stores/player';
+	import { playerStore, generatePin } from '$lib/stores/player';
 	import { supabase } from '$lib/supabase';
 
+	type Step = 'name' | 'pin-entry' | 'pin-reveal';
+
+	let step = $state<Step>('name');
 	let name = $state('');
+	let pinInput = $state('');
+	let revealedPin = $state('');
 	let loading = $state(false);
 	let error = $state('');
 
-	async function submit() {
+	async function submitName() {
 		const trimmed = name.trim();
 		if (!trimmed) return;
 		loading = true;
 		error = '';
-		try {
+
+		// Check if name already exists
+		const { data: existing } = await supabase
+			.from('players')
+			.select('id, name, pin')
+			.eq('name', trimmed)
+			.maybeSingle();
+
+		loading = false;
+
+		if (existing) {
+			// Name taken — ask for PIN to reclaim
+			step = 'pin-entry';
+		} else {
+			// New player — create with PIN
+			const pin = generatePin();
+			loading = true;
 			const { data, error: dbError } = await supabase
 				.from('players')
-				.upsert({ name: trimmed }, { onConflict: 'name' })
+				.insert({ name: trimmed, pin })
 				.select()
 				.single();
-			if (dbError) throw dbError;
-			playerStore.setPlayer(data.id, data.name);
-		} catch (e) {
-			error = 'Could not save name — try again.';
-		} finally {
 			loading = false;
+			if (dbError) { error = 'Could not save — try again.'; return; }
+			playerStore.setPlayer(data.id, data.name);
+			revealedPin = pin;
+			step = 'pin-reveal';
 		}
+	}
+
+	async function submitPin() {
+		const trimmed = name.trim();
+		loading = true;
+		error = '';
+		const { data } = await supabase
+			.from('players')
+			.select('id, name')
+			.eq('name', trimmed)
+			.eq('pin', pinInput.trim())
+			.maybeSingle();
+		loading = false;
+		if (!data) {
+			error = 'Wrong PIN. Try again, or go back and use a different name.';
+			return;
+		}
+		playerStore.setPlayer(data.id, data.name);
 	}
 </script>
 
-<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-	<div class="w-full max-w-sm rounded-2xl bg-zinc-900 p-8 shadow-2xl">
-		<h2 class="mb-2 text-2xl font-bold text-white">What's your name?</h2>
-		<p class="mb-6 text-sm text-zinc-400">You'll use this to track your scores all night.</p>
-		<form onsubmit={(e) => { e.preventDefault(); submit(); }}>
-			<input
-				class="mb-4 w-full rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-3 text-white placeholder-zinc-500 focus:border-amber-400 focus:outline-none"
-				placeholder="Enter your name"
-				bind:value={name}
-				maxlength={40}
-				autofocus
-			/>
-			{#if error}
-				<p class="mb-3 text-sm text-red-400">{error}</p>
-			{/if}
-			<button
-				type="submit"
-				disabled={loading || !name.trim()}
-				class="w-full rounded-lg bg-amber-400 px-4 py-3 font-bold text-black transition hover:bg-amber-300 disabled:opacity-50"
-			>
-				{loading ? 'Saving…' : "Let's go!"}
-			</button>
-		</form>
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+	<div class="w-full max-w-sm rounded-2xl border border-ayu-border bg-ayu-surface p-8 shadow-2xl">
+
+		{#if step === 'name'}
+			<h2 class="mb-1 text-2xl font-bold text-white">What's your name?</h2>
+			<p class="mb-6 text-sm text-ayu-muted">Used to track your scores. You'll get a PIN to sign in on other devices.</p>
+			<form onsubmit={(e) => { e.preventDefault(); submitName(); }}>
+				<input
+					class="mb-4 w-full rounded-lg border border-ayu-border bg-ayu-bg px-4 py-3 text-white placeholder-ayu-muted focus:border-ayu-gold focus:outline-none"
+					placeholder="Enter your name"
+					bind:value={name}
+					maxlength={40}
+					autofocus
+				/>
+				{#if error}<p class="mb-3 text-sm text-ayu-red">{error}</p>{/if}
+				<button
+					type="submit"
+					disabled={loading || !name.trim()}
+					class="w-full rounded-lg bg-ayu-gold px-4 py-3 font-bold text-ayu-bg transition hover:brightness-110 disabled:opacity-50"
+				>
+					{loading ? 'Checking…' : 'Continue'}
+				</button>
+			</form>
+
+		{:else if step === 'pin-entry'}
+			<button onclick={() => { step = 'name'; error = ''; }} class="mb-4 text-sm text-ayu-muted hover:text-white">← Back</button>
+			<h2 class="mb-1 text-2xl font-bold text-white">Welcome back, {name}!</h2>
+			<p class="mb-6 text-sm text-ayu-muted">That name already exists. Enter your 4-digit PIN to reclaim it.</p>
+			<form onsubmit={(e) => { e.preventDefault(); submitPin(); }}>
+				<input
+					class="mb-4 w-full rounded-lg border border-ayu-border bg-ayu-bg px-4 py-3 text-center text-2xl font-mono tracking-widest text-white placeholder-ayu-muted focus:border-ayu-gold focus:outline-none"
+					placeholder="• • • •"
+					bind:value={pinInput}
+					maxlength={4}
+					inputmode="numeric"
+					autofocus
+				/>
+				{#if error}<p class="mb-3 text-sm text-ayu-red">{error}</p>{/if}
+				<button
+					type="submit"
+					disabled={loading || pinInput.length < 4}
+					class="w-full rounded-lg bg-ayu-gold px-4 py-3 font-bold text-ayu-bg transition hover:brightness-110 disabled:opacity-50"
+				>
+					{loading ? 'Verifying…' : 'Confirm PIN'}
+				</button>
+			</form>
+
+		{:else if step === 'pin-reveal'}
+			<div class="text-center">
+				<div class="mb-4 text-5xl">🏅</div>
+				<h2 class="mb-2 text-2xl font-bold text-white">You're in, {name}!</h2>
+				<p class="mb-4 text-sm text-ayu-muted">Save this PIN — you'll need it to sign in on a new device.</p>
+				<div class="mb-6 rounded-xl border border-ayu-gold/40 bg-ayu-gold/10 py-5">
+					<p class="text-xs font-semibold uppercase tracking-widest text-ayu-muted mb-1">Your PIN</p>
+					<p class="text-5xl font-mono font-bold tracking-widest text-ayu-gold">{revealedPin}</p>
+				</div>
+				<button
+					onclick={() => {}}
+					class="w-full rounded-lg bg-ayu-gold px-4 py-3 font-bold text-ayu-bg transition hover:brightness-110"
+				>
+					Got it — let's play!
+				</button>
+			</div>
+		{/if}
+
 	</div>
 </div>
