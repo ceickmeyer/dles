@@ -79,13 +79,13 @@
 			<div class="flex items-baseline justify-between">
 				<h1 class="text-2xl font-bold text-white">{session.name}</h1>
 				<span
-					class="rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider"
-					class:bg-ayu-green={session.status === 'active'}
-					class:text-ayu-bg={session.status === 'active'}
-					class:bg-ayu-surface2={session.status === 'lobby'}
-					class:text-ayu-muted={session.status === 'lobby'}
+					class="rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider {
+						session.status === 'active'  ? 'bg-ayu-green text-ayu-bg' :
+						session.status === 'paused'  ? 'bg-amber-700 text-white' :
+						'bg-ayu-surface2 text-ayu-muted'
+					}"
 				>
-					{session.status === 'active' ? '● Live' : 'Lobby'}
+					{session.status === 'active' ? '● Live' : session.status === 'paused' ? '⏸ Paused' : 'Lobby'}
 				</span>
 			</div>
 			<p class="mt-0.5 text-sm text-ayu-muted">

@@ -8,6 +8,7 @@
 
 	let name = $state('');
 	let date = $state(new Date().toISOString().slice(0, 10));
+	let expiresAt = $state('');
 	let selectedGameIds = $state<string[]>([]);
 	let saving = $state(false);
 	let error = $state('');
@@ -28,7 +29,7 @@
 		try {
 			const { data: session, error: e1 } = await supabase
 				.from('sessions')
-				.insert({ name: name.trim(), date })
+				.insert({ name: name.trim(), date, expires_at: expiresAt ? new Date(expiresAt).toISOString() : null })
 				.select()
 				.single();
 			if (e1) throw e1;
@@ -65,14 +66,25 @@
 				class="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-white placeholder-zinc-500 focus:border-amber-400 focus:outline-none"
 			/>
 		</div>
-		<div>
-			<label class="mb-1.5 block text-sm font-medium text-zinc-300" for="date">Date</label>
-			<input
-				id="date"
-				type="date"
-				bind:value={date}
-				class="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-white focus:border-amber-400 focus:outline-none"
-			/>
+		<div class="grid grid-cols-2 gap-3">
+			<div>
+				<label class="mb-1.5 block text-sm font-medium text-zinc-300" for="date">Date</label>
+				<input
+					id="date"
+					type="date"
+					bind:value={date}
+					class="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-white focus:border-amber-400 focus:outline-none"
+				/>
+			</div>
+			<div>
+				<label class="mb-1.5 block text-sm font-medium text-zinc-300" for="expires">Expires at <span class="text-zinc-500 font-normal">(optional)</span></label>
+				<input
+					id="expires"
+					type="datetime-local"
+					bind:value={expiresAt}
+					class="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-white focus:border-amber-400 focus:outline-none"
+				/>
+			</div>
 		</div>
 	</div>
 

@@ -2,6 +2,7 @@ import { wordleParser } from './wordle';
 import { framedParser } from './framed';
 import { timeGuessrParser } from './timeguessr';
 import { costcodleParser } from './costcodle';
+import { scrandleParser } from './scrandle';
 import { genericParser } from './generic';
 
 export interface Parser {
@@ -14,15 +15,17 @@ export const PARSERS: Record<string, Parser> = {
 	framed: framedParser,
 	timeguessr: timeGuessrParser,
 	costcodle: costcodleParser,
+	scrandle: scrandleParser,
 	generic: genericParser
 };
 
 export const PARSER_OPTIONS = [
 	{ value: '', label: 'Manual only' },
-	{ value: 'wordle', label: 'Wordle' },
-	{ value: 'framed', label: 'Framed' },
-	{ value: 'timeguessr', label: 'TimeGuessr' },
-	{ value: 'costcodle', label: 'Costcodle' },
+	{ value: 'wordle', label: 'Wordle (X/6)' },
+	{ value: 'framed', label: 'Framed (X/6)' },
+	{ value: 'timeguessr', label: 'TimeGuessr (Score: N)' },
+	{ value: 'costcodle', label: 'Costcodle (X/6)' },
+	{ value: 'scrandle', label: 'Scrandle (X/10)' },
 	{ value: 'generic', label: 'Generic (first number)' }
 ];
 

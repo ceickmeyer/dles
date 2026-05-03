@@ -6,14 +6,15 @@ import type { PageServerLoad } from './$types';
 export const load: PageServerLoad = async () => {
 	const supabase = createClient<Database>(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY);
 
-	// Get the most recent active or lobby session
+	// Get the most recent active/lobby/paused session that hasn't expired
 	const { data: session } = await supabase
 		.from('sessions')
 		.select('*, session_games(sort_order, game:games(*))')
-		.in('status', ['active', 'lobby'])
+		.in('status', ['active', 'lobby', 'paused'])
+		.or('expires_at.is.null,expires_at.gt.' + new Date().toISOString())
 		.order('created_at', { ascending: false })
 		.limit(1)
-		.single();
+		.maybeSingle();
 
 	if (!session) return { session: null, scores: [] };
 

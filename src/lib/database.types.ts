@@ -1,15 +1,15 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type ScoringDirection = 'higher_is_better' | 'lower_is_better';
-export type SessionStatus = 'lobby' | 'active' | 'finished';
+export type SessionStatus = 'lobby' | 'active' | 'paused' | 'finished';
 
 export interface Database {
 	public: {
 		Tables: {
 			players: {
-				Row: { id: string; name: string; pin: string; created_at: string };
-				Insert: { id?: string; name: string; pin: string; created_at?: string };
-				Update: { id?: string; name?: string; pin?: string; created_at?: string };
+				Row: { id: string; name: string; pin: string; alias: string | null; created_at: string };
+				Insert: { id?: string; name: string; pin: string; alias?: string | null; created_at?: string };
+				Update: { id?: string; name?: string; pin?: string; alias?: string | null; created_at?: string };
 				Relationships: [];
 			};
 			games: {
@@ -46,9 +46,9 @@ export interface Database {
 				Relationships: [];
 			};
 			sessions: {
-				Row: { id: string; name: string; date: string; status: SessionStatus; created_at: string };
-				Insert: { id?: string; name: string; date?: string; status?: SessionStatus; created_at?: string };
-				Update: { id?: string; name?: string; date?: string; status?: SessionStatus; created_at?: string };
+				Row: { id: string; name: string; date: string; status: SessionStatus; expires_at: string | null; created_at: string };
+				Insert: { id?: string; name: string; date?: string; status?: SessionStatus; expires_at?: string | null; created_at?: string };
+				Update: { id?: string; name?: string; date?: string; status?: SessionStatus; expires_at?: string | null; created_at?: string };
 				Relationships: [];
 			};
 			session_games: {

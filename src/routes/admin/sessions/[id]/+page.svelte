@@ -6,32 +6,60 @@
 	let { data } = $props();
 	let { session, scores, allGames } = $derived(data);
 
-	const statusFlow: Record<SessionStatus, SessionStatus | null> = {
-		lobby: 'active',
-		active: 'finished',
-		finished: null
-	};
-	const statusLabel: Record<SessionStatus, string> = {
-		lobby: 'Start session (→ active)',
-		active: 'Finish session (→ finished)',
-		finished: 'Finished'
-	};
-
-	let updating = $state(false);
+	let saving = $state(false);
 	let error = $state('');
 	let addGameId = $state('');
+	let confirmDelete = $state(false);
+	let expiresAt = $state(
+		session.expires_at ? new Date(session.expires_at).toISOString().slice(0, 16) : ''
+	);
 
-	const sessionGameIds = $derived(new Set(session.session_games.map((sg: {game_id: string}) => sg.game_id)));
+	const sessionGameIds = $derived(new Set(session.session_games.map((sg: { game_id: string }) => sg.game_id)));
 	const availableGames = $derived(allGames.filter((g) => !sessionGameIds.has(g.id)));
 
-	async function advanceStatus() {
-		const next = statusFlow[session.status];
-		if (!next) return;
-		updating = true;
+	// Status machine
+	const actions: { label: string; next: SessionStatus; style: string }[] = [];
+	const statusActions = $derived((() => {
+		const s = session.status;
+		const acts: { label: string; next: SessionStatus; style: string }[] = [];
+		if (s === 'lobby')    acts.push({ label: '▶ Start session',  next: 'active',   style: 'bg-ayu-green text-ayu-bg' });
+		if (s === 'active')   acts.push({ label: '⏸ Pause',          next: 'paused',   style: 'bg-ayu-surface2 text-zinc-300 border border-ayu-border' });
+		if (s === 'active')   acts.push({ label: '✓ Finish',          next: 'finished', style: 'bg-ayu-surface2 text-zinc-300 border border-ayu-border' });
+		if (s === 'paused')   acts.push({ label: '▶ Resume',          next: 'active',   style: 'bg-ayu-green text-ayu-bg' });
+		if (s === 'paused')   acts.push({ label: '✓ Finish',          next: 'finished', style: 'bg-ayu-surface2 text-zinc-300 border border-ayu-border' });
+		if (s === 'finished') acts.push({ label: '↩ Reopen (lobby)', next: 'lobby',    style: 'bg-ayu-surface2 text-zinc-300 border border-ayu-border' });
+		return acts;
+	})());
+
+	const statusBadge: Record<SessionStatus, string> = {
+		lobby:    'bg-ayu-surface2 text-zinc-400',
+		active:   'bg-ayu-green text-ayu-bg',
+		paused:   'bg-amber-700 text-white',
+		finished: 'bg-ayu-surface2 text-zinc-500'
+	};
+
+	async function setStatus(next: SessionStatus) {
+		saving = true; error = '';
 		const { error: e } = await supabase.from('sessions').update({ status: next }).eq('id', session.id);
 		if (e) error = e.message;
 		else await invalidateAll();
-		updating = false;
+		saving = false;
+	}
+
+	async function saveExpiry() {
+		saving = true; error = '';
+		const val = expiresAt ? new Date(expiresAt).toISOString() : null;
+		const { error: e } = await supabase.from('sessions').update({ expires_at: val }).eq('id', session.id);
+		if (e) error = e.message;
+		else await invalidateAll();
+		saving = false;
+	}
+
+	async function deleteSession() {
+		saving = true;
+		const { error: e } = await supabase.from('sessions').delete().eq('id', session.id);
+		if (e) { error = e.message; saving = false; return; }
+		goto('/admin');
 	}
 
 	async function removeGame(sgId: string) {
@@ -42,11 +70,9 @@
 
 	async function addGame() {
 		if (!addGameId) return;
-		const maxOrder = Math.max(0, ...session.session_games.map((sg: {sort_order: number}) => sg.sort_order));
+		const maxOrder = Math.max(0, ...session.session_games.map((sg: { sort_order: number }) => sg.sort_order));
 		const { error: e } = await supabase.from('session_games').insert({
-			session_id: session.id,
-			game_id: addGameId,
-			sort_order: maxOrder + 1
+			session_id: session.id, game_id: addGameId, sort_order: maxOrder + 1
 		});
 		if (e) error = e.message;
 		else { addGameId = ''; await invalidateAll(); }
@@ -60,101 +86,116 @@
 </script>
 
 <div class="max-w-2xl space-y-6">
+	<!-- Header -->
 	<div>
-		<a href="/admin" class="mb-4 inline-flex items-center gap-1 text-sm text-zinc-400 hover:text-white">← Sessions</a>
-		<div class="flex items-center justify-between">
-			<h1 class="text-2xl font-bold text-white">{session.name}</h1>
-			<span class="text-sm text-zinc-400">
-				{new Date(session.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+		<a href="/admin" class="mb-3 inline-flex items-center gap-1 text-sm text-ayu-muted hover:text-white">← Sessions</a>
+		<div class="flex items-start justify-between gap-4">
+			<div>
+				<h1 class="text-2xl font-bold text-white">{session.name}</h1>
+				<p class="mt-0.5 text-sm text-ayu-muted">
+					{new Date(session.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+				</p>
+			</div>
+			<span class="mt-1 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wider {statusBadge[session.status]}">
+				{session.status}
 			</span>
 		</div>
 	</div>
 
-	<!-- Status control -->
-	<div class="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
-		<div class="flex items-center justify-between">
-			<div>
-				<p class="text-sm text-zinc-400">Status</p>
-				<p class="font-semibold text-white capitalize">{session.status}</p>
-			</div>
-			{#if statusFlow[session.status]}
+	<!-- Status controls -->
+	<div class="rounded-xl border border-ayu-border bg-ayu-surface p-5">
+		<h2 class="mb-3 text-sm font-semibold uppercase tracking-wider text-ayu-muted">Status</h2>
+		<div class="flex flex-wrap gap-2 mb-4">
+			{#each statusActions as act}
 				<button
-					onclick={advanceStatus}
-					disabled={updating}
-					class="rounded-lg bg-amber-400 px-4 py-2 font-bold text-black transition hover:bg-amber-300 disabled:opacity-50"
+					onclick={() => setStatus(act.next)}
+					disabled={saving}
+					class="rounded-lg px-4 py-2 text-sm font-semibold transition hover:brightness-110 disabled:opacity-50 {act.style}"
 				>
-					{statusLabel[session.status]}
+					{act.label}
 				</button>
-			{/if}
+			{/each}
 		</div>
-		<div class="mt-3 flex gap-3 text-sm">
-			<a href="/" class="text-zinc-400 hover:text-white underline">View lobby</a>
-			<a href="/session/{session.id}" class="text-zinc-400 hover:text-white underline">View recap</a>
+		<div class="flex gap-3 text-sm">
+			<a href="/" class="text-ayu-muted underline hover:text-white">View lobby ↗</a>
+			<a href="/session/{session.id}" class="text-ayu-muted underline hover:text-white">View recap ↗</a>
+		</div>
+	</div>
+
+	<!-- Expiration -->
+	<div class="rounded-xl border border-ayu-border bg-ayu-surface p-5">
+		<h2 class="mb-3 text-sm font-semibold uppercase tracking-wider text-ayu-muted">Expiration</h2>
+		<p class="mb-3 text-xs text-ayu-muted">Session auto-hides from the lobby after this time. Leave blank for no expiry.</p>
+		<div class="flex gap-2 items-end">
+			<div class="flex-1">
+				<label for="expires" class="mb-1 block text-xs text-zinc-400">Expires at</label>
+				<input
+					id="expires"
+					type="datetime-local"
+					bind:value={expiresAt}
+					class="w-full rounded-lg border border-ayu-border bg-ayu-bg px-3 py-2 text-sm text-white focus:border-ayu-gold focus:outline-none"
+				/>
+			</div>
+			<button
+				onclick={saveExpiry}
+				disabled={saving}
+				class="rounded-lg bg-ayu-gold px-4 py-2 text-sm font-bold text-ayu-bg hover:brightness-110 disabled:opacity-50"
+			>Save</button>
+			{#if expiresAt}
+				<button
+					onclick={() => { expiresAt = ''; saveExpiry(); }}
+					class="rounded-lg border border-ayu-border px-3 py-2 text-sm text-ayu-muted hover:text-white"
+				>Clear</button>
+			{/if}
 		</div>
 	</div>
 
 	<!-- Games -->
-	<div class="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
-		<h2 class="mb-3 font-semibold text-white">Games</h2>
-		{#if session.session_games.length === 0}
-			<p class="text-sm text-zinc-500">No games added yet.</p>
-		{:else}
-			<div class="space-y-2 mb-4">
+	<div class="rounded-xl border border-ayu-border bg-ayu-surface p-5">
+		<h2 class="mb-3 text-sm font-semibold uppercase tracking-wider text-ayu-muted">Games ({session.session_games.length})</h2>
+		{#if session.session_games.length > 0}
+			<div class="space-y-1 mb-4">
 				{#each session.session_games as sg}
-					<div class="flex items-center justify-between rounded-lg bg-zinc-800 px-3 py-2">
-						<span class="text-sm text-white">
-							{sg.game.icon_emoji ?? '🎮'} {sg.game.name}
-						</span>
-						<button
-							onclick={() => removeGame(sg.id)}
-							class="text-xs text-zinc-500 hover:text-red-400"
-						>
-							Remove
-						</button>
+					<div class="flex items-center justify-between rounded-lg bg-ayu-surface2 px-3 py-2">
+						<span class="text-sm text-white">{sg.game.icon_emoji ?? '🎮'} {sg.game.name}</span>
+						<button onclick={() => removeGame(sg.id)} class="text-xs text-ayu-muted hover:text-ayu-red transition">Remove</button>
 					</div>
 				{/each}
 			</div>
 		{/if}
-
 		{#if availableGames.length > 0}
 			<div class="flex gap-2">
 				<select
 					bind:value={addGameId}
-					class="flex-1 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white focus:border-amber-400 focus:outline-none"
+					class="flex-1 rounded-lg border border-ayu-border bg-ayu-bg px-3 py-2 text-sm text-white focus:border-ayu-gold focus:outline-none"
 				>
 					<option value="">Add a game…</option>
 					{#each availableGames as g}
 						<option value={g.id}>{g.icon_emoji ?? '🎮'} {g.name}</option>
 					{/each}
 				</select>
-				<button
-					onclick={addGame}
-					disabled={!addGameId}
-					class="rounded-lg bg-zinc-700 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-600 disabled:opacity-50"
-				>
-					Add
-				</button>
+				<button onclick={addGame} disabled={!addGameId} class="rounded-lg bg-ayu-surface2 px-3 py-2 text-sm text-white hover:bg-ayu-border disabled:opacity-40">Add</button>
 			</div>
 		{/if}
 	</div>
 
-	<!-- Live scores -->
-	<div class="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
-		<h2 class="mb-3 font-semibold text-white">Scores ({scores.length})</h2>
+	<!-- Scores -->
+	<div class="rounded-xl border border-ayu-border bg-ayu-surface p-5">
+		<h2 class="mb-3 text-sm font-semibold uppercase tracking-wider text-ayu-muted">Scores ({scores.length})</h2>
 		{#if scores.length === 0}
-			<p class="text-sm text-zinc-500">No scores yet.</p>
+			<p class="text-sm text-ayu-muted">No scores yet.</p>
 		{:else}
-			<div class="space-y-1 text-sm">
+			<div class="space-y-1 text-sm max-h-64 overflow-y-auto">
 				{#each scores as score}
-					<div class="flex items-center justify-between rounded-lg bg-zinc-800 px-3 py-2">
+					<div class="flex items-center justify-between rounded-lg bg-ayu-surface2 px-3 py-2">
 						<span class="text-zinc-300">
-							{(score.player as {name:string}).name} —
-							{session.session_games.find((sg: {game_id: string}) => sg.game_id === score.game_id)?.game?.name ?? score.game_id}:
-							<strong class="text-white">{score.raw_score}</strong>
+							<span class="font-medium text-white">{(score.player as { name: string }).name}</span>
+							<span class="text-ayu-muted mx-1">·</span>
+							{session.session_games.find((sg: { game_id: string; game: { name: string } }) => sg.game_id === score.game_id)?.game?.name ?? '?'}
+							<span class="text-ayu-muted mx-1">·</span>
+							<span class="font-mono text-ayu-gold">{score.raw_score}</span>
 						</span>
-						<button onclick={() => deleteScore(score.id)} class="text-xs text-zinc-500 hover:text-red-400">
-							Delete
-						</button>
+						<button onclick={() => deleteScore(score.id)} class="text-xs text-ayu-muted hover:text-ayu-red transition">Delete</button>
 					</div>
 				{/each}
 			</div>
@@ -162,6 +203,33 @@
 	</div>
 
 	{#if error}
-		<p class="text-sm text-red-400">{error}</p>
+		<p class="text-sm text-ayu-red">{error}</p>
 	{/if}
+
+	<!-- Danger zone -->
+	<div class="rounded-xl border border-ayu-red/30 bg-ayu-surface p-5">
+		<h2 class="mb-3 text-sm font-semibold uppercase tracking-wider text-ayu-red">Danger Zone</h2>
+		{#if !confirmDelete}
+			<button
+				onclick={() => (confirmDelete = true)}
+				class="rounded-lg border border-ayu-red/50 px-4 py-2 text-sm text-ayu-red hover:bg-ayu-red/10 transition"
+			>
+				Delete session
+			</button>
+		{:else}
+			<p class="mb-3 text-sm text-zinc-300">This will delete all scores for this session too. Are you sure?</p>
+			<div class="flex gap-2">
+				<button
+					onclick={deleteSession}
+					disabled={saving}
+					class="rounded-lg bg-ayu-red px-4 py-2 text-sm font-bold text-white hover:brightness-110 disabled:opacity-50"
+				>
+					Yes, delete forever
+				</button>
+				<button onclick={() => (confirmDelete = false)} class="rounded-lg border border-ayu-border px-4 py-2 text-sm text-ayu-muted hover:text-white">
+					Cancel
+				</button>
+			</div>
+		{/if}
+	</div>
 </div>
