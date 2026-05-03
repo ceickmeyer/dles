@@ -65,7 +65,7 @@
 			let score: string;
 			if (dnf) {
 				score = 'X';
-			} else if (game.scoring_direction === 'lower_is_better' && game.max_score) {
+			} else if (game.max_score) {
 				score = `${raw}/${game.max_score}`;
 			} else {
 				score = raw.toLocaleString();
