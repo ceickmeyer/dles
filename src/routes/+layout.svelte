@@ -7,7 +7,7 @@
 
 <svelte:head>
 	<link rel="icon" href={favicon} />
-	<title>Dle Night</title>
+	<title>The DLES Olympics</title>
 </svelte:head>
 
 <div class="min-h-screen bg-ayu-bg text-ayu-text">
@@ -15,7 +15,7 @@
 		<div class="mx-auto flex max-w-3xl items-center justify-between">
 			<a href="/" class="flex items-center gap-2 font-bold tracking-tight text-ayu-gold">
 				<span class="text-xl">🏅</span>
-				<span class="text-lg">Dle Night</span>
+				<span class="text-lg">The DLES Olympics</span>
 			</a>
 			<div class="flex gap-5 text-sm text-zinc-400">
 				<a href="/leaderboard" class="transition hover:text-ayu-gold">All-Time</a>
