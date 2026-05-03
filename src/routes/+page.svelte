@@ -79,12 +79,20 @@
 	async function share() {
 		const text = buildShareText();
 		if (navigator.share) {
-			await navigator.share({ text }).catch(() => {});
-		} else {
-			await navigator.clipboard.writeText(text);
-			shareCopied = true;
-			setTimeout(() => { shareCopied = false; }, 2000);
+			try {
+				await navigator.share({ text });
+				return;
+			} catch { /* cancelled or unsupported — fall through to clipboard */ }
 		}
+		try {
+			await navigator.clipboard.writeText(text);
+		} catch {
+			// clipboard blocked (non-https?) — show text in prompt as last resort
+			window.prompt('Copy your scores:', text);
+			return;
+		}
+		shareCopied = true;
+		setTimeout(() => { shareCopied = false; }, 2000);
 	}
 
 	// Play finished sound when player completes all their games (not on initial load)
