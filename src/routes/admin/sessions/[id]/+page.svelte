@@ -1,6 +1,8 @@
 <script lang="ts">
+	import { onMount, onDestroy } from 'svelte';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { supabase } from '$lib/supabase';
+	import { displayName } from '$lib/utils';
 	import type { SessionStatus } from '$lib/database.types';
 
 	let { data } = $props();
@@ -17,8 +19,21 @@
 	const sessionGameIds = $derived(new Set(session.session_games.map((sg: { game_id: string }) => sg.game_id)));
 	const availableGames = $derived(allGames.filter((g) => !sessionGameIds.has(g.id)));
 
+	// Submission matrix: unique players who have any score in this session
+	const participants = $derived(() => {
+		const map = new Map<string, { id: string; name: string; alias: string | null }>();
+		for (const s of scores) {
+			if (!map.has(s.player_id)) {
+				const p = s.player as { name: string; alias?: string | null };
+				map.set(s.player_id, { id: s.player_id, name: p.name, alias: p.alias ?? null });
+			}
+		}
+		return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
+	});
+
+	const submittedSet = $derived(new Set(scores.map((s) => `${s.player_id}:${s.game_id}`)));
+
 	// Status machine
-	const actions: { label: string; next: SessionStatus; style: string }[] = [];
 	const statusActions = $derived((() => {
 		const s = session.status;
 		const acts: { label: string; next: SessionStatus; style: string }[] = [];
@@ -41,6 +56,17 @@
 	async function setStatus(next: SessionStatus) {
 		saving = true; error = '';
 		const { error: e } = await supabase.from('sessions').update({ status: next }).eq('id', session.id);
+		if (e) error = e.message;
+		else await invalidateAll();
+		saving = false;
+	}
+
+	async function toggleScoresHidden() {
+		saving = true; error = '';
+		const { error: e } = await supabase
+			.from('sessions')
+			.update({ scores_hidden: !session.scores_hidden })
+			.eq('id', session.id);
 		if (e) error = e.message;
 		else await invalidateAll();
 		saving = false;
@@ -83,6 +109,16 @@
 		if (e) error = e.message;
 		else await invalidateAll();
 	}
+
+	// Live updates when players submit scores
+	let subscription: ReturnType<typeof supabase.channel> | null = null;
+	onMount(() => {
+		subscription = supabase
+			.channel(`admin:scores:${session.id}`)
+			.on('postgres_changes', { event: '*', schema: 'public', table: 'scores', filter: `session_id=eq.${session.id}` }, () => invalidateAll())
+			.subscribe();
+	});
+	onDestroy(() => { subscription?.unsubscribe(); });
 </script>
 
 <div class="max-w-2xl space-y-6">
@@ -121,6 +157,67 @@
 			<a href="/session/{session.id}" class="text-ayu-muted underline hover:text-white">View recap ↗</a>
 		</div>
 	</div>
+
+	<!-- Scores visibility -->
+	<div class="rounded-xl border border-ayu-border bg-ayu-surface p-5">
+		<h2 class="mb-1 text-sm font-semibold uppercase tracking-wider text-ayu-muted">Score Visibility</h2>
+		<p class="mb-3 text-xs text-ayu-muted">
+			{session.scores_hidden
+				? 'Scores are hidden from players. Click Reveal to show them.'
+				: 'Scores are visible to all players in real time.'}
+		</p>
+		<button
+			onclick={toggleScoresHidden}
+			disabled={saving}
+			class="rounded-lg px-4 py-2 text-sm font-semibold transition hover:brightness-110 disabled:opacity-50
+				{session.scores_hidden
+					? 'bg-ayu-gold text-ayu-bg'
+					: 'bg-ayu-surface2 text-zinc-300 border border-ayu-border'}"
+		>
+			{session.scores_hidden ? '🎉 Reveal scores' : '🙈 Hide scores'}
+		</button>
+	</div>
+
+	<!-- Submission status matrix -->
+	{#if participants().length > 0}
+		<div class="rounded-xl border border-ayu-border bg-ayu-surface p-5">
+			<h2 class="mb-3 text-sm font-semibold uppercase tracking-wider text-ayu-muted">
+				Who's Submitted
+				<span class="ml-2 font-normal text-ayu-muted normal-case tracking-normal">
+					({scores.length} of {participants().length * session.session_games.length} possible)
+				</span>
+			</h2>
+			<div class="overflow-x-auto">
+				<table class="w-full text-sm">
+					<thead>
+						<tr class="border-b border-ayu-border text-xs text-ayu-muted">
+							<th class="pb-2 pr-4 text-left font-medium">Player</th>
+							{#each session.session_games as sg}
+								<th class="pb-2 px-2 text-center font-medium">{sg.game.icon_emoji ?? '🎮'}</th>
+							{/each}
+						</tr>
+					</thead>
+					<tbody>
+						{#each participants() as p}
+							<tr class="border-b border-ayu-border/50 last:border-0">
+								<td class="py-2 pr-4 text-white">{displayName(p)}</td>
+								{#each session.session_games as sg}
+									{@const done = submittedSet.has(`${p.id}:${sg.game_id}`)}
+									<td class="py-2 px-2 text-center text-base">
+										{#if done}
+											<span class="text-ayu-green">✓</span>
+										{:else}
+											<span class="text-ayu-border">·</span>
+										{/if}
+									</td>
+								{/each}
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
+		</div>
+	{/if}
 
 	<!-- Expiration -->
 	<div class="rounded-xl border border-ayu-border bg-ayu-surface p-5">
@@ -189,7 +286,9 @@
 				{#each scores as score}
 					<div class="flex items-center justify-between rounded-lg bg-ayu-surface2 px-3 py-2">
 						<span class="text-zinc-300">
-							<span class="font-medium text-white">{(score.player as { name: string }).name}</span>
+							<span class="font-medium text-white">
+								{displayName(score.player as { name: string; alias?: string | null })}
+							</span>
 							<span class="text-ayu-muted mx-1">·</span>
 							{session.session_games.find((sg: { game_id: string; game: { name: string } }) => sg.game_id === score.game_id)?.game?.name ?? '?'}
 							<span class="text-ayu-muted mx-1">·</span>

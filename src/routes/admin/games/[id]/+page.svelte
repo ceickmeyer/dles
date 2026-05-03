@@ -3,16 +3,20 @@
 	import { supabase } from '$lib/supabase';
 	import { PARSER_OPTIONS, testCustomRegex } from '$lib/parsers';
 
-	let name = $state('');
-	let url = $state('');
-	let iconEmoji = $state('');
-	let scoringDirection = $state<'higher_is_better' | 'lower_is_better'>('lower_is_better');
-	let maxScore = $state('');
-	let shareParser = $state('');
-	let shareRegex = $state('');
+	let { data } = $props();
+
+	let name = $state(data.game.name);
+	let url = $state(data.game.url ?? '');
+	let iconEmoji = $state(data.game.icon_emoji ?? '');
+	let scoringDirection = $state<'higher_is_better' | 'lower_is_better'>(data.game.scoring_direction);
+	let maxScore = $state(data.game.max_score?.toString() ?? '');
+	let shareParser = $state(data.game.share_parser ?? '');
+	let shareRegex = $state(data.game.share_regex ?? '');
 	let regexSample = $state('');
-	let allowDnf = $state(false);
+	let allowDnf = $state(data.game.allow_dnf);
 	let saving = $state(false);
+	let deleting = $state(false);
+	let confirmDelete = $state(false);
 	let error = $state('');
 
 	const regexTestResult = $derived.by(() => {
@@ -25,7 +29,7 @@
 		if (shareParser === 'custom' && !shareRegex.trim()) { error = 'Enter a regex pattern for the custom parser.'; return; }
 		saving = true;
 		error = '';
-		const { error: e } = await supabase.from('games').insert({
+		const { error: e } = await supabase.from('games').update({
 			name: name.trim(),
 			url: url.trim() || null,
 			icon_emoji: iconEmoji.trim() || null,
@@ -34,10 +38,21 @@
 			share_parser: shareParser || null,
 			share_regex: shareParser === 'custom' ? (shareRegex.trim() || null) : null,
 			allow_dnf: allowDnf
-		});
+		}).eq('id', data.game.id);
+		saving = false;
+		if (e) error = e.message;
+		else goto('/admin/games');
+	}
+
+	async function deleteGame() {
+		deleting = true;
+		const { error: e } = await supabase.from('games').delete().eq('id', data.game.id);
 		if (e) {
-			error = e.message;
-			saving = false;
+			error = e.code === '23503'
+				? 'This game has scores or session history — remove those first.'
+				: e.message;
+			deleting = false;
+			confirmDelete = false;
 		} else {
 			goto('/admin/games');
 		}
@@ -47,7 +62,7 @@
 <div class="max-w-lg space-y-6">
 	<div>
 		<a href="/admin/games" class="mb-4 inline-flex items-center gap-1 text-sm text-ayu-muted hover:text-white">← Games</a>
-		<h1 class="text-2xl font-bold text-white">Add Game</h1>
+		<h1 class="text-2xl font-bold text-white">Edit Game</h1>
 	</div>
 
 	<div class="space-y-4 rounded-xl border border-ayu-border bg-ayu-surface p-5">
@@ -57,7 +72,6 @@
 				<input
 					id="name"
 					bind:value={name}
-					placeholder="Wordle"
 					class="w-full rounded-lg border border-ayu-border bg-ayu-bg px-3 py-2 text-white placeholder-ayu-muted focus:border-ayu-gold focus:outline-none"
 				/>
 			</div>
@@ -66,7 +80,6 @@
 				<input
 					id="emoji"
 					bind:value={iconEmoji}
-					placeholder="🟩"
 					maxlength={2}
 					class="w-full rounded-lg border border-ayu-border bg-ayu-bg px-3 py-2 text-center text-white placeholder-ayu-muted focus:border-ayu-gold focus:outline-none"
 				/>
@@ -79,7 +92,6 @@
 				id="url"
 				type="url"
 				bind:value={url}
-				placeholder="https://..."
 				class="w-full rounded-lg border border-ayu-border bg-ayu-bg px-3 py-2 text-white placeholder-ayu-muted focus:border-ayu-gold focus:outline-none"
 			/>
 		</div>
@@ -168,11 +180,43 @@
 		<p class="text-sm text-ayu-red">{error}</p>
 	{/if}
 
-	<button
-		onclick={save}
-		disabled={saving}
-		class="rounded-lg bg-ayu-gold px-6 py-3 font-bold text-ayu-bg transition hover:brightness-110 disabled:opacity-50"
-	>
-		{saving ? 'Saving…' : 'Add game'}
-	</button>
+	<div class="flex gap-3">
+		<button
+			onclick={save}
+			disabled={saving}
+			class="rounded-lg bg-ayu-gold px-6 py-2.5 font-bold text-ayu-bg transition hover:brightness-110 disabled:opacity-50"
+		>
+			{saving ? 'Saving…' : 'Save changes'}
+		</button>
+		<a href="/admin/games" class="rounded-lg border border-ayu-border px-4 py-2.5 text-sm text-ayu-muted hover:text-white">
+			Cancel
+		</a>
+	</div>
+
+	<!-- Danger zone -->
+	<div class="rounded-xl border border-ayu-red/30 bg-ayu-surface p-5">
+		<h2 class="mb-3 text-sm font-semibold uppercase tracking-wider text-ayu-red">Danger Zone</h2>
+		{#if !confirmDelete}
+			<button
+				onclick={() => (confirmDelete = true)}
+				class="rounded-lg border border-ayu-red/50 px-4 py-2 text-sm text-ayu-red transition hover:bg-ayu-red/10"
+			>
+				Delete game
+			</button>
+		{:else}
+			<p class="mb-3 text-sm text-zinc-300">This cannot be undone. The game will be removed from all sessions.</p>
+			<div class="flex gap-2">
+				<button
+					onclick={deleteGame}
+					disabled={deleting}
+					class="rounded-lg bg-ayu-red px-4 py-2 text-sm font-bold text-white transition hover:brightness-110 disabled:opacity-50"
+				>
+					{deleting ? 'Deleting…' : 'Yes, delete'}
+				</button>
+				<button onclick={() => (confirmDelete = false)} class="rounded-lg border border-ayu-border px-4 py-2 text-sm text-ayu-muted hover:text-white">
+					Cancel
+				</button>
+			</div>
+		{/if}
+	</div>
 </div>

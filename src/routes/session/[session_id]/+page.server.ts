@@ -2,7 +2,8 @@ import { createClient } from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
 import { error } from '@sveltejs/kit';
 import type { Database } from '$lib/database.types';
-import { rankScores, computeSessionTally, sortTally } from '$lib/scoring';
+import { rankScores, computeSessionTally, sortTally, MEDAL_EMOJI } from '$lib/scoring';
+import { displayName } from '$lib/utils';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params }) => {
@@ -22,7 +23,7 @@ export const load: PageServerLoad = async ({ params }) => {
 
 	const { data: scores } = await supabase
 		.from('scores')
-		.select('*, player:players(name)')
+		.select('*, player:players(name, alias)')
 		.eq('session_id', session.id);
 
 	const allScores = scores ?? [];
@@ -34,7 +35,7 @@ export const load: PageServerLoad = async ({ params }) => {
 				.filter((s) => s.game_id === game.id)
 				.map((s) => ({
 					player_id: s.player_id,
-					player_name: (s.player as { name: string }).name,
+					player_name: displayName(s.player as { name: string; alias?: string | null }),
 					raw_score: s.raw_score
 				})),
 			game.scoring_direction
@@ -43,5 +44,33 @@ export const load: PageServerLoad = async ({ params }) => {
 
 	const tally = sortTally([...computeSessionTally(gameResults).values()]);
 
-	return { session: { ...session, session_games: sessionGames }, gameResults, tally };
+	// Build shareable text
+	const dateStr = new Date(session.date + 'T12:00:00').toLocaleDateString('en-US', {
+		weekday: 'long', month: 'long', day: 'numeric'
+	});
+
+	const lines: string[] = [`🏅 ${session.name} — ${dateStr}`, ''];
+
+	if (tally.length > 0) {
+		lines.push('Overall standings:');
+		tally.slice(0, 3).forEach((t, i) => {
+			lines.push(`${['🥇','🥈','🥉'][i]} ${t.player_name}`);
+		});
+		lines.push('');
+	}
+
+	for (const { game, scores: ranked } of gameResults) {
+		if (ranked.length === 0) continue;
+		const parts = ranked.map((r) =>
+			`${r.player_name} (${r.raw_score})${r.medal ? ' ' + MEDAL_EMOJI[r.medal] : ''}`
+		);
+		lines.push(`${game.icon_emoji ?? '🎮'} ${game.name}: ${parts.join('  ')}`);
+	}
+
+	return {
+		session: { ...session, session_games: sessionGames },
+		gameResults,
+		tally,
+		shareText: lines.join('\n')
+	};
 };

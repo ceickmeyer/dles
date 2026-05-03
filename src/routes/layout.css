@@ -47,3 +47,8 @@ body {
   background-color: var(--color-ayu-bg);
   color: var(--color-ayu-text);
 }
+
+@keyframes bar-rise {
+  from { transform: scaleY(0); opacity: 0; }
+  to   { transform: scaleY(1); opacity: 1; }
+}

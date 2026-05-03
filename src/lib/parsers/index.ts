@@ -26,11 +26,26 @@ export const PARSER_OPTIONS = [
 	{ value: 'timeguessr', label: 'TimeGuessr (Score: N)' },
 	{ value: 'costcodle', label: 'Costcodle (X/6)' },
 	{ value: 'scrandle', label: 'Scrandle (X/10)' },
-	{ value: 'generic', label: 'Generic (first number)' }
+	{ value: 'generic', label: 'Generic (first number)' },
+	{ value: 'custom', label: 'Custom regex…' }
 ];
 
-export function parseShareText(text: string, parserKey: string | null): number | null {
+export function testCustomRegex(regex: string, text: string): number | null {
+	try {
+		const re = new RegExp(regex, 'i');
+		const m = re.exec(text);
+		if (!m) return null;
+		const raw = m[1] ?? m[0];
+		const n = parseFloat(raw);
+		return isNaN(n) ? null : n;
+	} catch {
+		return null;
+	}
+}
+
+export function parseShareText(text: string, parserKey: string | null, shareRegex?: string | null): number | null {
 	if (!parserKey) return null;
+	if (parserKey === 'custom') return shareRegex ? testCustomRegex(shareRegex, text) : null;
 	const parser = PARSERS[parserKey];
 	if (!parser) return genericParser.parse(text);
 	return parser.parse(text);

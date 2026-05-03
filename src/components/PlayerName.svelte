@@ -8,6 +8,7 @@
 	let name = $state('');
 	let pinInput = $state('');
 	let revealedPin = $state('');
+	let pendingId = $state('');
 	let loading = $state(false);
 	let error = $state('');
 
@@ -17,7 +18,6 @@
 		loading = true;
 		error = '';
 
-		// Check if name already exists
 		const { data: existing } = await supabase
 			.from('players')
 			.select('id, name, pin')
@@ -27,10 +27,8 @@
 		loading = false;
 
 		if (existing) {
-			// Name taken — ask for PIN to reclaim
 			step = 'pin-entry';
 		} else {
-			// New player — create with PIN
 			const pin = generatePin();
 			loading = true;
 			const { data, error: dbError } = await supabase
@@ -40,7 +38,8 @@
 				.single();
 			loading = false;
 			if (dbError) { error = 'Could not save — try again.'; return; }
-			playerStore.setPlayer(data.id, data.name);
+			// Store the ID but DON'T set the store yet — that would close the modal
+			pendingId = data.id;
 			revealedPin = pin;
 			step = 'pin-reveal';
 		}
@@ -62,6 +61,10 @@
 			return;
 		}
 		playerStore.setPlayer(data.id, data.name);
+	}
+
+	function confirm() {
+		playerStore.setPlayer(pendingId, name.trim());
 	}
 </script>
 
@@ -92,7 +95,7 @@
 		{:else if step === 'pin-entry'}
 			<button onclick={() => { step = 'name'; error = ''; }} class="mb-4 text-sm text-ayu-muted hover:text-white">← Back</button>
 			<h2 class="mb-1 text-2xl font-bold text-white">Welcome back, {name}!</h2>
-			<p class="mb-6 text-sm text-ayu-muted">That name already exists. Enter your 4-digit PIN to reclaim it.</p>
+			<p class="mb-6 text-sm text-ayu-muted">That name already exists. Enter your 4-digit PIN to sign in.</p>
 			<form onsubmit={(e) => { e.preventDefault(); submitPin(); }}>
 				<input
 					class="mb-4 w-full rounded-lg border border-ayu-border bg-ayu-bg px-4 py-3 text-center text-2xl font-mono tracking-widest text-white placeholder-ayu-muted focus:border-ayu-gold focus:outline-none"
@@ -108,21 +111,21 @@
 					disabled={loading || pinInput.length < 4}
 					class="w-full rounded-lg bg-ayu-gold px-4 py-3 font-bold text-ayu-bg transition hover:brightness-110 disabled:opacity-50"
 				>
-					{loading ? 'Verifying…' : 'Confirm PIN'}
+					{loading ? 'Verifying…' : 'Sign in'}
 				</button>
 			</form>
 
 		{:else if step === 'pin-reveal'}
 			<div class="text-center">
 				<div class="mb-4 text-5xl">🏅</div>
-				<h2 class="mb-2 text-2xl font-bold text-white">You're in, {name}!</h2>
-				<p class="mb-4 text-sm text-ayu-muted">Save this PIN — you'll need it to sign in on a new device.</p>
+				<h2 class="mb-2 text-2xl font-bold text-white">You're in, {name.trim()}!</h2>
+				<p class="mb-4 text-sm text-ayu-muted">Write this PIN down — you'll need it to sign in on a new device.</p>
 				<div class="mb-6 rounded-xl border border-ayu-gold/40 bg-ayu-gold/10 py-5">
 					<p class="text-xs font-semibold uppercase tracking-widest text-ayu-muted mb-1">Your PIN</p>
 					<p class="text-5xl font-mono font-bold tracking-widest text-ayu-gold">{revealedPin}</p>
 				</div>
 				<button
-					onclick={() => {}}
+					onclick={confirm}
 					class="w-full rounded-lg bg-ayu-gold px-4 py-3 font-bold text-ayu-bg transition hover:brightness-110"
 				>
 					Got it — let's play!

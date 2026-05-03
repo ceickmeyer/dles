@@ -1,6 +1,9 @@
 <script lang="ts">
 	import { supabase } from '$lib/supabase';
 	import { parseShareText } from '$lib/parsers';
+	import { playerStore } from '$lib/stores/player';
+	import { dnfScore, isDnf, formatScore } from '$lib/utils';
+	import { sounds } from '$lib/sounds';
 	import ParseConfirm from './ParseConfirm.svelte';
 	import type { Game } from '$lib/database.types';
 
@@ -28,22 +31,23 @@
 	let pendingPick = $state<number | null>(null);
 
 	const submitted = $derived(myScore !== null);
+	const myDnf = $derived(myScore !== null && isDnf(myScore, game));
 
-	// Show quick-pick buttons when max_score is small enough to be a guess count
 	const showQuickPick = $derived(
 		game.max_score !== null && game.max_score >= 1 && game.max_score <= 12
 	);
 	const quickPickRange = $derived(
 		showQuickPick ? Array.from({ length: game.max_score! }, (_, i) => i + 1) : []
 	);
+	const gameDnfScore = $derived(dnfScore(game));
 
 	function toggle() {
-		if (!submitted) expanded = !expanded;
+		expanded = !expanded;
 	}
 
 	function tryParse() {
 		error = '';
-		const result = parseShareText(shareText.trim(), game.share_parser);
+		const result = parseShareText(shareText.trim(), game.share_parser, game.share_regex);
 		if (result !== null) { parsedScore = result; showConfirm = true; }
 		else error = 'Could not parse — enter manually above.';
 	}
@@ -68,32 +72,49 @@
 			{ onConflict: 'session_id,game_id,player_id' }
 		);
 		submitting = false;
-		if (dbError) { error = dbError.message; pendingPick = null; return; }
+		if (dbError) {
+			pendingPick = null;
+			if (dbError.code === '23503') { playerStore.clear(); return; }
+			error = dbError.message;
+			return;
+		}
 		pendingPick = null;
 		expanded = false;
+		sounds.submit();
 		onscored?.();
 	}
 
 	function quickPickClass(n: number): string {
 		const active = pendingPick ?? myScore;
 		if (active === null) return 'border-ayu-border bg-ayu-surface2 text-white hover:border-ayu-gold';
+		// If DNF is selected, all number buttons dim
+		if (gameDnfScore !== null && active === gameDnfScore)
+			return 'border-ayu-border bg-ayu-surface2 text-ayu-muted';
 		if (game.scoring_direction === 'higher_is_better') {
 			return n <= active
 				? 'border-ayu-green bg-ayu-green/20 text-ayu-green'
 				: 'border-ayu-red/40 bg-ayu-red/10 text-ayu-red/60';
-		} else {
-			// lower_is_better (guess-count games)
-			return n <= active
-				? 'border-ayu-gold bg-ayu-gold/20 text-ayu-gold'
-				: 'border-ayu-border bg-ayu-surface2 text-ayu-muted';
 		}
+		return n <= active
+			? 'border-ayu-gold bg-ayu-gold/20 text-ayu-gold'
+			: 'border-ayu-border bg-ayu-surface2 text-ayu-muted';
+	}
+
+	function dnfClass(): string {
+		const active = pendingPick ?? myScore;
+		const selected = gameDnfScore !== null && active === gameDnfScore;
+		return selected
+			? 'border-ayu-red bg-ayu-red/20 text-ayu-red font-bold'
+			: 'border-ayu-red/40 bg-ayu-surface2 text-ayu-red/70 hover:border-ayu-red hover:text-ayu-red';
 	}
 </script>
 
 <div
 	class="overflow-hidden rounded-xl border transition-all duration-200"
 	style={submitted
-		? 'border-color:color-mix(in srgb,var(--color-ayu-green) 60%,transparent);background-color:color-mix(in srgb,var(--color-ayu-green) 6%,var(--color-ayu-surface))'
+		? myDnf
+			? 'border-color:color-mix(in srgb,var(--color-ayu-red) 50%,transparent);background-color:color-mix(in srgb,var(--color-ayu-red) 6%,var(--color-ayu-surface))'
+			: 'border-color:color-mix(in srgb,var(--color-ayu-green) 60%,transparent);background-color:color-mix(in srgb,var(--color-ayu-green) 6%,var(--color-ayu-surface))'
 		: 'border-color:var(--color-ayu-border);background-color:var(--color-ayu-surface)'}
 >
 	<!-- Always-visible header -->
@@ -115,9 +136,20 @@
 		</div>
 
 		{#if submitted}
-			<div class="flex items-center gap-1.5 text-ayu-green">
-				<span>✓</span>
-				<span class="font-mono text-sm font-semibold">{myScore}</span>
+			<div class="flex items-center gap-2">
+				<div class="flex items-center gap-1.5 {myDnf ? 'text-ayu-red' : 'text-ayu-green'}">
+					<span>{myDnf ? '✗' : '✓'}</span>
+					<span class="font-mono text-sm font-semibold">
+						{myScore !== null ? formatScore(myScore, game) : ''}
+					</span>
+				</div>
+				<button
+					onclick={toggle}
+					class="rounded-lg px-2.5 py-1 text-xs font-medium transition
+						{expanded ? 'bg-ayu-surface2 text-ayu-muted' : 'bg-ayu-surface2 text-zinc-400 hover:text-white'}"
+				>
+					{expanded ? 'Cancel' : 'Edit'}
+				</button>
 			</div>
 		{:else}
 			<button
@@ -134,7 +166,7 @@
 	{#if expanded}
 		<div class="border-t border-ayu-border px-4 pb-4 pt-3 space-y-4">
 
-			<!-- Quick-pick buttons (for guess-count games) -->
+			<!-- Quick-pick buttons -->
 			{#if showQuickPick}
 				<div>
 					<p class="mb-2 text-xs font-medium text-zinc-400">
@@ -150,6 +182,16 @@
 								{n}
 							</button>
 						{/each}
+						{#if game.allow_dnf && gameDnfScore !== null}
+							<button
+								onclick={() => doSubmit(gameDnfScore)}
+								disabled={submitting}
+								class="h-9 rounded-lg border px-2.5 text-sm transition disabled:cursor-not-allowed {dnfClass()}"
+								title="Did not solve"
+							>
+								✗
+							</button>
+						{/if}
 					</div>
 				</div>
 				<div class="flex items-center gap-2 text-xs text-ayu-muted">
@@ -176,16 +218,27 @@
 						class="w-full rounded-lg border border-ayu-border bg-ayu-bg px-3 py-2 text-white placeholder-ayu-muted focus:border-ayu-gold focus:outline-none"
 					/>
 				</div>
-				<button
-					onclick={submitManual}
-					disabled={submitting || manualScore === ''}
-					class="rounded-lg bg-ayu-gold px-4 py-2 font-bold text-ayu-bg transition hover:brightness-110 disabled:opacity-50"
-				>
-					{submitting ? '…' : 'Submit'}
-				</button>
+				<div class="flex flex-col gap-1.5">
+					<button
+						onclick={submitManual}
+						disabled={submitting || manualScore === ''}
+						class="rounded-lg bg-ayu-gold px-4 py-2 font-bold text-ayu-bg transition hover:brightness-110 disabled:opacity-50"
+					>
+						{submitting ? '…' : 'Submit'}
+					</button>
+					{#if !showQuickPick && game.allow_dnf && gameDnfScore !== null}
+						<button
+							onclick={() => doSubmit(gameDnfScore)}
+							disabled={submitting}
+							class="rounded-lg border border-ayu-red/50 px-4 py-1.5 text-xs font-semibold text-ayu-red transition hover:bg-ayu-red/10 disabled:opacity-50"
+						>
+							Did not solve
+						</button>
+					{/if}
+				</div>
 			</div>
 
-			<!-- Paste & parse (below manual) -->
+			<!-- Paste & parse -->
 			{#if game.share_parser}
 				<div>
 					<div class="flex items-center gap-2 text-xs text-ayu-muted mb-2">
@@ -222,7 +275,7 @@
 
 			{#if myScore !== null}
 				<p class="text-xs text-ayu-muted">
-					Your current score: <span class="font-semibold text-white">{myScore}</span> — submitting again will overwrite it.
+					Current: <span class="font-semibold text-white">{formatScore(myScore, game)}</span> — submitting again will overwrite it.
 				</p>
 			{/if}
 

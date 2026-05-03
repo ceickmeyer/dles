@@ -48,9 +48,17 @@ create table if not exists scores (
 );
 
 -- Column migrations (safe to re-run on existing tables)
-alter table players  add column if not exists pin        text        not null default '0000';
-alter table players  add column if not exists alias      text;
-alter table sessions add column if not exists expires_at timestamptz;
+alter table players  add column if not exists pin           text        not null default '0000';
+alter table players  add column if not exists alias         text;
+alter table sessions add column if not exists expires_at   timestamptz;
+alter table sessions add column if not exists scores_hidden boolean    not null default false;
+alter table games    add column if not exists allow_dnf     boolean    not null default false;
+alter table games    add column if not exists share_regex   text;
+
+-- Recreate scores→players FK with cascade so deleting a player removes their scores
+alter table scores drop constraint if exists scores_player_id_fkey;
+alter table scores add constraint scores_player_id_fkey
+  foreign key (player_id) references players(id) on delete cascade;
 
 -- Update status check constraint to include 'paused'
 alter table sessions drop constraint if exists sessions_status_check;
@@ -67,9 +75,11 @@ alter table scores       enable row level security;
 drop policy if exists "players_select" on players;
 drop policy if exists "players_insert" on players;
 drop policy if exists "players_update" on players;
+drop policy if exists "players_delete" on players;
 create policy "players_select" on players for select using (true);
 create policy "players_insert" on players for insert with check (true);
 create policy "players_update" on players for update using (auth.role() = 'authenticated');
+create policy "players_delete" on players for delete using (auth.role() = 'authenticated');
 
 drop policy if exists "games_select"  on games;
 drop policy if exists "games_insert"  on games;
@@ -107,7 +117,7 @@ create policy "scores_insert" on scores for insert with check (true);
 create policy "scores_upsert" on scores for update using (true);
 create policy "scores_delete" on scores for delete using (auth.role() = 'authenticated');
 
--- Enable realtime for scores (safe to re-run)
+-- Enable realtime for scores and sessions (safe to re-run)
 do $$
 begin
   if not exists (
@@ -116,13 +126,19 @@ begin
   ) then
     alter publication supabase_realtime add table scores;
   end if;
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and tablename = 'sessions'
+  ) then
+    alter publication supabase_realtime add table sessions;
+  end if;
 end $$;
 
 -- Seed starter games (max_score enables quick-pick buttons in the UI)
-insert into games (name, url, icon_emoji, scoring_direction, max_score, share_parser) values
-  ('Wordle',     'https://www.nytimes.com/games/wordle/index.html', '🟩', 'lower_is_better',  6,     'wordle'),
-  ('Framed',     'https://framed.wtf',                              '🎥', 'lower_is_better',  6,     'framed'),
-  ('TimeGuessr', 'https://timeguessr.com',                          '🕰️', 'higher_is_better', 25000, 'timeguessr'),
-  ('Costcodle',  'https://costcodle.com',                           '🛒', 'lower_is_better',  6,     'costcodle'),
-  ('Scrandle',   'https://scrandle.com',                            '🔤', 'higher_is_better', 10,    'scrandle')
+insert into games (name, url, icon_emoji, scoring_direction, max_score, share_parser, allow_dnf) values
+  ('Wordle',     'https://www.nytimes.com/games/wordle/index.html', '🟩', 'lower_is_better',  6,     'wordle',     true),
+  ('Framed',     'https://framed.wtf',                              '🎥', 'lower_is_better',  6,     'framed',     true),
+  ('TimeGuessr', 'https://timeguessr.com',                          '🕰️', 'higher_is_better', 25000, 'timeguessr', false),
+  ('Costcodle',  'https://costcodle.com',                           '🛒', 'lower_is_better',  6,     'costcodle',  true),
+  ('Scrandle',   'https://scrandle.com',                            '🔤', 'higher_is_better', 10,    'scrandle',   false)
 on conflict do nothing;

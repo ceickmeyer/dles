@@ -21,6 +21,8 @@ export interface Database {
 					scoring_direction: ScoringDirection;
 					max_score: number | null;
 					share_parser: string | null;
+					share_regex: string | null;
+					allow_dnf: boolean;
 					created_at: string;
 				};
 				Insert: {
@@ -31,6 +33,8 @@ export interface Database {
 					scoring_direction: ScoringDirection;
 					max_score?: number | null;
 					share_parser?: string | null;
+					share_regex?: string | null;
+					allow_dnf?: boolean;
 					created_at?: string;
 				};
 				Update: {
@@ -41,14 +45,16 @@ export interface Database {
 					scoring_direction?: ScoringDirection;
 					max_score?: number | null;
 					share_parser?: string | null;
+					share_regex?: string | null;
+					allow_dnf?: boolean;
 					created_at?: string;
 				};
 				Relationships: [];
 			};
 			sessions: {
-				Row: { id: string; name: string; date: string; status: SessionStatus; expires_at: string | null; created_at: string };
-				Insert: { id?: string; name: string; date?: string; status?: SessionStatus; expires_at?: string | null; created_at?: string };
-				Update: { id?: string; name?: string; date?: string; status?: SessionStatus; expires_at?: string | null; created_at?: string };
+				Row: { id: string; name: string; date: string; status: SessionStatus; expires_at: string | null; scores_hidden: boolean; created_at: string };
+				Insert: { id?: string; name: string; date?: string; status?: SessionStatus; expires_at?: string | null; scores_hidden?: boolean; created_at?: string };
+				Update: { id?: string; name?: string; date?: string; status?: SessionStatus; expires_at?: string | null; scores_hidden?: boolean; created_at?: string };
 				Relationships: [];
 			};
 			session_games: {

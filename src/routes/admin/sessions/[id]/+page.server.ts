@@ -21,7 +21,7 @@ export const load: PageServerLoad = async ({ params }) => {
 
 	const { data: scores } = await supabase
 		.from('scores')
-		.select('*, player:players(name)')
+		.select('*, player:players(name, alias)')
 		.eq('session_id', session.id);
 
 	const { data: allGames } = await supabase.from('games').select('*').order('name');

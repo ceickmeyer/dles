@@ -23,7 +23,7 @@
 
 	function tryParse() {
 		error = '';
-		const result = parseShareText(shareText.trim(), game.share_parser);
+		const result = parseShareText(shareText.trim(), game.share_parser, game.share_regex);
 		if (result !== null) {
 			parsedScore = result;
 			showConfirm = true;

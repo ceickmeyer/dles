@@ -24,7 +24,7 @@ export const load: PageServerLoad = async () => {
 
 	const { data: scores } = await supabase
 		.from('scores')
-		.select('*, player:players(name)')
+		.select('*, player:players(name, alias)')
 		.eq('session_id', session.id);
 
 	return { session: { ...session, session_games: sessionGames }, scores: scores ?? [] };
