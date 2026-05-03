@@ -6,7 +6,7 @@
 	import { supabase } from '$lib/supabase';
 	import { sounds } from '$lib/sounds';
 	import { rankScores, computeSessionTally, sortTally } from '$lib/scoring';
-	import { displayName, formatScore } from '$lib/utils';
+	import { displayName, formatScore, isDnf } from '$lib/utils';
 	import type { ScoreWithPlayer } from '$lib/database.types';
 	import PlayerName from '$components/PlayerName.svelte';
 	import LobbyCard from '$components/LobbyCard.svelte';
@@ -48,6 +48,44 @@
 
 	const scoresHidden = $derived(session?.scores_hidden ?? false);
 	const gamesWithScores = $derived(gameResults.filter((gr) => gr.scores.length > 0));
+	const allDone = $derived(
+		!!session && session.session_games.length > 0 && myScores.size === session.session_games.length
+	);
+
+	let shareCopied = $state(false);
+
+	function buildShareText(): string {
+		if (!session) return '';
+		const date = new Date(session.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+		const lines = [`${session.name} — ${date}`, ''];
+		for (const { game } of session.session_games) {
+			const raw = myScores.get(game.id);
+			if (raw === undefined) continue;
+			const dnf = isDnf(raw, game);
+			let score: string;
+			if (dnf) {
+				score = 'X';
+			} else if (game.scoring_direction === 'lower_is_better' && game.max_score) {
+				score = `${raw}/${game.max_score}`;
+			} else {
+				score = raw.toLocaleString();
+			}
+			lines.push(`${game.icon_emoji ?? '🎮'} ${game.name}: ${score}`);
+		}
+		lines.push('', 'https://dles.cooody.com');
+		return lines.join('\n');
+	}
+
+	async function share() {
+		const text = buildShareText();
+		if (navigator.share) {
+			await navigator.share({ text }).catch(() => {});
+		} else {
+			await navigator.clipboard.writeText(text);
+			shareCopied = true;
+			setTimeout(() => { shareCopied = false; }, 2000);
+		}
+	}
 
 	// Play finished sound when player completes all their games (not on initial load)
 	let prevMyScoresSize = $state<number | null>(null);
@@ -169,6 +207,22 @@
 				{/if}
 			</div>
 		</div>
+
+		<!-- Share button — appears when player has submitted all games -->
+		{#if allDone && player.id}
+			<div class="rounded-xl border border-ayu-border bg-ayu-surface px-5 py-4 flex items-center justify-between gap-4">
+				<div>
+					<p class="font-semibold text-white">All done! 🎉</p>
+					<p class="text-xs text-ayu-muted mt-0.5">Share your scores and challenge a friend.</p>
+				</div>
+				<button
+					onclick={share}
+					class="shrink-0 rounded-lg bg-ayu-gold px-4 py-2 text-sm font-bold text-ayu-bg transition hover:brightness-110"
+				>
+					{shareCopied ? '✓ Copied!' : '📤 Share'}
+				</button>
+			</div>
+		{/if}
 
 		{#if scoresHidden}
 			<!-- Hidden scores banner -->

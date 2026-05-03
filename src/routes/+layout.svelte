@@ -2,12 +2,32 @@
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
 
-	let { children } = $props();
+	let { data, children } = $props();
+
+	const ogTitle = $derived(
+		data.ogSession ? `${data.ogSession.name} — The DLES Olympics` : 'The DLES Olympics'
+	);
+
+	const ogDescription = $derived(() => {
+		if (!data.ogSession) return 'Track scores across your daily word game nights.';
+		const games = data.ogSession.session_games
+			.map((sg: { game: { icon_emoji: string | null; name: string } }) =>
+				`${sg.game.icon_emoji ?? '🎮'} ${sg.game.name}`)
+			.join('  ·  ');
+		return games || 'Game night in progress!';
+	});
 </script>
 
 <svelte:head>
 	<link rel="icon" href={favicon} />
-	<title>The DLES Olympics</title>
+	<title>{ogTitle}</title>
+	<meta property="og:site_name" content="The DLES Olympics" />
+	<meta property="og:type" content="website" />
+	<meta property="og:title" content={ogTitle} />
+	<meta property="og:description" content={ogDescription()} />
+	<meta name="twitter:card" content="summary" />
+	<meta name="twitter:title" content={ogTitle} />
+	<meta name="twitter:description" content={ogDescription()} />
 </svelte:head>
 
 <div class="min-h-screen bg-ayu-bg text-ayu-text">
