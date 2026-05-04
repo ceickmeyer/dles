@@ -12,6 +12,8 @@
 	import LobbyCard from '$components/LobbyCard.svelte';
 	import Podium from '$components/Podium.svelte';
 	import MedalTally from '$components/MedalTally.svelte';
+	import SessionChat from '$components/SessionChat.svelte';
+	import { computeSessionBadges } from '$lib/gameBadges';
 
 	let { data } = $props();
 
@@ -47,6 +49,12 @@
 	);
 
 	const scoresHidden = $derived(session?.scores_hidden ?? false);
+
+	const sessionBadges = $derived(
+		player.id && session
+			? computeSessionBadges(myScores, session.session_games.map(sg => sg.game))
+			: []
+	);
 	const gamesWithScores = $derived(gameResults.filter((gr) => gr.scores.length > 0));
 	const allDone = $derived(
 		!!session && session.session_games.length > 0 && myScores.size === session.session_games.length
@@ -54,9 +62,60 @@
 
 	let shareCopied = $state(false);
 
+	// Parse YYYY-MM-DD as a local date — avoids UTC midnight shifting the day
+	function parseLocalDate(dateStr: string): Date {
+		const [y, m, d] = dateStr.split('-').map(Number);
+		return new Date(y, m - 1, d);
+	}
+
+	function formatSessionDate(dateStr: string): string {
+		return parseLocalDate(dateStr).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+	}
+
+	// Returns midnight NY at the end of sessionDate (handles EST/EDT automatically)
+	function midnightNY(sessionDate: string): Date {
+		const [y, m, d] = sessionDate.split('-').map(Number);
+		for (const offsetH of [4, 5]) { // try EDT (UTC-4) then EST (UTC-5)
+			const candidate = new Date(Date.UTC(y, m - 1, d + 1, offsetH, 0, 0));
+			const nyH = parseInt(
+				new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', hour12: false }).format(candidate), 10
+			);
+			if (nyH === 0) return candidate;
+		}
+		return new Date(Date.UTC(y, m - 1, d + 1, 5, 0, 0)); // fallback EST
+	}
+
+	// Countdown — uses expires_at if set, otherwise midnight NY for active/lobby sessions
+	let timeLeft = $state('');
+	$effect(() => {
+		if (!session) { timeLeft = ''; return; }
+		const endTime = session.expires_at
+			? new Date(session.expires_at)
+			: (session.status === 'active' || session.status === 'lobby') ? midnightNY(session.date) : null;
+		if (!endTime) { timeLeft = ''; return; }
+
+		function tick() {
+			const diff = endTime!.getTime() - Date.now();
+			if (diff <= 0) { timeLeft = 'Session ended'; return; }
+			const h = Math.floor(diff / 3600000);
+			const m = Math.floor((diff % 3600000) / 60000);
+			const s = Math.floor((diff % 60000) / 1000);
+			timeLeft = h > 0 ? `${h}h ${m}m` : `${m}:${String(s).padStart(2, '0')}`;
+		}
+		tick();
+		const id = setInterval(tick, 1000);
+		return () => clearInterval(id);
+	});
+
+	function fmtDecipherSeconds(raw: number): string {
+		const m = Math.floor(raw / 60);
+		const s = raw % 60;
+		return m > 0 ? `${m}m ${s}s` : `${s}s`;
+	}
+
 	function buildShareText(): string {
 		if (!session) return '';
-		const date = new Date(session.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+		const date = formatSessionDate(session.date);
 		const lines = [`${session.name} — ${date}`, ''];
 		for (const { game } of session.session_games) {
 			const raw = myScores.get(game.id);
@@ -65,6 +124,8 @@
 			let score: string;
 			if (dnf) {
 				score = 'X';
+			} else if (game.share_parser === 'decipher') {
+				score = fmtDecipherSeconds(raw);
 			} else if (game.max_score) {
 				score = `${raw}/${game.max_score}`;
 			} else {
@@ -164,11 +225,24 @@
 	<PlayerName />
 {/if}
 
+{#if session}
+	<SessionChat sessionId={session.id} playerId={player.id || null} playerName={player.name || null} />
+{/if}
+
 {#if !session}
 	<div class="py-20 text-center">
 		<p class="mb-4 text-6xl">🏅</p>
 		<h1 class="mb-2 text-2xl font-bold text-white">No active session</h1>
-		<p class="text-ayu-muted">Ask the host to start a new game night!</p>
+		{#if data.nextSession}
+			{#if data.nextSession.isToday}
+				<p class="text-ayu-muted">A session is scheduled for today — check back soon!</p>
+				<p class="mt-1 text-sm text-zinc-500">{data.nextSession.label}</p>
+			{:else}
+				<p class="text-ayu-muted">Next up: <span class="text-zinc-300">{data.nextSession.label}</span></p>
+			{/if}
+		{:else}
+			<p class="text-ayu-muted">Ask the host to start a new game night!</p>
+		{/if}
 	</div>
 {:else}
 	<div class="space-y-8">
@@ -186,9 +260,12 @@
 					{session.status === 'active' ? '● Live' : session.status === 'paused' ? '⏸ Paused' : 'Lobby'}
 				</span>
 			</div>
-			<p class="mt-0.5 text-sm text-ayu-muted">
-				{new Date(session.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-			</p>
+			<div class="mt-0.5 flex items-center justify-between">
+				<p class="text-sm text-ayu-muted">{formatSessionDate(session.date)}</p>
+				{#if timeLeft}
+					<p class="text-xs text-ayu-muted">Ends in <span class="font-mono text-zinc-300">{timeLeft}</span></p>
+				{/if}
+			</div>
 		</div>
 
 		<!-- Game cards -->
@@ -216,12 +293,44 @@
 			</div>
 		</div>
 
-		<!-- Share button — appears when player has submitted all games -->
-		{#if allDone && player.id}
+		<!-- Current Badges -->
+		{#if sessionBadges.length > 0}
+			<div class="rounded-xl border border-ayu-border bg-ayu-surface p-5">
+				<h2 class="mb-4 text-xs font-semibold uppercase tracking-widest text-ayu-muted">Current Badges</h2>
+				<div class="flex flex-wrap gap-3">
+					{#each sessionBadges as badge (badge.id)}
+						<div
+							class="group relative flex items-center gap-2.5 rounded-lg border border-ayu-border bg-ayu-surface2 px-3 py-2"
+							title={badge.description}
+						>
+							<span class="text-xl leading-none">{badge.emoji}</span>
+							<div>
+								<p class="text-sm font-semibold text-white leading-tight">{badge.name}</p>
+								{#if badge.gameName}
+									<p class="text-xs text-ayu-muted leading-tight">{badge.gameEmoji} {badge.gameName}</p>
+								{/if}
+							</div>
+							<!-- Tooltip -->
+							<div class="pointer-events-none absolute bottom-full left-0 mb-2 z-10 w-48 rounded-lg border border-ayu-border bg-zinc-900 px-3 py-2 text-xs text-zinc-300 opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+								{badge.description}
+							</div>
+						</div>
+					{/each}
+				</div>
+			</div>
+		{/if}
+
+		<!-- Share button — appears once the player has at least one score -->
+		{#if myScores.size > 0 && player.id}
 			<div class="rounded-xl border border-ayu-border bg-ayu-surface px-5 py-4 flex items-center justify-between gap-4">
 				<div>
-					<p class="font-semibold text-white">All done! 🎉</p>
-					<p class="text-xs text-ayu-muted mt-0.5">Share your scores and challenge a friend.</p>
+					{#if allDone}
+						<p class="font-semibold text-white">All done! 🎉</p>
+						<p class="text-xs text-ayu-muted mt-0.5">Share your scores with the group.</p>
+					{:else}
+						<p class="font-semibold text-white">Share your scores so far</p>
+						<p class="text-xs text-ayu-muted mt-0.5">{myScores.size}/{session.session_games.length} games submitted.</p>
+					{/if}
 				</div>
 				<button
 					onclick={share}
@@ -255,7 +364,7 @@
 										<div class="flex items-center justify-between text-sm">
 											<span class="text-zinc-300">
 												{#if s.medal}{MEDAL[s.medal]}{:else}<span class="inline-block w-5"></span>{/if}
-												<span class={s.player_id === player.id ? 'font-semibold text-white' : ''}>{s.player_name}</span>
+												<a href="/player/{s.player_id}" class="hover:text-ayu-gold transition-colors {s.player_id === player.id ? 'font-semibold text-white' : ''}">{s.player_name}</a>
 											</span>
 											<span class="font-mono {s.raw_score !== null && game.allow_dnf && game.max_score !== null && s.raw_score === game.max_score + 1 ? 'text-ayu-red' : 'text-ayu-gold'}">{formatScore(s.raw_score, game)}</span>
 										</div>

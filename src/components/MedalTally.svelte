@@ -26,7 +26,9 @@
 				>
 					<td class="py-2 text-zinc-500">{i + 1}</td>
 					<td class="py-2 font-medium text-white">
-						{row.player_name}
+						<a href="/player/{row.player_id}" class="hover:text-ayu-gold transition-colors">
+							{row.player_name}
+						</a>
 						{#if row.player_id === currentPlayerId}
 							<span class="ml-1 text-xs text-amber-400">(you)</span>
 						{/if}

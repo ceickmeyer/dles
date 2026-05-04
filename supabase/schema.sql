@@ -138,6 +138,21 @@ create policy "schedules_insert" on schedules for insert with check (auth.role()
 create policy "schedules_update" on schedules for update using (auth.role() = 'authenticated');
 create policy "schedules_delete" on schedules for delete using (auth.role() = 'authenticated');
 
+create table if not exists messages (
+  id uuid primary key default gen_random_uuid(),
+  session_id uuid references sessions(id) on delete cascade,
+  player_id uuid references players(id) on delete cascade,
+  player_name text not null,
+  content text not null check (char_length(content) <= 500),
+  created_at timestamptz default now()
+);
+
+alter table messages enable row level security;
+drop policy if exists "messages_select" on messages;
+drop policy if exists "messages_insert" on messages;
+create policy "messages_select" on messages for select using (true);
+create policy "messages_insert" on messages for insert with check (true);
+
 -- Enable realtime for scores and sessions (safe to re-run)
 do $$
 begin
@@ -152,5 +167,11 @@ begin
     where pubname = 'supabase_realtime' and tablename = 'sessions'
   ) then
     alter publication supabase_realtime add table sessions;
+  end if;
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and tablename = 'messages'
+  ) then
+    alter publication supabase_realtime add table messages;
   end if;
 end $$;

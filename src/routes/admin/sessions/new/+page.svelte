@@ -6,8 +6,10 @@
 	let { data } = $props();
 	const games = $derived(data.games);
 
+	// en-CA gives YYYY-MM-DD format; use NY timezone so late-night sessions get the right date
+	const todayNY = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date());
 	let name = $state('');
-	let date = $state(new Date().toISOString().slice(0, 10));
+	let date = $state(todayNY);
 	let expiresAt = $state('');
 	let selectedGameIds = $state<string[]>([]);
 	let saving = $state(false);

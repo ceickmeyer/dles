@@ -5,6 +5,7 @@ import type { Database } from '$lib/database.types';
 import { rankScores, computeSessionTally, sortTally } from '$lib/scoring';
 import { displayName, formatScore } from '$lib/utils';
 import { computeBadges, computeStreaks } from '$lib/badges';
+import { computeSessionBadges } from '$lib/gameBadges';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params }) => {
@@ -165,7 +166,22 @@ export const load: PageServerLoad = async ({ params }) => {
 
 	const medals = { gold: overallGold, silver: overallSilver, bronze: overallBronze, total: totalMedals };
 	const badgeStats = { ...medals, nights, winStreak, podiumStreak, bestWinStreak };
-	const badges = computeBadges(badgeStats);
+	const achievementBadges = computeBadges(badgeStats);
+
+	// Game-specific badges: compute best score per game, award badges for best performances
+	const bestScorePerGame = new Map<string, number>();
+	const gameInfoMap = new Map<string, { id: string; name: string; icon_emoji: string | null; share_parser: string | null; max_score: number | null; allow_dnf: boolean; scoring_direction: 'higher_is_better' | 'lower_is_better' }>();
+	for (const score of allScores) {
+		if (score.player_id !== params.id) continue;
+		const g = score.game as { id: string; name: string; icon_emoji: string | null; share_parser: string | null; scoring_direction: 'higher_is_better' | 'lower_is_better'; max_score: number | null; allow_dnf: boolean };
+		gameInfoMap.set(g.id, g);
+		const prev = bestScorePerGame.get(g.id);
+		const better = g.scoring_direction === 'lower_is_better'
+			? (prev === undefined || score.raw_score < prev)
+			: (prev === undefined || score.raw_score > prev);
+		if (better) bestScorePerGame.set(g.id, score.raw_score);
+	}
+	const gameBadges = computeSessionBadges(bestScorePerGame, [...gameInfoMap.values()]);
 
 	const perGame = [...perGameMap.values()].sort((a, b) => b.gold - a.gold || b.total - a.total);
 
@@ -178,9 +194,10 @@ export const load: PageServerLoad = async ({ params }) => {
 		winStreak,
 		podiumStreak,
 		bestWinStreak,
-		badges,
+		achievementBadges,
+		gameBadges,
 		favGame,
 		perGame,
-		recentSessions: recentSessions.slice(-10).reverse() // most recent first, last 10
+		recentSessions: recentSessions.slice(-10).reverse()
 	};
 };

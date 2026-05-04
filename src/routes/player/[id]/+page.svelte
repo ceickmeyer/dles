@@ -81,16 +81,33 @@
 			</div>
 		{/if}
 
-		<!-- Badges -->
-		{#if data.badges.length > 0}
+		<!-- Game badges (best performances) -->
+		{#if data.gameBadges.length > 0}
 			<div class="rounded-xl border border-ayu-border bg-ayu-surface p-5">
-				<h2 class="mb-3 text-xs font-semibold uppercase tracking-wider text-ayu-muted">Badges</h2>
+				<h2 class="mb-3 text-xs font-semibold uppercase tracking-wider text-ayu-muted">Game Badges</h2>
 				<div class="flex flex-wrap gap-2">
-					{#each data.badges as badge}
-						<div
-							class="flex items-center gap-2 rounded-lg border border-ayu-border bg-ayu-surface2 px-3 py-2"
-							title={badge.desc}
-						>
+					{#each data.gameBadges as badge (badge.id)}
+						<div class="group relative flex items-center gap-2 rounded-lg border border-ayu-border bg-ayu-surface2 px-3 py-2" title={badge.description}>
+							<span class="text-xl">{badge.emoji}</span>
+							<div>
+								<p class="text-sm font-medium text-white leading-tight">{badge.name}</p>
+								{#if badge.gameName}
+									<p class="text-xs text-ayu-muted">{badge.gameEmoji} {badge.gameName}</p>
+								{/if}
+							</div>
+						</div>
+					{/each}
+				</div>
+			</div>
+		{/if}
+
+		<!-- Achievement badges -->
+		{#if data.achievementBadges.length > 0}
+			<div class="rounded-xl border border-ayu-border bg-ayu-surface p-5">
+				<h2 class="mb-3 text-xs font-semibold uppercase tracking-wider text-ayu-muted">Achievements</h2>
+				<div class="flex flex-wrap gap-2">
+					{#each data.achievementBadges as badge}
+						<div class="flex items-center gap-2 rounded-lg border border-ayu-border bg-ayu-surface2 px-3 py-2" title={badge.desc}>
 							<span class="text-xl">{badge.emoji}</span>
 							<span class="text-sm font-medium text-white">{badge.label}</span>
 						</div>
