@@ -68,7 +68,7 @@
 	function addToast(message: string) {
 		const id = ++toastSeq;
 		toasts = [...toasts, { id, message }];
-		setTimeout(() => { toasts = toasts.filter(t => t.id !== id); }, 4000);
+		setTimeout(() => { toasts = toasts.filter(t => t.id !== id); }, 5000);
 	}
 	function toastMessage(raw_score: number, game: { name: string; icon_emoji: string | null; max_score: number | null; allow_dnf: boolean }, playerName: string): string {
 		const emoji = game.icon_emoji ? `${game.icon_emoji} ` : '';
