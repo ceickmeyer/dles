@@ -34,7 +34,7 @@
 	<nav class="border-b border-ayu-border bg-ayu-surface/80 px-4 py-3 backdrop-blur-sm">
 		<div class="mx-auto flex max-w-3xl items-center justify-between">
 			<a href="/" class="flex items-center gap-2 font-bold tracking-tight text-ayu-gold">
-				<span class="text-xl">🏅</span>
+				<span class="text-xl">🍕</span>
 				<span class="text-lg">The DLES Olympics</span>
 			</a>
 			<div class="flex gap-5 text-sm text-zinc-400">
