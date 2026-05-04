@@ -72,26 +72,19 @@
 		return parseLocalDate(dateStr).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 	}
 
-	// Returns midnight NY at the end of sessionDate (handles EST/EDT automatically)
-	function midnightNY(sessionDate: string): Date {
+	// Returns midnight in the user's local timezone at the end of sessionDate
+	function localMidnight(sessionDate: string): Date {
 		const [y, m, d] = sessionDate.split('-').map(Number);
-		for (const offsetH of [4, 5]) { // try EDT (UTC-4) then EST (UTC-5)
-			const candidate = new Date(Date.UTC(y, m - 1, d + 1, offsetH, 0, 0));
-			const nyH = parseInt(
-				new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', hour12: false }).format(candidate), 10
-			);
-			if (nyH === 0) return candidate;
-		}
-		return new Date(Date.UTC(y, m - 1, d + 1, 5, 0, 0)); // fallback EST
+		return new Date(y, m - 1, d + 1); // start of next day = end of session date
 	}
 
-	// Countdown — uses expires_at if set, otherwise midnight NY for active/lobby sessions
+	// Countdown — uses expires_at if set, otherwise local midnight for active/lobby sessions
 	let timeLeft = $state('');
 	$effect(() => {
 		if (!session) { timeLeft = ''; return; }
 		const endTime = session.expires_at
 			? new Date(session.expires_at)
-			: (session.status === 'active' || session.status === 'lobby') ? midnightNY(session.date) : null;
+			: (session.status === 'active' || session.status === 'lobby') ? localMidnight(session.date) : null;
 		if (!endTime) { timeLeft = ''; return; }
 
 		function tick() {
