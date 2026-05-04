@@ -4,13 +4,30 @@ import type { Database } from './database.types';
 export interface SchedulerResult {
 	created: boolean;
 	sessionName?: string;
-	skippedReason?: 'no_schedule' | 'session_exists';
+	skippedReason?: 'no_schedule' | 'session_exists' | 'outside_window';
+}
+
+// Returns current date parts in America/New_York (handles EST/EDT automatically)
+function getNYTime(date: Date) {
+	const parts = new Intl.DateTimeFormat('en-US', {
+		timeZone: 'America/New_York',
+		year: 'numeric', month: '2-digit', day: '2-digit',
+		hour: 'numeric', hour12: false, weekday: 'short'
+	}).formatToParts(date);
+	const get = (type: string) => parts.find(p => p.type === type)?.value ?? '';
+	return {
+		hour: parseInt(get('hour'), 10),
+		dateStr: `${get('year')}-${get('month')}-${get('day')}`,
+		dayOfWeek: ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].indexOf(get('weekday'))
+	};
 }
 
 export async function runScheduler(supabase: SupabaseClient<Database>): Promise<SchedulerResult> {
-	const today = new Date();
-	const dayOfWeek = today.getDay(); // 0=Sun … 6=Sat
-	const todayStr = today.toISOString().split('T')[0];
+	const now = new Date();
+	const { hour, dateStr: todayStr, dayOfWeek } = getNYTime(now);
+
+	// Only run between 7 AM and midnight EST/EDT
+	if (hour < 7) return { created: false, skippedReason: 'outside_window' };
 
 	// If a session already exists for today, don't create another one
 	const { data: existing } = await supabase
@@ -32,7 +49,7 @@ export async function runScheduler(supabase: SupabaseClient<Database>): Promise<
 	if (!schedule) return { created: false, skippedReason: 'no_schedule' };
 
 	// Build session name (replace {date} with readable date)
-	const dateStr = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+	const dateStr = now.toLocaleDateString('en-US', { timeZone: 'America/New_York', weekday: 'long', month: 'long', day: 'numeric' });
 	const sessionName = schedule.session_name_template.replace('{date}', dateStr);
 
 	const { data: session, error } = await supabase
