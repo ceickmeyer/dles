@@ -61,6 +61,23 @@
 	);
 
 	let shareCopied = $state(false);
+	let copiedGameId = $state<string | null>(null);
+
+	async function copyGameResults(game: typeof gamesWithScores[number]['game'], ranked: typeof gamesWithScores[number]['scores']) {
+		const lines = [`${game.icon_emoji ?? '🎮'} ${game.name}`];
+		for (const s of ranked) {
+			const medal = s.medal ? `${MEDAL[s.medal]} ` : '   ';
+			lines.push(`${medal}${s.player_name} — ${formatScore(s.raw_score, game)}`);
+		}
+		try {
+			await navigator.clipboard.writeText(lines.join('\n'));
+		} catch {
+			window.prompt('Copy results:', lines.join('\n'));
+			return;
+		}
+		copiedGameId = game.id;
+		setTimeout(() => { copiedGameId = null; }, 2000);
+	}
 
 	// Score toasts
 	let toasts = $state<{ id: number; message: string }[]>([]);
@@ -388,9 +405,16 @@
 					<div class="space-y-2">
 						{#each gamesWithScores as { game, scores: ranked }}
 							<div class="rounded-xl border border-ayu-border bg-ayu-surface px-4 py-3">
-								<p class="mb-2 text-sm font-semibold text-white">
+								<button
+									onclick={() => copyGameResults(game, ranked)}
+									class="mb-2 flex items-center gap-1.5 text-sm font-semibold text-white hover:text-ayu-gold transition-colors group"
+									title="Click to copy results"
+								>
 									{game.icon_emoji ?? '🎮'} {game.name}
-								</p>
+									<span class="text-xs font-normal {copiedGameId === game.id ? 'text-ayu-green' : 'text-ayu-muted opacity-0 group-hover:opacity-100'} transition-opacity">
+										{copiedGameId === game.id ? '✓ copied' : 'copy'}
+									</span>
+								</button>
 								<div class="space-y-1">
 									{#each ranked as s}
 										<div class="flex items-center justify-between text-sm">
