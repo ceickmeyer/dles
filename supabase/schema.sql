@@ -47,6 +47,17 @@ create table if not exists scores (
   unique(session_id, game_id, player_id)
 );
 
+create table if not exists schedules (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  days_of_week integer[] not null default '{}',
+  game_ids uuid[] not null default '{}',
+  session_name_template text not null default 'Game Night — {date}',
+  auto_activate boolean not null default false,
+  active boolean not null default true,
+  created_at timestamptz default now()
+);
+
 -- Column migrations (safe to re-run on existing tables)
 alter table players  add column if not exists pin           text        not null default '0000';
 alter table players  add column if not exists alias         text;
@@ -117,6 +128,16 @@ create policy "scores_insert" on scores for insert with check (true);
 create policy "scores_upsert" on scores for update using (true);
 create policy "scores_delete" on scores for delete using (auth.role() = 'authenticated');
 
+alter table schedules enable row level security;
+drop policy if exists "schedules_select" on schedules;
+drop policy if exists "schedules_insert" on schedules;
+drop policy if exists "schedules_update" on schedules;
+drop policy if exists "schedules_delete" on schedules;
+create policy "schedules_select" on schedules for select using (true);
+create policy "schedules_insert" on schedules for insert with check (auth.role() = 'authenticated');
+create policy "schedules_update" on schedules for update using (auth.role() = 'authenticated');
+create policy "schedules_delete" on schedules for delete using (auth.role() = 'authenticated');
+
 -- Enable realtime for scores and sessions (safe to re-run)
 do $$
 begin
@@ -133,12 +154,3 @@ begin
     alter publication supabase_realtime add table sessions;
   end if;
 end $$;
-
--- Seed starter games (max_score enables quick-pick buttons in the UI)
-insert into games (name, url, icon_emoji, scoring_direction, max_score, share_parser, allow_dnf) values
-  ('Wordle',     'https://www.nytimes.com/games/wordle/index.html', '🟩', 'lower_is_better',  6,     'wordle',     true),
-  ('Framed',     'https://framed.wtf',                              '🎥', 'lower_is_better',  6,     'framed',     true),
-  ('TimeGuessr', 'https://timeguessr.com',                          '🕰️', 'higher_is_better', 25000, 'timeguessr', false),
-  ('Costcodle',  'https://costcodle.com',                           '🛒', 'lower_is_better',  6,     'costcodle',  true),
-  ('Scrandle',   'https://scrandle.com',                            '🔤', 'higher_is_better', 10,    'scrandle',   false)
-on conflict do nothing;

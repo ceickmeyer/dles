@@ -1,6 +1,20 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+	import { invalidateAll } from '$app/navigation';
+	import { supabase } from '$lib/supabase';
+	import { runScheduler } from '$lib/scheduler';
+
 	let { data } = $props();
 	const sessions = $derived(data.sessions);
+	let schedulerMsg = $state('');
+
+	onMount(async () => {
+		const result = await runScheduler(supabase);
+		if (result.created) {
+			schedulerMsg = `📅 Auto-created "${result.sessionName}"`;
+			await invalidateAll();
+		}
+	});
 
 	const statusColor: Record<string, string> = {
 		lobby: 'bg-zinc-700 text-zinc-300',
@@ -10,6 +24,12 @@
 </script>
 
 <div class="space-y-6">
+	{#if schedulerMsg}
+		<div class="rounded-lg border border-ayu-green/40 bg-ayu-green/10 px-4 py-2.5 text-sm text-ayu-green">
+			{schedulerMsg}
+		</div>
+	{/if}
+
 	<div class="flex items-center justify-between">
 		<h1 class="text-2xl font-bold text-white">Sessions</h1>
 		<a

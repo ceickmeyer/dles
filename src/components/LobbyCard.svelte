@@ -5,6 +5,8 @@
 	import { dnfScore, isDnf, formatScore } from '$lib/utils';
 	import { sounds } from '$lib/sounds';
 	import ParseConfirm from './ParseConfirm.svelte';
+	import ConnectionsForm from './ConnectionsForm.svelte';
+	import DecipherForm from './DecipherForm.svelte';
 	import type { Game } from '$lib/database.types';
 
 	let {
@@ -49,7 +51,7 @@
 		error = '';
 		const result = parseShareText(shareText.trim(), game.share_parser, game.share_regex);
 		if (result !== null) { parsedScore = result; showConfirm = true; }
-		else error = 'Could not parse — enter manually above.';
+		else error = 'Could not parse — make sure you paste the full share text.';
 	}
 
 	async function confirmParsed(score: number) {
@@ -166,6 +168,12 @@
 	{#if expanded}
 		<div class="border-t border-ayu-border px-4 pb-4 pt-3 space-y-4">
 
+		{#if game.share_parser === 'connections'}
+			<ConnectionsForm onsubmit={doSubmit} myScore={submitted ? myScore : null} />
+		{:else if game.share_parser === 'decipher'}
+			<DecipherForm onsubmit={doSubmit} myScore={submitted ? myScore : null} dnfScore={gameDnfScore} />
+		{:else}
+
 			<!-- Quick-pick buttons -->
 			{#if showQuickPick}
 				<div>
@@ -194,63 +202,23 @@
 						{/if}
 					</div>
 				</div>
-				<div class="flex items-center gap-2 text-xs text-ayu-muted">
-					<div class="h-px flex-1 bg-ayu-border"></div>
-					<span>or type it</span>
-					<div class="h-px flex-1 bg-ayu-border"></div>
-				</div>
 			{/if}
-
-			<!-- Manual entry -->
-			<div class="flex items-end gap-2">
-				<div class="flex-1">
-					<label for="score-{game.id}" class="mb-1 block text-xs font-medium text-zinc-400">
-						{showQuickPick ? 'Manual score' : 'Your score'}
-						<span class="text-ayu-muted">
-							({game.scoring_direction === 'lower_is_better' ? 'lower is better' : 'higher is better'})
-						</span>
-					</label>
-					<input
-						id="score-{game.id}"
-						type="number"
-						bind:value={manualScore}
-						placeholder={game.max_score ? `1–${game.max_score}` : 'Score'}
-						class="w-full rounded-lg border border-ayu-border bg-ayu-bg px-3 py-2 text-white placeholder-ayu-muted focus:border-ayu-gold focus:outline-none"
-					/>
-				</div>
-				<div class="flex flex-col gap-1.5">
-					<button
-						onclick={submitManual}
-						disabled={submitting || manualScore === ''}
-						class="rounded-lg bg-ayu-gold px-4 py-2 font-bold text-ayu-bg transition hover:brightness-110 disabled:opacity-50"
-					>
-						{submitting ? '…' : 'Submit'}
-					</button>
-					{#if !showQuickPick && game.allow_dnf && gameDnfScore !== null}
-						<button
-							onclick={() => doSubmit(gameDnfScore)}
-							disabled={submitting}
-							class="rounded-lg border border-ayu-red/50 px-4 py-1.5 text-xs font-semibold text-ayu-red transition hover:bg-ayu-red/10 disabled:opacity-50"
-						>
-							Did not solve
-						</button>
-					{/if}
-				</div>
-			</div>
 
 			<!-- Paste & parse -->
 			{#if game.share_parser}
-				<div>
-					<div class="flex items-center gap-2 text-xs text-ayu-muted mb-2">
+				{#if showQuickPick}
+					<div class="flex items-center gap-2 text-xs text-ayu-muted">
 						<div class="h-px flex-1 bg-ayu-border"></div>
-						<span>or paste your share result</span>
+						<span>or paste your Share result</span>
 						<div class="h-px flex-1 bg-ayu-border"></div>
 					</div>
+				{/if}
+				<div>
 					<textarea
 						id="share-{game.id}"
 						bind:value={shareText}
 						rows={3}
-						placeholder="Paste the share text from the game…"
+						placeholder="Paste your 'Share' result from the game…"
 						class="w-full resize-none rounded-lg border border-ayu-border bg-ayu-bg px-3 py-2 text-sm text-white placeholder-ayu-muted focus:border-ayu-gold focus:outline-none"
 					></textarea>
 					{#if showConfirm && parsedScore !== null}
@@ -267,9 +235,48 @@
 							disabled={!shareText.trim()}
 							class="mt-2 rounded-lg bg-ayu-surface2 px-3 py-1.5 text-xs font-medium text-zinc-300 transition hover:text-white disabled:opacity-40"
 						>
-							Parse my result
+							Parse result
 						</button>
 					{/if}
+				</div>
+			{/if}
+
+			<!-- Manual entry: only for games with no quick-pick and no parser -->
+			{#if !showQuickPick && !game.share_parser}
+				<div class="flex items-end gap-2">
+					<div class="flex-1">
+						<label for="score-{game.id}" class="mb-1 block text-xs font-medium text-zinc-400">
+							Your score
+							<span class="text-ayu-muted">
+								({game.scoring_direction === 'lower_is_better' ? 'lower is better' : 'higher is better'})
+							</span>
+						</label>
+						<input
+							id="score-{game.id}"
+							type="number"
+							bind:value={manualScore}
+							placeholder={game.max_score ? `1–${game.max_score}` : 'Score'}
+							class="w-full rounded-lg border border-ayu-border bg-ayu-bg px-3 py-2 text-white placeholder-ayu-muted focus:border-ayu-gold focus:outline-none"
+						/>
+					</div>
+					<div class="flex flex-col gap-1.5">
+						<button
+							onclick={submitManual}
+							disabled={submitting || manualScore === ''}
+							class="rounded-lg bg-ayu-gold px-4 py-2 font-bold text-ayu-bg transition hover:brightness-110 disabled:opacity-50"
+						>
+							{submitting ? '…' : 'Submit'}
+						</button>
+						{#if game.allow_dnf && gameDnfScore !== null}
+							<button
+								onclick={() => doSubmit(gameDnfScore)}
+								disabled={submitting}
+								class="rounded-lg border border-ayu-red/50 px-4 py-1.5 text-xs font-semibold text-ayu-red transition hover:bg-ayu-red/10 disabled:opacity-50"
+							>
+								Did not solve
+							</button>
+						{/if}
+					</div>
 				</div>
 			{/if}
 
@@ -282,6 +289,8 @@
 			{#if error}
 				<p class="text-xs text-ayu-red">{error}</p>
 			{/if}
+
+		{/if}<!-- end connections/decipher else -->
 		</div>
 	{/if}
 </div>

@@ -66,6 +66,39 @@ export interface Database {
 					{ foreignKeyName: 'session_games_game_id_fkey'; columns: ['game_id']; referencedRelation: 'games'; referencedColumns: ['id'] }
 				];
 			};
+			schedules: {
+				Row: {
+					id: string;
+					name: string;
+					days_of_week: number[];
+					game_ids: string[];
+					session_name_template: string;
+					auto_activate: boolean;
+					active: boolean;
+					created_at: string;
+				};
+				Insert: {
+					id?: string;
+					name: string;
+					days_of_week: number[];
+					game_ids: string[];
+					session_name_template?: string;
+					auto_activate?: boolean;
+					active?: boolean;
+					created_at?: string;
+				};
+				Update: {
+					id?: string;
+					name?: string;
+					days_of_week?: number[];
+					game_ids?: string[];
+					session_name_template?: string;
+					auto_activate?: boolean;
+					active?: boolean;
+					created_at?: string;
+				};
+				Relationships: [];
+			};
 			scores: {
 				Row: {
 					id: string;
@@ -114,6 +147,7 @@ export type Session = Database['public']['Tables']['sessions']['Row'];
 export type SessionGame = Database['public']['Tables']['session_games']['Row'];
 export type Score = Database['public']['Tables']['scores']['Row'];
 
+export type Schedule = Database['public']['Tables']['schedules']['Row'];
 export type GameWithDetails = Game & { session_games?: SessionGame[] };
 export type SessionWithGames = Session & { session_games: (SessionGame & { game: Game })[] };
 export type ScoreWithPlayer = Score & { player: Player };

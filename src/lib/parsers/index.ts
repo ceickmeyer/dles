@@ -4,6 +4,8 @@ import { timeGuessrParser } from './timeguessr';
 import { costcodleParser } from './costcodle';
 import { scrandleParser } from './scrandle';
 import { guessTheHouseParser } from './guessthehouse';
+import { decipherParser } from './decipher';
+import { connectionsParser } from './connections';
 import { genericParser } from './generic';
 
 export interface Parser {
@@ -18,6 +20,8 @@ export const PARSERS: Record<string, Parser> = {
 	costcodle: costcodleParser,
 	scrandle: scrandleParser,
 	guessthehouse: guessTheHouseParser,
+	decipher: decipherParser,
+	connections: connectionsParser,
 	generic: genericParser
 };
 
@@ -25,10 +29,12 @@ export const PARSER_OPTIONS = [
 	{ value: '', label: 'Manual only' },
 	{ value: 'wordle', label: 'Wordle (X/6)' },
 	{ value: 'framed', label: 'Framed (🎥 squares)' },
-	{ value: 'timeguessr', label: 'TimeGuessr (Score: N)' },
+	{ value: 'timeguessr', label: 'TimeGuessr (N/50,000)' },
 	{ value: 'costcodle', label: 'Costcodle (X/6)' },
 	{ value: 'scrandle', label: 'Scrandle (X/10)' },
 	{ value: 'guessthehouse', label: 'Guess The House (🏠 squares)' },
+	{ value: 'decipher', label: 'Decipher (time in seconds)' },
+	{ value: 'connections', label: 'NYT Connections (grid)' },
 	{ value: 'generic', label: 'Generic (first number)' },
 	{ value: 'custom', label: 'Custom regex…' }
 ];
