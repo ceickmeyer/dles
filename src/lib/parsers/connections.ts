@@ -5,7 +5,7 @@ const COLORS = new Set(['🟨', '🟩', '🟦', '🟪']);
 // Higher = harder; used to reward solving hard rows first
 const DIFFICULTY: Record<string, number> = { '🟨': 1, '🟩': 2, '🟦': 3, '🟪': 4 };
 // Bonus multiplier by solve position (1st through 4th)
-const POSITION_WEIGHT = [10, 6, 3, 0];
+const POSITION_WEIGHT = [15, 10, 5, 0];
 
 export interface ConnectionsResult {
 	groups: number;   // correct rows (all same color)
