@@ -9,6 +9,9 @@
 	let showPins = $state(false);
 	let editingAlias = $state<Record<string, string>>({});
 	let savingAlias = $state<Record<string, boolean>>({});
+	let editingPin = $state<Record<string, string>>({});
+	let savingPin = $state<Record<string, boolean>>({});
+	let pinError = $state<Record<string, string>>({});
 	let copied = $state<string | null>(null);
 	let confirmDeleteId = $state<string | null>(null);
 	let deleting = $state(false);
@@ -31,6 +34,23 @@
 		await supabase.from('players').delete().eq('id', id);
 		deleting = false;
 		confirmDeleteId = null;
+		await invalidateAll();
+	}
+
+	function startEditPin(p: Player) {
+		editingPin[p.id] = p.pin;
+		pinError[p.id] = '';
+	}
+
+	async function savePin(p: Player) {
+		const val = (editingPin[p.id] ?? '').trim();
+		if (val === p.pin) return;
+		if (!/^\d{4}$/.test(val)) { pinError[p.id] = 'Must be 4 digits'; return; }
+		pinError[p.id] = '';
+		savingPin[p.id] = true;
+		await supabase.from('players').update({ pin: val }).eq('id', p.id);
+		savingPin[p.id] = false;
+		delete editingPin[p.id];
 		await invalidateAll();
 	}
 
@@ -92,16 +112,31 @@
 						<tr class="border-b border-ayu-border bg-ayu-surface last:border-0">
 							<td class="px-4 py-3 font-medium text-white">{p.name}</td>
 							<td class="px-4 py-3">
-								<div class="flex items-center gap-2">
-									<span class="font-mono text-xs {showPins ? 'text-ayu-gold' : 'text-ayu-muted'}">
-										{showPins ? p.pin : '••••'}
-									</span>
-									<button
-										onclick={() => copyPin(p)}
-										class="text-xs text-ayu-muted transition hover:text-white"
-									>
-										{copied === p.id ? '✓' : 'copy'}
-									</button>
+								<div class="flex flex-col gap-0.5">
+									<div class="flex items-center gap-2">
+										<input
+											type={showPins ? 'text' : 'password'}
+											value={editingPin[p.id] ?? p.pin}
+											onfocus={() => startEditPin(p)}
+											oninput={(e) => { editingPin[p.id] = (e.target as HTMLInputElement).value; pinError[p.id] = ''; }}
+											onblur={() => savePin(p)}
+											onkeydown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); if (e.key === 'Escape') { delete editingPin[p.id]; (e.target as HTMLInputElement).blur(); } }}
+											maxlength={4}
+											inputmode="numeric"
+											disabled={savingPin[p.id]}
+											class="w-16 rounded border border-transparent bg-transparent px-1 py-0.5 text-center font-mono text-xs text-ayu-gold placeholder-ayu-muted transition
+												focus:border-ayu-gold focus:bg-ayu-bg focus:outline-none hover:border-ayu-border disabled:opacity-50"
+										/>
+										<button
+											onclick={() => copyPin(p)}
+											class="text-xs text-ayu-muted transition hover:text-white"
+										>
+											{copied === p.id ? '✓' : 'copy'}
+										</button>
+									</div>
+									{#if pinError[p.id]}
+										<p class="text-xs text-ayu-red">{pinError[p.id]}</p>
+									{/if}
 								</div>
 							</td>
 							<td class="px-4 py-3">
