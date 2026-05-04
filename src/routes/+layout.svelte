@@ -38,7 +38,7 @@
 				<span class="text-lg">The DLES Olympics</span>
 			</a>
 			<div class="flex gap-5 text-sm text-zinc-400">
-				<a href="/leaderboard" class="transition hover:text-ayu-gold">All-Time</a>
+				<a href="/leaderboard" class="transition hover:text-ayu-gold">Leaderboard</a>
 				<a href="/admin" class="transition hover:text-ayu-gold">Admin</a>
 			</div>
 		</div>

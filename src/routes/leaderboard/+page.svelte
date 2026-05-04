@@ -17,7 +17,7 @@
 
 <div class="space-y-8">
 	<div>
-		<h1 class="text-3xl font-bold text-white">All-Time Stats</h1>
+		<h1 class="text-3xl font-bold text-white">Leaderboard</h1>
 		<p class="mt-1 text-sm text-ayu-muted">
 			Per-game averages across {data.sessionCount} finished session{data.sessionCount === 1 ? '' : 's'}
 		</p>
