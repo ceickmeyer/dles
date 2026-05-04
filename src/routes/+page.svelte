@@ -62,6 +62,25 @@
 
 	let shareCopied = $state(false);
 
+	// Score toasts
+	let toasts = $state<{ id: number; message: string }[]>([]);
+	let toastSeq = 0;
+	function addToast(message: string) {
+		const id = ++toastSeq;
+		toasts = [...toasts, { id, message }];
+		setTimeout(() => { toasts = toasts.filter(t => t.id !== id); }, 4000);
+	}
+	function toastMessage(raw_score: number, game: { name: string; icon_emoji: string | null; max_score: number | null; allow_dnf: boolean }, playerName: string): string {
+		const emoji = game.icon_emoji ? `${game.icon_emoji} ` : '';
+		if (game.allow_dnf && game.max_score !== null && raw_score === game.max_score + 1)
+			return `${playerName} got a DNF in ${emoji}${game.name}`;
+		if (game.max_score !== null && game.max_score <= 12)
+			return `${playerName} scored ${raw_score}/${game.max_score} in ${emoji}${game.name}`;
+		if (game.max_score !== null)
+			return `${playerName} scored ${raw_score.toLocaleString()}/${game.max_score.toLocaleString()} in ${emoji}${game.name}`;
+		return `${playerName} scored ${raw_score.toLocaleString()} in ${emoji}${game.name}`;
+	}
+
 	// Parse YYYY-MM-DD as a local date — avoids UTC midnight shifting the day
 	function parseLocalDate(dateStr: string): Date {
 		const [y, m, d] = dateStr.split('-').map(Number);
@@ -110,6 +129,9 @@
 		if (!session) return '';
 		const date = formatSessionDate(session.date);
 		const lines = [`${session.name} — ${date}`, ''];
+		const myMedals = new Map(
+			gameResults.map(gr => [gr.game.id, gr.scores.find(s => s.player_id === player.id)?.medal ?? null])
+		);
 		for (const { game } of session.session_games) {
 			const raw = myScores.get(game.id);
 			if (raw === undefined) continue;
@@ -124,7 +146,9 @@
 			} else {
 				score = raw.toLocaleString();
 			}
-			lines.push(`${game.icon_emoji ?? '🎮'} ${game.name}: ${score}`);
+			const medal = myMedals.get(game.id);
+			const medalStr = medal ? ` ${MEDAL[medal]}` : '';
+			lines.push(`${game.icon_emoji ?? '🎮'} ${game.name}: ${score}${medalStr}`);
 		}
 		lines.push('', 'https://dles.cooody.com');
 		return lines.join('\n');
@@ -192,9 +216,16 @@
 		subscriptions.push(
 			supabase
 				.channel(`scores:${session.id}`)
-				.on('postgres_changes', { event: '*', schema: 'public', table: 'scores', filter: `session_id=eq.${session.id}` }, (payload) => {
-					const incoming = (payload.new as { player_id?: string }).player_id;
-					if (incoming && incoming !== player.id) sounds.others();
+				.on('postgres_changes', { event: '*', schema: 'public', table: 'scores', filter: `session_id=eq.${session.id}` }, async (payload) => {
+					const row = payload.new as { player_id?: string; game_id?: string; raw_score?: number };
+					if (row.player_id && row.player_id !== player.id && payload.eventType === 'INSERT') {
+						sounds.others();
+						const game = session.session_games.find(sg => sg.game.id === row.game_id)?.game;
+						if (game && row.raw_score !== undefined) {
+							const { data: p } = await supabase.from('players').select('name, alias').eq('id', row.player_id).maybeSingle();
+							if (p) addToast(toastMessage(row.raw_score, game, displayName(p)));
+						}
+					}
 					refreshScores();
 				})
 				.subscribe()
@@ -220,6 +251,20 @@
 
 {#if session}
 	<SessionChat sessionId={session.id} playerId={player.id || null} playerName={player.name || null} />
+{/if}
+
+<!-- Score toasts -->
+{#if toasts.length > 0}
+	<div class="fixed bottom-4 left-4 z-50 flex flex-col gap-2 items-start pointer-events-none">
+		{#each toasts as toast (toast.id)}
+			<div
+				transition:fly={{ x: -16, duration: 200 }}
+				class="rounded-xl border border-ayu-border bg-zinc-950 px-4 py-2.5 text-sm text-white shadow-xl"
+			>
+				{toast.message}
+			</div>
+		{/each}
+	</div>
 {/if}
 
 {#if !session}
