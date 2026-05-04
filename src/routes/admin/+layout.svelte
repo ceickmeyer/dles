@@ -34,6 +34,7 @@
 				<a href="/admin/games" class="text-zinc-300 hover:text-ayu-gold transition">Games</a>
 				<a href="/admin/players" class="text-zinc-300 hover:text-ayu-gold transition">Players</a>
 				<a href="/admin/scheduler" class="text-zinc-300 hover:text-ayu-gold transition">Scheduler</a>
+				<a href="/admin/backup" class="text-zinc-300 hover:text-ayu-gold transition">Backup</a>
 			</nav>
 			<button
 				onclick={async () => { await supabase.auth.signOut(); goto('/admin/login'); }}
