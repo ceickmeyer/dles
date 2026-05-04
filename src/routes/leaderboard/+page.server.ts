@@ -16,7 +16,7 @@ export const load: PageServerLoad = async () => {
 
 	const { data: scores } = await supabase
 		.from('scores')
-		.select('raw_score, player_id, game_id, player:players(name, alias), game:games(id, name, icon_emoji, scoring_direction, max_score, allow_dnf)')
+		.select('raw_score, player_id, game_id, player:players(name, alias), game:games(id, name, icon_emoji, scoring_direction, max_score, allow_dnf, share_parser)')
 		.in('session_id', sessions.map(s => s.id));
 
 	if (!scores || scores.length === 0) return { perGame: [], sessionCount: sessions.length };
@@ -28,12 +28,13 @@ export const load: PageServerLoad = async () => {
 		direction: 'higher_is_better' | 'lower_is_better';
 		maxScore: number | null;
 		allowDnf: boolean;
+		shareParser: string | null;
 	};
 
 	const gameData = new Map<string, GameMeta & { playerScores: Map<string, { name: string; vals: number[] }> }>();
 
 	for (const score of scores) {
-		const g = score.game as { id: string; name: string; icon_emoji: string | null; scoring_direction: 'higher_is_better' | 'lower_is_better'; max_score: number | null; allow_dnf: boolean };
+		const g = score.game as { id: string; name: string; icon_emoji: string | null; scoring_direction: 'higher_is_better' | 'lower_is_better'; max_score: number | null; allow_dnf: boolean; share_parser: string | null };
 		if (!gameData.has(g.id)) {
 			gameData.set(g.id, {
 				id: g.id,
@@ -42,6 +43,7 @@ export const load: PageServerLoad = async () => {
 				direction: g.scoring_direction,
 				maxScore: g.max_score,
 				allowDnf: g.allow_dnf,
+				shareParser: g.share_parser,
 				playerScores: new Map()
 			});
 		}

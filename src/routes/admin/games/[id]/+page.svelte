@@ -14,6 +14,7 @@
 	let shareRegex = $state(data.game.share_regex ?? '');
 	let regexSample = $state('');
 	let allowDnf = $state(data.game.allow_dnf);
+	let inputMode = $state<'auto' | 'buttons' | 'parser' | 'manual'>(data.game.input_mode ?? 'auto');
 	let saving = $state(false);
 	let deleting = $state(false);
 	let confirmDelete = $state(false);
@@ -37,7 +38,8 @@
 			max_score: maxScore ? parseInt(maxScore, 10) : null,
 			share_parser: shareParser || null,
 			share_regex: shareParser === 'custom' ? (shareRegex.trim() || null) : null,
-			allow_dnf: allowDnf
+			allow_dnf: allowDnf,
+			input_mode: inputMode
 		}).eq('id', data.game.id);
 		saving = false;
 		if (e) error = e.message;
@@ -114,6 +116,24 @@
 			<input type="checkbox" bind:checked={allowDnf} class="accent-ayu-gold h-4 w-4" />
 			<span class="text-sm text-zinc-300">Allow "Did not solve" option</span>
 		</label>
+
+		<div>
+			<p class="mb-2 text-sm font-medium text-zinc-300">Score entry mode</p>
+			<div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+				{#each [
+					{ value: 'auto',    label: 'Auto' },
+					{ value: 'buttons', label: 'Buttons only' },
+					{ value: 'parser',  label: 'Paste & parse' },
+					{ value: 'manual',  label: 'Manual entry' }
+				] as opt}
+					<label class="cursor-pointer rounded-lg border p-2.5 transition text-center
+						{inputMode === opt.value ? 'border-ayu-gold bg-ayu-gold/10' : 'border-ayu-border hover:border-zinc-500'}">
+						<input type="radio" bind:group={inputMode} value={opt.value} class="sr-only" />
+						<p class="text-sm font-medium {inputMode === opt.value ? 'text-ayu-gold' : 'text-zinc-300'}">{opt.label}</p>
+					</label>
+				{/each}
+			</div>
+		</div>
 
 		<div class="grid grid-cols-2 gap-3">
 			<div>

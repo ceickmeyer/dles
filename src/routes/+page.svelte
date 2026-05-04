@@ -6,7 +6,7 @@
 	import { supabase } from '$lib/supabase';
 	import { sounds } from '$lib/sounds';
 	import { rankScores, computeSessionTally, sortTally } from '$lib/scoring';
-	import { displayName, formatScore, isDnf } from '$lib/utils';
+	import { displayName, formatScore, isDnf, fmtSeconds } from '$lib/utils';
 	import type { ScoreWithPlayer } from '$lib/database.types';
 	import PlayerName from '$components/PlayerName.svelte';
 	import LobbyCard from '$components/LobbyCard.svelte';
@@ -119,12 +119,6 @@
 		return () => clearInterval(id);
 	});
 
-	function fmtDecipherSeconds(raw: number): string {
-		const m = Math.floor(raw / 60);
-		const s = raw % 60;
-		return m > 0 ? `${m}m ${s}s` : `${s}s`;
-	}
-
 	function buildShareText(): string {
 		if (!session) return '';
 		const date = formatSessionDate(session.date);
@@ -140,7 +134,7 @@
 			if (dnf) {
 				score = 'X';
 			} else if (game.share_parser === 'decipher') {
-				score = fmtDecipherSeconds(raw);
+				score = fmtSeconds(raw);
 			} else if (game.max_score) {
 				score = `${raw}/${game.max_score}`;
 			} else {

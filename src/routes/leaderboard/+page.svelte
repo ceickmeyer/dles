@@ -1,15 +1,19 @@
 <script lang="ts">
+	import { fmtSeconds } from '$lib/utils';
+
 	let { data } = $props();
 
 	type GameEntry = typeof data.perGame[number];
 
 	function fmtAvg(avg: number, game: GameEntry): string {
+		if (game.shareParser === 'decipher') return fmtSeconds(avg);
 		if (game.maxScore !== null && game.maxScore <= 12) return avg.toFixed(2);
 		return avg.toFixed(1);
 	}
 
 	function fmtScore(score: number, game: GameEntry): string {
 		if (game.allowDnf && game.maxScore !== null && score === game.maxScore + 1) return 'DNF';
+		if (game.shareParser === 'decipher') return fmtSeconds(score);
 		if (game.maxScore !== null && game.maxScore > 12) return score.toLocaleString();
 		return String(score);
 	}

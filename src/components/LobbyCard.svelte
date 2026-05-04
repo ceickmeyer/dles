@@ -11,19 +11,23 @@
 
 	let {
 		game,
-		sessionId,
-		playerId,
+		sessionId = '',
+		playerId = '',
 		myScore = null,
+		preview = false,
 		onscored
 	}: {
 		game: Game;
-		sessionId: string;
-		playerId: string;
+		sessionId?: string;
+		playerId?: string;
 		myScore?: number | null;
+		preview?: boolean;
 		onscored?: () => void;
 	} = $props();
 
-	let expanded = $state(false);
+	let previewScore = $state<number | null>(null);
+
+	let expanded = $state(preview);
 	let shareText = $state('');
 	let manualScore = $state('');
 	let parsedScore = $state<number | null>(null);
@@ -32,11 +36,38 @@
 	let error = $state('');
 	let pendingPick = $state<number | null>(null);
 
-	const submitted = $derived(myScore !== null);
-	const myDnf = $derived(myScore !== null && isDnf(myScore, game));
+	const effectiveScore = $derived(preview ? previewScore : myScore);
+	const submitted = $derived(effectiveScore !== null);
+	const myDnf = $derived(effectiveScore !== null && isDnf(effectiveScore, game));
 
+	const isSpecialParser = $derived(
+		game.share_parser === 'connections' || game.share_parser === 'decipher'
+	);
+	const mode = $derived(game.input_mode ?? 'auto');
 	const showQuickPick = $derived(
-		game.max_score !== null && game.max_score >= 1 && game.max_score <= 12
+		!isSpecialParser && (
+			mode === 'buttons'
+				? (game.max_score !== null && game.max_score >= 1 && game.max_score <= 12)
+				: mode === 'auto'
+				? (game.max_score !== null && game.max_score >= 1 && game.max_score <= 12)
+				: false
+		)
+	);
+	const showPaste = $derived(
+		!isSpecialParser && (
+			mode === 'parser'
+				? !!game.share_parser
+				: mode === 'auto'
+				? !!game.share_parser
+				: mode === 'buttons' || mode === 'manual'
+				? false
+				: !!game.share_parser
+		)
+	);
+	const showManual = $derived(
+		!isSpecialParser && (
+			mode === 'manual' || (mode === 'auto' && !showQuickPick && !game.share_parser)
+		)
 	);
 	const quickPickRange = $derived(
 		showQuickPick ? Array.from({ length: game.max_score! }, (_, i) => i + 1) : []
@@ -69,6 +100,15 @@
 		submitting = true;
 		pendingPick = score;
 		error = '';
+		if (preview) {
+			await new Promise(r => setTimeout(r, 300));
+			previewScore = score;
+			submitting = false;
+			pendingPick = null;
+			expanded = false;
+			sounds.submit();
+			return;
+		}
 		const { error: dbError } = await supabase.from('scores').upsert(
 			{ session_id: sessionId, game_id: game.id, player_id: playerId, raw_score: score, share_text: text ?? null },
 			{ onConflict: 'session_id,game_id,player_id' }
@@ -87,7 +127,7 @@
 	}
 
 	function quickPickClass(n: number): string {
-		const active = pendingPick ?? myScore;
+		const active = pendingPick ?? effectiveScore;
 		if (active === null) return 'border-ayu-border bg-ayu-surface2 text-white hover:border-ayu-gold';
 		// If DNF is selected, all number buttons dim
 		if (gameDnfScore !== null && active === gameDnfScore)
@@ -103,7 +143,7 @@
 	}
 
 	function dnfClass(): string {
-		const active = pendingPick ?? myScore;
+		const active = pendingPick ?? effectiveScore;
 		const selected = gameDnfScore !== null && active === gameDnfScore;
 		return selected
 			? 'border-ayu-red bg-ayu-red/20 text-ayu-red font-bold'
@@ -142,7 +182,7 @@
 				<div class="flex items-center gap-1.5 {myDnf ? 'text-ayu-red' : 'text-ayu-green'}">
 					<span>{myDnf ? '✗' : '✓'}</span>
 					<span class="font-mono text-sm font-semibold">
-						{myScore !== null ? formatScore(myScore, game) : ''}
+						{effectiveScore !== null ? formatScore(effectiveScore, game) : ''}
 					</span>
 				</div>
 				<button
@@ -169,9 +209,9 @@
 		<div class="border-t border-ayu-border px-4 pb-4 pt-3 space-y-4">
 
 		{#if game.share_parser === 'connections'}
-			<ConnectionsForm onsubmit={doSubmit} myScore={submitted ? myScore : null} />
+			<ConnectionsForm onsubmit={doSubmit} myScore={submitted ? effectiveScore : null} />
 		{:else if game.share_parser === 'decipher'}
-			<DecipherForm onsubmit={doSubmit} myScore={submitted ? myScore : null} dnfScore={gameDnfScore} />
+			<DecipherForm onsubmit={doSubmit} myScore={submitted ? effectiveScore : null} dnfScore={gameDnfScore} />
 		{:else}
 
 			<!-- Quick-pick buttons -->
@@ -205,7 +245,7 @@
 			{/if}
 
 			<!-- Paste & parse -->
-			{#if game.share_parser}
+			{#if showPaste}
 				{#if showQuickPick}
 					<div class="flex items-center gap-2 text-xs text-ayu-muted">
 						<div class="h-px flex-1 bg-ayu-border"></div>
@@ -241,8 +281,8 @@
 				</div>
 			{/if}
 
-			<!-- Manual entry: only for games with no quick-pick and no parser -->
-			{#if !showQuickPick && !game.share_parser}
+			<!-- Manual entry -->
+			{#if showManual}
 				<div class="flex items-end gap-2">
 					<div class="flex-1">
 						<label for="score-{game.id}" class="mb-1 block text-xs font-medium text-zinc-400">
@@ -280,9 +320,13 @@
 				</div>
 			{/if}
 
-			{#if myScore !== null}
+			{#if effectiveScore !== null}
 				<p class="text-xs text-ayu-muted">
-					Current: <span class="font-semibold text-white">{formatScore(myScore, game)}</span> — submitting again will overwrite it.
+					{#if preview}
+						Got: <span class="font-semibold text-white">{formatScore(effectiveScore, game)}</span> — <button onclick={() => { previewScore = null; expanded = true; shareText = ''; manualScore = ''; }} class="text-ayu-gold hover:underline">test again</button>
+					{:else}
+						Current: <span class="font-semibold text-white">{formatScore(effectiveScore, game)}</span> — submitting again will overwrite it.
+					{/if}
 				</p>
 			{/if}
 

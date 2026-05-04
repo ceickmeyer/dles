@@ -23,6 +23,7 @@ export interface Database {
 					share_parser: string | null;
 					share_regex: string | null;
 					allow_dnf: boolean;
+					input_mode: 'auto' | 'buttons' | 'parser' | 'manual';
 					created_at: string;
 				};
 				Insert: {
@@ -35,6 +36,7 @@ export interface Database {
 					share_parser?: string | null;
 					share_regex?: string | null;
 					allow_dnf?: boolean;
+					input_mode?: 'auto' | 'buttons' | 'parser' | 'manual';
 					created_at?: string;
 				};
 				Update: {
@@ -47,6 +49,7 @@ export interface Database {
 					share_parser?: string | null;
 					share_regex?: string | null;
 					allow_dnf?: boolean;
+					input_mode?: 'auto' | 'buttons' | 'parser' | 'manual';
 					created_at?: string;
 				};
 				Relationships: [];

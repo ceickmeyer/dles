@@ -65,6 +65,10 @@ alter table sessions add column if not exists expires_at   timestamptz;
 alter table sessions add column if not exists scores_hidden boolean    not null default false;
 alter table games    add column if not exists allow_dnf     boolean    not null default false;
 alter table games    add column if not exists share_regex   text;
+alter table games    add column if not exists input_mode    text        not null default 'auto';
+alter table games    drop constraint if exists games_input_mode_check;
+alter table games    add constraint games_input_mode_check
+  check (input_mode in ('auto', 'buttons', 'parser', 'manual'));
 
 -- Recreate scores→players FK with cascade so deleting a player removes their scores
 alter table scores drop constraint if exists scores_player_id_fkey;

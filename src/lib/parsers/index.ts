@@ -6,6 +6,7 @@ import { scrandleParser } from './scrandle';
 import { guessTheHouseParser } from './guessthehouse';
 import { decipherParser } from './decipher';
 import { connectionsParser } from './connections';
+import { metazooaParser } from './metazooa';
 import { genericParser } from './generic';
 
 export interface Parser {
@@ -22,6 +23,7 @@ export const PARSERS: Record<string, Parser> = {
 	guessthehouse: guessTheHouseParser,
 	decipher: decipherParser,
 	connections: connectionsParser,
+	metazooa: metazooaParser,
 	generic: genericParser
 };
 
@@ -35,6 +37,7 @@ export const PARSER_OPTIONS = [
 	{ value: 'guessthehouse', label: 'Guess The House (🏠 squares)' },
 	{ value: 'decipher', label: 'Decipher (time in seconds)' },
 	{ value: 'connections', label: 'NYT Connections (grid)' },
+	{ value: 'metazooa', label: 'Metazooa (1–20 guesses)' },
 	{ value: 'generic', label: 'Generic (first number)' },
 	{ value: 'custom', label: 'Custom regex…' }
 ];
