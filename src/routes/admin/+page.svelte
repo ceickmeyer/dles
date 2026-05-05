@@ -10,8 +10,11 @@
 
 	onMount(async () => {
 		const result = await runScheduler(supabase);
-		if (result.created) {
-			schedulerMsg = `📅 Auto-created "${result.sessionName}"`;
+		const parts: string[] = [];
+		if (result.finished) parts.push(`✓ Finished ${result.finished} stale session${result.finished > 1 ? 's' : ''}`);
+		if (result.created) parts.push(`📅 Auto-created "${result.sessionName}"`);
+		if (parts.length) {
+			schedulerMsg = parts.join(' · ');
 			await invalidateAll();
 		}
 	});

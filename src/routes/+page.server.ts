@@ -29,7 +29,7 @@ function computeNextSession(schedules: { name: string; days_of_week: number[]; s
 	}
 
 	if (!best) return null;
-	return { isToday: best.daysAhead === 0, label: best.label };
+	return { isToday: best.daysAhead === 0, daysAhead: best.daysAhead, label: best.label };
 }
 
 export const load: PageServerLoad = async () => {

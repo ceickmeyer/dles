@@ -13,6 +13,7 @@
 	import Podium from '$components/Podium.svelte';
 	import MedalTally from '$components/MedalTally.svelte';
 	import SessionChat from '$components/SessionChat.svelte';
+	import NextSessionCountdown from '$components/NextSessionCountdown.svelte';
 	import { computeSessionBadges } from '$lib/gameBadges';
 
 	let { data } = $props();
@@ -279,20 +280,8 @@
 {/if}
 
 {#if !session}
-	<div class="py-20 text-center">
-		<p class="mb-4 text-6xl">🏅</p>
-		<h1 class="mb-2 text-2xl font-bold text-white">No active session</h1>
-		{#if data.nextSession}
-			{#if data.nextSession.isToday}
-				<p class="text-ayu-muted">A session is scheduled for today — check back soon!</p>
-				<p class="mt-1 text-sm text-zinc-500">{data.nextSession.label}</p>
-			{:else}
-				<p class="text-ayu-muted">Next up: <span class="text-zinc-300">{data.nextSession.label}</span></p>
-			{/if}
-		{:else}
-			<p class="text-ayu-muted">Ask the host to start a new game night!</p>
-		{/if}
-	</div>
+	{@const next = data.nextSession}
+	<NextSessionCountdown {next} />
 {:else}
 	<div class="space-y-8">
 		<!-- Session header -->
