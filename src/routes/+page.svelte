@@ -140,7 +140,8 @@
 	function buildShareText(): string {
 		if (!session) return '';
 		const date = formatSessionDate(session.date);
-		const lines = [`${session.name} — ${date}`, ''];
+		const header = session.name.includes(date) ? session.name : `${session.name} — ${date}`;
+		const lines = [header, ''];
 		const myMedals = new Map(
 			gameResults.map(gr => [gr.game.id, gr.scores.find(s => s.player_id === player.id)?.medal ?? null])
 		);
