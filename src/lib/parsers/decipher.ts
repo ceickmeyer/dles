@@ -9,6 +9,7 @@ export interface DecipherResult {
 }
 
 const MAX_STARS = 3;
+const FAIL_SCORE = 600; // 10 minutes — cap for a failed game
 
 function extractSeconds(text: string): number | null {
 	const minsMatch = text.match(/(\d+)m\s*(\d+)s/);
@@ -36,15 +37,18 @@ export function parseDecipherResult(text: string): DecipherResult | null {
 
 	if (failed) {
 		return {
-			solved: false, seconds: null, rawSeconds, hints: 0,
-			display: rawSeconds !== null ? `Failed (${formatTime(rawSeconds)})` : 'Failed'
+			solved: false, seconds: FAIL_SCORE, rawSeconds, hints: 0,
+			display: 'Failed (10 min cap)'
 		};
 	}
 	if (seconds !== null) {
+		const capped = Math.min(seconds, FAIL_SCORE);
 		const penaltyNote = hints > 0 ? ` +${hints}m hint${hints > 1 ? 's' : ''}` : '';
+		const capNote = capped < seconds ? ' (capped at 10 min)' : '';
+		const displaySeconds = capped < seconds ? FAIL_SCORE : seconds;
 		return {
-			solved: true, seconds, rawSeconds, hints,
-			display: `${formatTime(rawSeconds!)}${penaltyNote} = ${formatTime(seconds)}`
+			solved: true, seconds: capped, rawSeconds, hints,
+			display: `${formatTime(rawSeconds!)}${penaltyNote} = ${formatTime(displaySeconds)}${capNote}`
 		};
 	}
 	return null;
@@ -54,7 +58,7 @@ export const decipherParser: Parser = {
 	name: 'decipher',
 	parse(text: string): number | null {
 		const result = parseDecipherResult(text);
-		if (!result || !result.solved) return null;
-		return result.seconds; // stored in seconds (with penalties)
+		if (!result || result.seconds === null) return null;
+		return result.seconds; // stored in seconds (with penalties; failures = 600)
 	}
 };

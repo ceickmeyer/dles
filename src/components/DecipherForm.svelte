@@ -53,26 +53,19 @@
 					<p class="font-semibold text-white">{parsed.solved ? '✅ Solved' : '💥 Failed'}</p>
 					<p class="text-xs text-ayu-muted mt-0.5">{parsed.display}</p>
 				</div>
-				{#if parsed.solved && parsed.seconds !== null}
-					<p class="text-2xl font-bold text-ayu-gold">{parsed.seconds}s</p>
+				{#if parsed.seconds !== null}
+					<p class="text-2xl font-bold {parsed.solved ? 'text-ayu-gold' : 'text-ayu-red'}">{parsed.seconds}s</p>
 				{/if}
 			</div>
 			<div class="mt-3 flex gap-2">
-				{#if parsed.solved && parsed.seconds !== null}
+				{#if parsed.seconds !== null}
 					<button
 						onclick={() => submit(parsed!.seconds!)}
 						disabled={submitting}
-						class="flex-1 rounded-lg bg-ayu-gold py-2 font-bold text-ayu-bg transition hover:brightness-110 disabled:opacity-50"
+						class="flex-1 rounded-lg py-2 font-bold transition hover:brightness-110 disabled:opacity-50
+							{parsed.solved ? 'bg-ayu-gold text-ayu-bg' : 'bg-ayu-red/80 text-white'}"
 					>
-						{submitting ? 'Submitting…' : 'Submit'}
-					</button>
-				{:else if dnfScore !== null}
-					<button
-						onclick={() => submit(dnfScore!)}
-						disabled={submitting}
-						class="flex-1 rounded-lg bg-ayu-red/80 py-2 font-bold text-white transition hover:brightness-110 disabled:opacity-50"
-					>
-						{submitting ? 'Submitting…' : 'Submit as DNF'}
+						{submitting ? 'Submitting…' : parsed.solved ? 'Submit' : 'Submit (failed — 10 min cap)'}
 					</button>
 				{/if}
 				<button
