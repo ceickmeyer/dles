@@ -61,9 +61,9 @@ export interface Database {
 				Relationships: [];
 			};
 			session_games: {
-				Row: { id: string; session_id: string; game_id: string; sort_order: number };
-				Insert: { id?: string; session_id: string; game_id: string; sort_order?: number };
-				Update: { id?: string; session_id?: string; game_id?: string; sort_order?: number };
+				Row: { id: string; session_id: string; game_id: string; sort_order: number; is_special: boolean };
+				Insert: { id?: string; session_id: string; game_id: string; sort_order?: number; is_special?: boolean };
+				Update: { id?: string; session_id?: string; game_id?: string; sort_order?: number; is_special?: boolean };
 				Relationships: [
 					{ foreignKeyName: 'session_games_session_id_fkey'; columns: ['session_id']; referencedRelation: 'sessions'; referencedColumns: ['id'] },
 					{ foreignKeyName: 'session_games_game_id_fkey'; columns: ['game_id']; referencedRelation: 'games'; referencedColumns: ['id'] }

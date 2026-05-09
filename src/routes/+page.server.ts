@@ -37,7 +37,7 @@ export const load: PageServerLoad = async () => {
 
 	const { data: session } = await supabase
 		.from('sessions')
-		.select('*, session_games(sort_order, game:games(*))')
+		.select('*, session_games(sort_order, is_special, game:games(*))')
 		.in('status', ['active', 'lobby', 'paused'])
 		.or('expires_at.is.null,expires_at.gt.' + new Date().toISOString())
 		.order('created_at', { ascending: false })
@@ -55,7 +55,7 @@ export const load: PageServerLoad = async () => {
 	}
 
 	const sessionGames = [...(session.session_games ?? [])].sort(
-		(a, b) => a.sort_order - b.sort_order
+		(a, b) => (b.is_special ? 1 : 0) - (a.is_special ? 1 : 0) || a.sort_order - b.sort_order
 	);
 
 	const { data: scores } = await supabase

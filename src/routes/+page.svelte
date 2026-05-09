@@ -27,8 +27,9 @@
 
 	const gameResults = $derived(
 		session
-			? session.session_games.map(({ game }) => ({
+			? session.session_games.map(({ game, is_special }) => ({
 					game,
+					is_special: is_special ?? false,
 					scores: rankScores(
 						scores
 							.filter((s) => s.game_id === game.id)
@@ -312,20 +313,40 @@
 			<h2 class="mb-3 text-xs font-semibold uppercase tracking-widest text-ayu-muted">Tonight's Games</h2>
 			<div class="space-y-2">
 				{#if player.id}
-					{#each session.session_games as { game }}
-						<LobbyCard
-							{game}
-							sessionId={session.id}
-							playerId={player.id}
-							myScore={myScores.get(game.id) ?? null}
-							onscored={refreshScores}
-						/>
+					{#each session.session_games as sg, i}
+						{#if sg.is_special}
+							<div class="rounded-xl ring-2 ring-ayu-gold/60">
+								<LobbyCard
+									game={sg.game}
+									sessionId={session.id}
+									playerId={player.id}
+									myScore={myScores.get(sg.game.id) ?? null}
+									onscored={refreshScores}
+								/>
+							</div>
+							{#if i < session.session_games.length - 1}
+								<div class="flex items-center gap-2 py-1">
+									<div class="h-px flex-1 bg-ayu-border"></div>
+									<span class="text-xs text-ayu-muted">Regular Games</span>
+									<div class="h-px flex-1 bg-ayu-border"></div>
+								</div>
+							{/if}
+						{:else}
+							<LobbyCard
+								game={sg.game}
+								sessionId={session.id}
+								playerId={player.id}
+								myScore={myScores.get(sg.game.id) ?? null}
+								onscored={refreshScores}
+							/>
+						{/if}
 					{/each}
 				{:else}
-					{#each session.session_games as { game }}
-						<div class="flex items-center gap-3 rounded-xl border border-ayu-border bg-ayu-surface px-4 py-3">
-							<span class="text-2xl">{game.icon_emoji ?? '🎮'}</span>
-							<span class="text-white">{game.name}</span>
+					{#each session.session_games as sg}
+						<div class="flex items-center gap-3 rounded-xl border {sg.is_special ? 'border-ayu-gold/60' : 'border-ayu-border'} bg-ayu-surface px-4 py-3">
+							<span class="text-2xl">{sg.game.icon_emoji ?? '🎮'}</span>
+							<span class="text-white">{sg.game.name}</span>
+							{#if sg.is_special}<span class="ml-auto text-xs font-semibold text-ayu-gold">⭐ Featured</span>{/if}
 						</div>
 					{/each}
 				{/if}
@@ -393,14 +414,15 @@
 				<div transition:fly={{ y: 24, duration: 400 }}>
 					<h2 class="mb-3 text-xs font-semibold uppercase tracking-widest text-ayu-muted">Results So Far</h2>
 					<div class="space-y-2">
-						{#each gamesWithScores as { game, scores: ranked }}
-							<div class="rounded-xl border border-ayu-border bg-ayu-surface px-4 py-3">
+						{#each gamesWithScores as { game, is_special, scores: ranked }}
+							<div class="rounded-xl border {is_special ? 'border-ayu-gold/60 bg-ayu-surface' : 'border-ayu-border bg-ayu-surface'} px-4 py-3">
 								<button
 									onclick={() => copyGameResults(game, ranked)}
-									class="mb-2 flex items-center gap-1.5 text-sm font-semibold text-white hover:text-ayu-gold transition-colors group"
+									class="mb-2 flex items-center gap-1.5 text-sm font-semibold {is_special ? 'text-ayu-gold' : 'text-white'} hover:text-ayu-gold transition-colors group"
 									title="Click to copy results"
 								>
 									{game.icon_emoji ?? '🎮'} {game.name}
+									{#if is_special}<span class="text-xs font-normal text-ayu-gold/70">⭐</span>{/if}
 									<span class="text-xs font-normal {copiedGameId === game.id ? 'text-ayu-green' : 'text-ayu-muted opacity-0 group-hover:opacity-100'} transition-opacity">
 										{copiedGameId === game.id ? '✓ copied' : 'copy'}
 									</span>

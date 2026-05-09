@@ -94,6 +94,19 @@
 		else await invalidateAll();
 	}
 
+	async function toggleSpecial(sgId: string, makeSpecial: boolean) {
+		if (makeSpecial) {
+			// Unset any existing special game first
+			const others = session.session_games.filter((sg: { id: string; is_special: boolean }) => sg.is_special && sg.id !== sgId);
+			for (const other of others) {
+				await supabase.from('session_games').update({ is_special: false }).eq('id', other.id);
+			}
+		}
+		const { error: e } = await supabase.from('session_games').update({ is_special: makeSpecial }).eq('id', sgId);
+		if (e) error = e.message;
+		else await invalidateAll();
+	}
+
 	async function addGame() {
 		if (!addGameId) return;
 		const maxOrder = Math.max(0, ...session.session_games.map((sg: { sort_order: number }) => sg.sort_order));
@@ -253,9 +266,19 @@
 		{#if session.session_games.length > 0}
 			<div class="space-y-1 mb-4">
 				{#each session.session_games as sg}
-					<div class="flex items-center justify-between rounded-lg bg-ayu-surface2 px-3 py-2">
-						<span class="text-sm text-white">{sg.game.icon_emoji ?? '🎮'} {sg.game.name}</span>
-						<button onclick={() => removeGame(sg.id)} class="text-xs text-ayu-muted hover:text-ayu-red transition">Remove</button>
+					<div class="flex items-center justify-between rounded-lg px-3 py-2 {sg.is_special ? 'bg-ayu-surface2 border border-ayu-gold/40' : 'bg-ayu-surface2'}">
+						<span class="text-sm text-white">
+							{#if sg.is_special}<span class="mr-1 text-ayu-gold">⭐</span>{/if}{sg.game.icon_emoji ?? '🎮'} {sg.game.name}
+						</span>
+						<div class="flex items-center gap-3">
+							<button
+								onclick={() => toggleSpecial(sg.id, !sg.is_special)}
+								class="text-xs transition {sg.is_special ? 'text-ayu-gold hover:text-white' : 'text-ayu-muted hover:text-ayu-gold'}"
+							>
+								{sg.is_special ? '★ Featured' : '☆ Feature'}
+							</button>
+							<button onclick={() => removeGame(sg.id)} class="text-xs text-ayu-muted hover:text-ayu-red transition">Remove</button>
+						</div>
 					</div>
 				{/each}
 			</div>

@@ -12,6 +12,7 @@
 	let date = $state(todayNY);
 	let expiresAt = $state('');
 	let selectedGameIds = $state<string[]>([]);
+	let specialGameId = $state<string | null>(null);
 	let saving = $state(false);
 	let error = $state('');
 
@@ -39,7 +40,8 @@
 			const sessionGames = selectedGameIds.map((game_id, i) => ({
 				session_id: session.id,
 				game_id,
-				sort_order: i
+				sort_order: i,
+				is_special: game_id === specialGameId
 			}));
 			const { error: e2 } = await supabase.from('session_games').insert(sessionGames);
 			if (e2) throw e2;
@@ -99,21 +101,38 @@
 		{:else}
 			<div class="space-y-2">
 				{#each games as game}
-					<label class="flex cursor-pointer items-center gap-3 rounded-lg p-2 transition hover:bg-zinc-800">
+					<div class="flex items-center gap-2 rounded-lg p-2 transition hover:bg-zinc-800 {specialGameId === game.id ? 'border border-amber-400/40' : ''}">
 						<input
 							type="checkbox"
+							id="game-{game.id}"
 							checked={selectedGameIds.includes(game.id)}
-							onchange={() => toggleGame(game.id)}
+							onchange={() => {
+								toggleGame(game.id);
+								if (specialGameId === game.id) specialGameId = null;
+							}}
 							class="h-4 w-4 accent-amber-400"
 						/>
-						<span class="text-lg">{game.icon_emoji ?? '🎮'}</span>
-						<span class="flex-1 text-sm text-white">{game.name}</span>
-						<span class="text-xs text-zinc-500">
-							{game.scoring_direction === 'lower_is_better' ? '↓ lower' : '↑ higher'}
-						</span>
-					</label>
+						<label for="game-{game.id}" class="flex flex-1 cursor-pointer items-center gap-3">
+							<span class="text-lg">{game.icon_emoji ?? '🎮'}</span>
+							<span class="flex-1 text-sm text-white">{game.name}</span>
+							<span class="text-xs text-zinc-500">
+								{game.scoring_direction === 'lower_is_better' ? '↓ lower' : '↑ higher'}
+							</span>
+						</label>
+						{#if selectedGameIds.includes(game.id)}
+							<button
+								type="button"
+								onclick={() => specialGameId = specialGameId === game.id ? null : game.id}
+								class="text-sm transition {specialGameId === game.id ? 'text-amber-400' : 'text-zinc-600 hover:text-amber-400'}"
+								title="Mark as featured"
+							>★</button>
+						{/if}
+					</div>
 				{/each}
 			</div>
+			{#if specialGameId}
+				<p class="mt-2 text-xs text-amber-400">⭐ {games.find(g => g.id === specialGameId)?.name} will appear as the featured game</p>
+			{/if}
 		{/if}
 	</div>
 

@@ -7,6 +7,10 @@ import { guessTheHouseParser } from './guessthehouse';
 import { decipherParser } from './decipher';
 import { connectionsParser } from './connections';
 import { metazooaParser } from './metazooa';
+import { heardle90sParser } from './heardle90s';
+import { coindleParser } from './coindle';
+import { quordleParser } from './quordle';
+import { estimadleParser } from './estimadle';
 import { genericParser } from './generic';
 
 export interface Parser {
@@ -24,6 +28,10 @@ export const PARSERS: Record<string, Parser> = {
 	decipher: decipherParser,
 	connections: connectionsParser,
 	metazooa: metazooaParser,
+	heardle90s: heardle90sParser,
+	coindle: coindleParser,
+	quordle: quordleParser,
+	estimadle: estimadleParser,
 	generic: genericParser
 };
 
@@ -38,6 +46,10 @@ export const PARSER_OPTIONS = [
 	{ value: 'decipher', label: 'Decipher (time in seconds)' },
 	{ value: 'connections', label: 'NYT Connections (grid)' },
 	{ value: 'metazooa', label: 'Metazooa (1–20 guesses)' },
+	{ value: 'heardle90s', label: '90s Heardle (1–6 guesses)' },
+	{ value: 'coindle', label: 'Coindle (streak, higher is better)' },
+	{ value: 'quordle', label: 'Quordle (4-word sum, 4–40)' },
+	{ value: 'estimadle', label: 'Estimadle (0–100%)' },
 	{ value: 'generic', label: 'Generic (first number)' },
 	{ value: 'custom', label: 'Custom regex…' }
 ];

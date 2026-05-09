@@ -16,7 +16,7 @@ export const load: PageServerLoad = async ({ params }) => {
 	if (!session) error(404, 'Session not found');
 
 	const sessionGames = [...(session.session_games ?? [])].sort(
-		(a, b) => a.sort_order - b.sort_order
+		(a, b) => (b.is_special ? 1 : 0) - (a.is_special ? 1 : 0) || a.sort_order - b.sort_order
 	);
 
 	const { data: scores } = await supabase
