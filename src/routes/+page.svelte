@@ -308,30 +308,39 @@
 			</div>
 		</div>
 
-		<!-- Game cards -->
-		<div>
-			<h2 class="mb-3 text-xs font-semibold uppercase tracking-widest text-ayu-muted">Tonight's Games</h2>
-			<div class="space-y-2">
+		<!-- Featured game (if any) -->
+		{@const specialGame = session.session_games.find(sg => sg.is_special)}
+		{#if specialGame}
+			<div>
+				<h2 class="mb-3 text-xs font-semibold uppercase tracking-widest text-ayu-gold">⭐ Featured Game</h2>
 				{#if player.id}
-					{#each session.session_games as sg, i}
-						{#if sg.is_special}
-							<div class="rounded-xl ring-2 ring-ayu-gold/60">
-								<LobbyCard
-									game={sg.game}
-									sessionId={session.id}
-									playerId={player.id}
-									myScore={myScores.get(sg.game.id) ?? null}
-									onscored={refreshScores}
-								/>
-							</div>
-							{#if i < session.session_games.length - 1}
-								<div class="flex items-center gap-2 py-1">
-									<div class="h-px flex-1 bg-ayu-border"></div>
-									<span class="text-xs text-ayu-muted">Regular Games</span>
-									<div class="h-px flex-1 bg-ayu-border"></div>
-								</div>
-							{/if}
-						{:else}
+					<div class="rounded-xl ring-2 ring-ayu-gold/60">
+						<LobbyCard
+							game={specialGame.game}
+							sessionId={session.id}
+							playerId={player.id}
+							myScore={myScores.get(specialGame.game.id) ?? null}
+							onscored={refreshScores}
+						/>
+					</div>
+				{:else}
+					<div class="flex items-center gap-3 rounded-xl border border-ayu-gold/60 bg-ayu-surface px-4 py-3">
+						<span class="text-2xl">{specialGame.game.icon_emoji ?? '🎮'}</span>
+						<span class="text-white">{specialGame.game.name}</span>
+						<span class="ml-auto text-xs font-semibold text-ayu-gold">⭐ Featured</span>
+					</div>
+				{/if}
+			</div>
+		{/if}
+
+		<!-- Regular game cards -->
+		{@const regularGames = session.session_games.filter(sg => !sg.is_special)}
+		{#if regularGames.length > 0}
+			<div>
+				<h2 class="mb-3 text-xs font-semibold uppercase tracking-widest text-ayu-muted">Tonight's Games</h2>
+				<div class="space-y-2">
+					{#if player.id}
+						{#each regularGames as sg}
 							<LobbyCard
 								game={sg.game}
 								sessionId={session.id}
@@ -339,43 +348,15 @@
 								myScore={myScores.get(sg.game.id) ?? null}
 								onscored={refreshScores}
 							/>
-						{/if}
-					{/each}
-				{:else}
-					{#each session.session_games as sg}
-						<div class="flex items-center gap-3 rounded-xl border {sg.is_special ? 'border-ayu-gold/60' : 'border-ayu-border'} bg-ayu-surface px-4 py-3">
-							<span class="text-2xl">{sg.game.icon_emoji ?? '🎮'}</span>
-							<span class="text-white">{sg.game.name}</span>
-							{#if sg.is_special}<span class="ml-auto text-xs font-semibold text-ayu-gold">⭐ Featured</span>{/if}
-						</div>
-					{/each}
-				{/if}
-			</div>
-		</div>
-
-		<!-- Current Badges -->
-		{#if sessionBadges.length > 0}
-			<div class="rounded-xl border border-ayu-border bg-ayu-surface p-5">
-				<h2 class="mb-4 text-xs font-semibold uppercase tracking-widest text-ayu-muted">Current Badges</h2>
-				<div class="flex flex-wrap gap-3">
-					{#each sessionBadges as badge (badge.id)}
-						<div
-							class="group relative flex items-center gap-2.5 rounded-lg border border-ayu-border bg-ayu-surface2 px-3 py-2"
-							title={badge.description}
-						>
-							<span class="text-xl leading-none">{badge.emoji}</span>
-							<div>
-								<p class="text-sm font-semibold text-white leading-tight">{badge.name}</p>
-								{#if badge.gameName}
-									<p class="text-xs text-ayu-muted leading-tight">{badge.gameEmoji} {badge.gameName}</p>
-								{/if}
+						{/each}
+					{:else}
+						{#each regularGames as sg}
+							<div class="flex items-center gap-3 rounded-xl border border-ayu-border bg-ayu-surface px-4 py-3">
+								<span class="text-2xl">{sg.game.icon_emoji ?? '🎮'}</span>
+								<span class="text-white">{sg.game.name}</span>
 							</div>
-							<!-- Tooltip -->
-							<div class="pointer-events-none absolute bottom-full left-0 mb-2 z-10 w-48 rounded-lg border border-ayu-border bg-zinc-900 px-3 py-2 text-xs text-zinc-300 opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-								{badge.description}
-							</div>
-						</div>
-					{/each}
+						{/each}
+					{/if}
 				</div>
 			</div>
 		{/if}
@@ -409,6 +390,21 @@
 				<p class="mt-1 text-sm text-ayu-muted">The host will reveal results when everyone's done.</p>
 			</div>
 		{:else}
+			<!-- Live standings -->
+			{#if tally.length > 0}
+				<div>
+					<h2 class="mb-4 text-xs font-semibold uppercase tracking-widest text-ayu-muted">Live Standings</h2>
+					{#if tally.length >= 2}
+						<div class="mb-6 rounded-xl border border-ayu-border bg-ayu-surface p-6">
+							<Podium {tally} animate={justRevealed} />
+						</div>
+					{/if}
+					<div class="rounded-xl border border-ayu-border bg-ayu-surface p-4">
+						<MedalTally {tally} currentPlayerId={player.id} />
+					</div>
+				</div>
+			{/if}
+
 			<!-- Per-game results -->
 			{#if gamesWithScores.length > 0}
 				<div transition:fly={{ y: 24, duration: 400 }}>
@@ -444,17 +440,28 @@
 				</div>
 			{/if}
 
-			<!-- Live standings -->
-			{#if tally.length > 0}
-				<div>
-					<h2 class="mb-4 text-xs font-semibold uppercase tracking-widest text-ayu-muted">Live Standings</h2>
-					{#if tally.length >= 2}
-						<div class="mb-6 rounded-xl border border-ayu-border bg-ayu-surface p-6">
-							<Podium {tally} animate={justRevealed} />
-						</div>
-					{/if}
-					<div class="rounded-xl border border-ayu-border bg-ayu-surface p-4">
-						<MedalTally {tally} currentPlayerId={player.id} />
+			<!-- Badges -->
+			{#if sessionBadges.length > 0}
+				<div class="rounded-xl border border-ayu-border bg-ayu-surface p-5">
+					<h2 class="mb-4 text-xs font-semibold uppercase tracking-widest text-ayu-muted">Badges</h2>
+					<div class="flex flex-wrap gap-3">
+						{#each sessionBadges as badge (badge.id)}
+							<div
+								class="group relative flex items-center gap-2.5 rounded-lg border border-ayu-border bg-ayu-surface2 px-3 py-2"
+								title={badge.description}
+							>
+								<span class="text-xl leading-none">{badge.emoji}</span>
+								<div>
+									<p class="text-sm font-semibold text-white leading-tight">{badge.name}</p>
+									{#if badge.gameName}
+										<p class="text-xs text-ayu-muted leading-tight">{badge.gameEmoji} {badge.gameName}</p>
+									{/if}
+								</div>
+								<div class="pointer-events-none absolute bottom-full left-0 mb-2 z-10 w-48 rounded-lg border border-ayu-border bg-zinc-900 px-3 py-2 text-xs text-zinc-300 opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+									{badge.description}
+								</div>
+							</div>
+						{/each}
 					</div>
 				</div>
 			{/if}
