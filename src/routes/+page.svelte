@@ -61,6 +61,8 @@
 	const allDone = $derived(
 		!!session && session.session_games.length > 0 && myScores.size === session.session_games.length
 	);
+	const specialGame = $derived(session?.session_games.find(sg => sg.is_special) ?? null);
+	const regularGames = $derived(session?.session_games.filter(sg => !sg.is_special) ?? []);
 
 	let shareCopied = $state(false);
 	let copiedGameId = $state<string | null>(null);
@@ -309,7 +311,6 @@
 		</div>
 
 		<!-- Featured game (if any) -->
-		{@const specialGame = session.session_games.find(sg => sg.is_special)}
 		{#if specialGame}
 			<div>
 				<h2 class="mb-3 text-xs font-semibold uppercase tracking-widest text-ayu-gold">⭐ Featured Game</h2>
@@ -334,7 +335,6 @@
 		{/if}
 
 		<!-- Regular game cards -->
-		{@const regularGames = session.session_games.filter(sg => !sg.is_special)}
 		{#if regularGames.length > 0}
 			<div>
 				<h2 class="mb-3 text-xs font-semibold uppercase tracking-widest text-ayu-muted">Tonight's Games</h2>
