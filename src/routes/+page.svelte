@@ -54,7 +54,7 @@
 
 	const sessionBadges = $derived(
 		player.id && session
-			? computeSessionBadges(myScores, session.session_games.map(sg => sg.game))
+			? computeSessionBadges(myScores, session.session_games.map(sg => ({ ...sg.game, is_special: sg.is_special ?? false })))
 			: []
 	);
 	const gamesWithScores = $derived(gameResults.filter((gr) => gr.scores.length > 0));

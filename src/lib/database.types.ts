@@ -75,6 +75,7 @@ export interface Database {
 					name: string;
 					days_of_week: number[];
 					game_ids: string[];
+					special_game_id: string | null;
 					session_name_template: string;
 					auto_activate: boolean;
 					active: boolean;
@@ -85,6 +86,7 @@ export interface Database {
 					name: string;
 					days_of_week: number[];
 					game_ids: string[];
+					special_game_id?: string | null;
 					session_name_template?: string;
 					auto_activate?: boolean;
 					active?: boolean;
@@ -95,6 +97,7 @@ export interface Database {
 					name?: string;
 					days_of_week?: number[];
 					game_ids?: string[];
+					special_game_id?: string | null;
 					session_name_template?: string;
 					auto_activate?: boolean;
 					active?: boolean;

@@ -48,7 +48,7 @@ export const PARSER_OPTIONS = [
 	{ value: 'metazooa', label: 'Metazooa (1–20 guesses)' },
 	{ value: 'heardle90s', label: '90s Heardle (1–6 guesses)' },
 	{ value: 'coindle', label: 'Coindle (streak, higher is better)' },
-	{ value: 'quordle', label: 'Quordle (4-word sum, 4–40)' },
+	{ value: 'quordle', label: 'Quordle (0–36, higher is better)' },
 	{ value: 'estimadle', label: 'Estimadle (0–100%)' },
 	{ value: 'generic', label: 'Generic (first number)' },
 	{ value: 'custom', label: 'Custom regex…' }

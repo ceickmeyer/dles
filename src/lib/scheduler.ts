@@ -69,7 +69,8 @@ export async function runScheduler(supabase: SupabaseClient<Database>): Promise<
 	const gameInserts = (schedule.game_ids as string[]).map((gameId, i) => ({
 		session_id: session.id,
 		game_id: gameId,
-		sort_order: i
+		sort_order: i,
+		is_special: gameId === schedule.special_game_id
 	}));
 
 	if (gameInserts.length > 0) {

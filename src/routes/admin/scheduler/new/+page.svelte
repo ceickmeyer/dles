@@ -9,6 +9,7 @@
 	let template = $state('Game Night — {date}');
 	let selectedDays = $state<number[]>([]);
 	let selectedGameIds = $state<string[]>([]);
+	let specialGameId = $state<string | null>(null);
 	let autoActivate = $state(false);
 	let saving = $state(false);
 	let error = $state('');
@@ -27,9 +28,12 @@
 	}
 
 	function toggleGame(id: string) {
-		selectedGameIds = selectedGameIds.includes(id)
-			? selectedGameIds.filter(x => x !== id)
-			: [...selectedGameIds, id];
+		if (selectedGameIds.includes(id)) {
+			selectedGameIds = selectedGameIds.filter(x => x !== id);
+			if (specialGameId === id) specialGameId = null;
+		} else {
+			selectedGameIds = [...selectedGameIds, id];
+		}
 	}
 
 	function moveGame(index: number, dir: -1 | 1) {
@@ -49,6 +53,7 @@
 			name: name.trim(),
 			days_of_week: selectedDays,
 			game_ids: selectedGameIds,
+			special_game_id: specialGameId,
 			session_name_template: template.trim() || 'Game Night — {date}',
 			auto_activate: autoActivate,
 			active: true
@@ -105,15 +110,20 @@
 				{/each}
 			</div>
 
-			{#if selectedGameIds.length > 1}
+			{#if selectedGameIds.length > 0}
 				<div class="mt-3 space-y-1 rounded-lg border border-ayu-border bg-ayu-bg p-3">
-					<p class="mb-2 text-xs text-ayu-muted">Session order</p>
+					<p class="mb-2 text-xs text-ayu-muted">Session order · ★ to mark featured</p>
 					{#each selectedGameIds as id, i}
 						{@const g = allGames.find(x => x.id === id)}
 						{#if g}
-							<div class="flex items-center gap-2 text-sm text-white">
+							<div class="flex items-center gap-2 text-sm {specialGameId === id ? 'text-ayu-gold' : 'text-white'}">
 								<span class="w-5 text-center text-xs text-ayu-muted">{i + 1}</span>
 								<span class="flex-1">{g.icon_emoji ?? '🎮'} {g.name}</span>
+								<button
+									onclick={() => specialGameId = specialGameId === id ? null : id}
+									title="Mark as featured game"
+									class="px-1 transition {specialGameId === id ? 'text-ayu-gold' : 'text-ayu-muted hover:text-ayu-gold'}"
+								>{specialGameId === id ? '★' : '☆'}</button>
 								<button onclick={() => moveGame(i, -1)} disabled={i === 0} class="px-1 text-ayu-muted hover:text-white disabled:opacity-30">↑</button>
 								<button onclick={() => moveGame(i, 1)} disabled={i === selectedGameIds.length - 1} class="px-1 text-ayu-muted hover:text-white disabled:opacity-30">↓</button>
 							</div>

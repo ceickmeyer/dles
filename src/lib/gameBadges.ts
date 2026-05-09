@@ -6,6 +6,7 @@ interface GameInfo {
 	max_score: number | null;
 	allow_dnf: boolean;
 	scoring_direction: 'higher_is_better' | 'lower_is_better';
+	is_special?: boolean;
 }
 
 export interface SessionBadge {
@@ -241,6 +242,14 @@ const GAME_BADGES: GameBadgeDef[] = [
 ];
 
 const GLOBAL_BADGES: GlobalBadgeDef[] = [
+	{
+		id: 'star_player', emoji: '⭐', name: 'Star Player',
+		description: 'Completed the featured game of the night',
+		condition: (myScores, games) => {
+			const featured = games.find(g => g.is_special);
+			return !!featured && myScores.has(featured.id);
+		}
+	},
 	{
 		id: 'full_send', emoji: '✨', name: 'Full Send',
 		description: 'Submitted a score for every game tonight',

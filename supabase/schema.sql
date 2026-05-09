@@ -158,6 +158,7 @@ create policy "messages_select" on messages for select using (true);
 create policy "messages_insert" on messages for insert with check (true);
 
 alter table session_games add column if not exists is_special boolean not null default false;
+alter table schedules    add column if not exists special_game_id uuid references games(id) on delete set null;
 
 -- Enable realtime for scores and sessions (safe to re-run)
 do $$
