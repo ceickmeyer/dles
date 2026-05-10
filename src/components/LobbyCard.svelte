@@ -75,10 +75,22 @@
 	const gameDnfScore = $derived(dnfScore(game));
 
 	const GAME_TIPS: Record<string, string> = {
-		connections: 'More points for solving hardest-first — 🟪🟦🟩🟨. Points off for mistakes.',
+		connections: 'More points for solving hardest-first — 🟪🟦🟩🟨. Points off for mistakes. Perfect score is 200.',
 		decipher:    '10 minute time limit. Each hint used adds 1 minute penalty.',
 	};
 	const tip = $derived(game.share_parser ? (GAME_TIPS[game.share_parser] ?? null) : null);
+
+	let tipVisible = $state(false);
+	let tipX = $state(0);
+	let tipY = $state(0);
+
+	function showTip(e: MouseEvent) {
+		const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+		tipX = rect.left;
+		tipY = rect.top - 8;
+		tipVisible = true;
+	}
+	function hideTip() { tipVisible = false; }
 
 	function toggle() {
 		expanded = !expanded;
@@ -167,16 +179,11 @@
 >
 	<!-- Always-visible header -->
 	<div class="flex items-center gap-3 px-4 py-3">
-		{#if tip}
-			<div class="group relative shrink-0">
-				<span class="text-3xl cursor-default">{game.icon_emoji ?? '🎮'}</span>
-				<div class="pointer-events-none absolute bottom-full left-0 mb-2 z-20 w-56 rounded-lg border border-ayu-border bg-zinc-900 px-3 py-2 text-xs text-zinc-300 shadow-lg opacity-0 transition-opacity group-hover:opacity-100">
-					{tip}
-				</div>
-			</div>
-		{:else}
-			<span class="text-3xl shrink-0">{game.icon_emoji ?? '🎮'}</span>
-		{/if}
+		<span
+			class="text-3xl shrink-0 {tip ? 'cursor-default' : ''}"
+			onmouseenter={tip ? showTip : undefined}
+			onmouseleave={tip ? hideTip : undefined}
+		>{game.icon_emoji ?? '🎮'}</span>
 		<div class="flex-1 min-w-0">
 			<p class="font-semibold text-white leading-tight">{game.name}</p>
 			{#if game.url}
@@ -353,3 +360,12 @@
 		</div>
 	{/if}
 </div>
+
+{#if tipVisible && tip}
+	<div
+		class="pointer-events-none fixed z-50 w-56 rounded-lg border border-ayu-border bg-zinc-900 px-3 py-2 text-xs text-zinc-300 shadow-xl"
+		style="left:{tipX}px;top:{tipY}px;transform:translateY(-100%)"
+	>
+		{tip}
+	</div>
+{/if}
