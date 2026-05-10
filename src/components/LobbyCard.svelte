@@ -74,6 +74,12 @@
 	);
 	const gameDnfScore = $derived(dnfScore(game));
 
+	const GAME_TIPS: Record<string, string> = {
+		connections: 'More points for solving hardest-first — 🟪🟦🟩🟨. Points off for mistakes.',
+		decipher:    '10 minute time limit. Each hint used adds 1 minute penalty.',
+	};
+	const tip = $derived(game.share_parser ? (GAME_TIPS[game.share_parser] ?? null) : null);
+
 	function toggle() {
 		expanded = !expanded;
 	}
@@ -161,7 +167,16 @@
 >
 	<!-- Always-visible header -->
 	<div class="flex items-center gap-3 px-4 py-3">
-		<span class="text-3xl">{game.icon_emoji ?? '🎮'}</span>
+		{#if tip}
+			<div class="group relative shrink-0">
+				<span class="text-3xl cursor-default">{game.icon_emoji ?? '🎮'}</span>
+				<div class="pointer-events-none absolute bottom-full left-0 mb-2 z-20 w-56 rounded-lg border border-ayu-border bg-zinc-900 px-3 py-2 text-xs text-zinc-300 shadow-lg opacity-0 transition-opacity group-hover:opacity-100">
+					{tip}
+				</div>
+			</div>
+		{:else}
+			<span class="text-3xl shrink-0">{game.icon_emoji ?? '🎮'}</span>
+		{/if}
 		<div class="flex-1 min-w-0">
 			<p class="font-semibold text-white leading-tight">{game.name}</p>
 			{#if game.url}
