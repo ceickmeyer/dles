@@ -3,7 +3,7 @@ import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/publi
 import { error } from '@sveltejs/kit';
 import type { Database } from '$lib/database.types';
 import { rankScores, computeSessionTally, sortTally, MEDAL_EMOJI } from '$lib/scoring';
-import { displayName } from '$lib/utils';
+import { displayName, sortSessionGames } from '$lib/utils';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params }) => {
@@ -11,15 +11,13 @@ export const load: PageServerLoad = async ({ params }) => {
 
 	const { data: session } = await supabase
 		.from('sessions')
-		.select('*, session_games(sort_order, game:games(*))')
+		.select('*, session_games(sort_order, is_special, game:games(*))')
 		.eq('id', params.session_id)
 		.single();
 
 	if (!session) error(404, 'Session not found');
 
-	const sessionGames = [...(session.session_games ?? [])].sort(
-		(a, b) => a.sort_order - b.sort_order
-	);
+	const sessionGames = sortSessionGames(session.session_games ?? []);
 
 	const { data: scores } = await supabase
 		.from('scores')

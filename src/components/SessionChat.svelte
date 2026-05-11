@@ -25,6 +25,7 @@
 	let draft = $state('');
 	let open = $state(true);
 	let sending = $state(false);
+	let sendError = $state('');
 	let unread = $state(0);
 	let listEl = $state<HTMLElement | null>(null);
 	let subscription: ReturnType<typeof supabase.channel> | null = null;
@@ -53,13 +54,15 @@
 		const content = draft.trim();
 		if (!content || !playerId || !playerName || sending) return;
 		sending = true;
+		sendError = '';
 		draft = '';
-		await supabase.from('messages').insert({
+		const { error } = await supabase.from('messages').insert({
 			session_id: sessionId,
 			player_id: playerId,
 			player_name: playerName,
 			content
 		});
+		if (error) { sendError = 'Failed to send.'; draft = content; }
 		sending = false;
 	}
 
@@ -131,6 +134,9 @@
 
 			<!-- Input -->
 			<div class="border-t border-ayu-border bg-ayu-surface px-3 py-2">
+				{#if sendError}
+					<p class="mb-1 text-xs text-ayu-red">{sendError}</p>
+				{/if}
 				{#if playerId && playerName}
 					<form onsubmit={(e) => { e.preventDefault(); send(); }} class="flex gap-2">
 						<input

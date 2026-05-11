@@ -72,6 +72,7 @@
 			<h2 class="mb-1 text-2xl font-bold text-white">What's your name?</h2>
 			<p class="mb-6 text-sm text-ayu-muted">Used to track your scores. You'll set a PIN to sign in on other devices.</p>
 			<form onsubmit={(e) => { e.preventDefault(); submitName(); }}>
+    <!-- svelte-ignore a11y_autofocus -->
 				<input
 					class="mb-4 w-full rounded-lg border border-ayu-border bg-ayu-bg px-4 py-3 text-white placeholder-ayu-muted focus:border-ayu-gold focus:outline-none"
 					placeholder="Enter your name"
@@ -94,6 +95,7 @@
 			<h2 class="mb-1 text-2xl font-bold text-white">Choose a PIN</h2>
 			<p class="mb-6 text-sm text-ayu-muted">Pick a 4-digit PIN — you'll use it to sign in on other devices.</p>
 			<form onsubmit={(e) => { e.preventDefault(); submitNewPin(); }}>
+    <!-- svelte-ignore a11y_autofocus -->
 				<input
 					class="mb-4 w-full rounded-lg border border-ayu-border bg-ayu-bg px-4 py-3 text-center text-2xl font-mono tracking-widest text-white placeholder-ayu-muted focus:border-ayu-gold focus:outline-none"
 					placeholder="• • • •"
@@ -117,6 +119,7 @@
 			<h2 class="mb-1 text-2xl font-bold text-white">Welcome back, {name}!</h2>
 			<p class="mb-6 text-sm text-ayu-muted">That name already exists. Enter your 4-digit PIN to sign in.</p>
 			<form onsubmit={(e) => { e.preventDefault(); submitPin(); }}>
+    <!-- svelte-ignore a11y_autofocus -->
 				<input
 					class="mb-4 w-full rounded-lg border border-ayu-border bg-ayu-bg px-4 py-3 text-center text-2xl font-mono tracking-widest text-white placeholder-ayu-muted focus:border-ayu-gold focus:outline-none"
 					placeholder="• • • •"

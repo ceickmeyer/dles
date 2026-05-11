@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
 import { error } from '@sveltejs/kit';
 import type { Database } from '$lib/database.types';
+import { sortSessionGames } from '$lib/utils';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params }) => {
@@ -15,9 +16,7 @@ export const load: PageServerLoad = async ({ params }) => {
 
 	if (!session) error(404, 'Session not found');
 
-	const sessionGames = [...(session.session_games ?? [])].sort(
-		(a, b) => (b.is_special ? 1 : 0) - (a.is_special ? 1 : 0) || a.sort_order - b.sort_order
-	);
+	const sessionGames = sortSessionGames(session.session_games ?? []);
 
 	const { data: scores } = await supabase
 		.from('scores')

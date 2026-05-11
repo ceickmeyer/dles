@@ -2,7 +2,8 @@
 	import { isDnf } from '$lib/utils';
 
 	let { data } = $props();
-	const { game, rows } = data;
+	const game = $derived(data.game);
+	const rows = $derived(data.rows);
 
 	function fmt(score: number): string {
 		if (isDnf(score, game)) return 'DNF';

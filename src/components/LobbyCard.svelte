@@ -27,6 +27,7 @@
 
 	let previewScore = $state<number | null>(null);
 
+	// svelte-ignore state_referenced_locally -- intentional: preview cards start expanded, then expanded is managed independently
 	let expanded = $state(preview);
 	let shareText = $state('');
 	let manualScore = $state('');
@@ -180,6 +181,8 @@
 	<!-- Always-visible header -->
 	<div class="flex items-center gap-3 px-4 py-3">
 		<span
+			role="img"
+			aria-label={game.name}
 			class="text-3xl shrink-0 {tip ? 'cursor-default' : ''}"
 			onmouseenter={tip ? showTip : undefined}
 			onmouseleave={tip ? hideTip : undefined}

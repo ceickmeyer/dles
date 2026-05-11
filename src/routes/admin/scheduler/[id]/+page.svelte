@@ -59,7 +59,9 @@
 	}
 
 	async function deleteSchedule() {
-		await supabase.from('schedules').delete().eq('id', data.schedule.id);
+		saving = true;
+		const { error: e } = await supabase.from('schedules').delete().eq('id', data.schedule.id);
+		if (e) { error = e.message; saving = false; return; }
 		goto('/admin/scheduler');
 	}
 </script>

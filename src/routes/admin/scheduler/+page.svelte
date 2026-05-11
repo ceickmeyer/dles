@@ -6,13 +6,17 @@
 
 	const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+	let error = $state('');
+
 	async function toggleActive(id: string, current: boolean) {
-		await supabase.from('schedules').update({ active: !current }).eq('id', id);
+		const { error: e } = await supabase.from('schedules').update({ active: !current }).eq('id', id);
+		if (e) { error = e.message; return; }
 		await invalidateAll();
 	}
 
 	async function deleteSchedule(id: string) {
-		await supabase.from('schedules').delete().eq('id', id);
+		const { error: e } = await supabase.from('schedules').delete().eq('id', id);
+		if (e) { error = e.message; return; }
 		await invalidateAll();
 	}
 </script>
@@ -83,5 +87,9 @@
 				</div>
 			{/each}
 		</div>
+	{/if}
+
+	{#if error}
+		<p class="text-sm text-ayu-red">{error}</p>
 	{/if}
 </div>

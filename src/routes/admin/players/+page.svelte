@@ -7,6 +7,7 @@
 	const players = $derived(data.players as Player[]);
 
 	let showPins = $state(false);
+	let globalError = $state('');
 	let editingAlias = $state<Record<string, string>>({});
 	let savingAlias = $state<Record<string, boolean>>({});
 	let editingPin = $state<Record<string, string>>({});
@@ -24,15 +25,17 @@
 		const alias = editingAlias[p.id]?.trim() || null;
 		if (alias === (p.alias ?? null)) return;
 		savingAlias[p.id] = true;
-		await supabase.from('players').update({ alias }).eq('id', p.id);
+		const { error: e } = await supabase.from('players').update({ alias }).eq('id', p.id);
 		savingAlias[p.id] = false;
+		if (e) { globalError = e.message; return; }
 		await invalidateAll();
 	}
 
 	async function deletePlayer(id: string) {
 		deleting = true;
-		await supabase.from('players').delete().eq('id', id);
+		const { error: e } = await supabase.from('players').delete().eq('id', id);
 		deleting = false;
+		if (e) { globalError = e.message; return; }
 		confirmDeleteId = null;
 		await invalidateAll();
 	}
@@ -48,8 +51,9 @@
 		if (!/^\d{4}$/.test(val)) { pinError[p.id] = 'Must be 4 digits'; return; }
 		pinError[p.id] = '';
 		savingPin[p.id] = true;
-		await supabase.from('players').update({ pin: val }).eq('id', p.id);
+		const { error: e } = await supabase.from('players').update({ pin: val }).eq('id', p.id);
 		savingPin[p.id] = false;
+		if (e) { globalError = e.message; return; }
 		delete editingPin[p.id];
 		await invalidateAll();
 	}
@@ -187,5 +191,9 @@
 			</table>
 		</div>
 		<p class="text-xs text-ayu-muted">Deleting a player removes all their scores across all sessions. Alias is shown in parentheses in standings.</p>
+	{/if}
+
+	{#if globalError}
+		<p class="text-sm text-ayu-red">{globalError}</p>
 	{/if}
 </div>
