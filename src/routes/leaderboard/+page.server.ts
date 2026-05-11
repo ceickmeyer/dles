@@ -4,6 +4,9 @@ import type { Database } from '$lib/database.types';
 import { displayName } from '$lib/utils';
 import type { PageServerLoad } from './$types';
 
+const MIN_PLAYS = 3;
+const ROLLING_WINDOW = 10;
+
 export const load: PageServerLoad = async () => {
 	const supabase = createClient<Database>(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY);
 
@@ -16,8 +19,9 @@ export const load: PageServerLoad = async () => {
 
 	const { data: scores } = await supabase
 		.from('scores')
-		.select('raw_score, player_id, game_id, player:players(name, alias), game:games(id, name, icon_emoji, scoring_direction, max_score, allow_dnf, share_parser)')
-		.in('session_id', sessions.map(s => s.id));
+		.select('raw_score, player_id, game_id, submitted_at, player:players(name, alias), game:games(id, name, icon_emoji, scoring_direction, max_score, allow_dnf, share_parser)')
+		.in('session_id', sessions.map(s => s.id))
+		.order('submitted_at', { ascending: true });
 
 	if (!scores || scores.length === 0) return { perGame: [], sessionCount: sessions.length };
 
@@ -55,24 +59,24 @@ export const load: PageServerLoad = async () => {
 		entry.playerScores.get(score.player_id)!.vals.push(score.raw_score);
 	}
 
-	const perGame = [...gameData.values()].map(({ playerScores, ...meta }) => {
+	const perGame = [...gameData.values()].flatMap(({ playerScores, ...meta }) => {
 		const asc = meta.direction === 'lower_is_better';
-		const rows = [...playerScores.entries()].map(([player_id, { name, vals }]) => {
-			const dnf = meta.allowDnf && meta.maxScore !== null ? meta.maxScore + 1 : null;
-			const validVals = dnf !== null ? vals.filter(v => v !== dnf) : vals;
-			const dnfCount = vals.length - validVals.length;
-			const avg = validVals.length > 0
-				? validVals.reduce((a, b) => a + b, 0) / validVals.length
-				: null;
-			const best = validVals.length > 0 ? (asc ? Math.min(...validVals) : Math.max(...validVals)) : null;
-			return { player_id, name, avg, best, played: vals.length, dnfCount };
-		}).sort((a, b) => {
-			if (a.avg === null && b.avg === null) return 0;
-			if (a.avg === null) return 1;
-			if (b.avg === null) return -1;
-			return asc ? a.avg - b.avg : b.avg - a.avg;
-		});
-		return { ...meta, rows };
+		const dnfValue = meta.allowDnf && meta.maxScore !== null ? meta.maxScore + 1 : null;
+
+		const rows = [...playerScores.entries()]
+			.filter(([, { vals }]) => vals.length >= MIN_PLAYS)
+			.map(([player_id, { name, vals }]) => {
+				const rolling = vals.slice(-ROLLING_WINDOW);
+				const avg = rolling.reduce((a, b) => a + b, 0) / rolling.length;
+				const nonDnf = dnfValue !== null ? vals.filter(v => v !== dnfValue) : vals;
+				const best = nonDnf.length > 0 ? (asc ? Math.min(...nonDnf) : Math.max(...nonDnf)) : null;
+				const dnfCount = dnfValue !== null ? vals.filter(v => v === dnfValue).length : 0;
+				return { player_id, name, avg, best, played: vals.length, dnfCount };
+			})
+			.sort((a, b) => asc ? a.avg - b.avg : b.avg - a.avg);
+
+		if (rows.length === 0) return [];
+		return [{ ...meta, rows }];
 	}).sort((a, b) => a.name.localeCompare(b.name));
 
 	return { perGame, sessionCount: sessions.length };

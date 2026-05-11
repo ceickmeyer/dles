@@ -65,8 +65,8 @@
 							<td class="px-3 py-3 text-center font-bold {i === 0 ? 'text-ayu-gold' : 'text-white'}">
 								{fmtAvg(row.avg)}
 							</td>
-							<td class="px-3 py-3 text-center text-ayu-green">{fmt(row.best)}</td>
-							<td class="px-3 py-3 text-center text-ayu-muted">{fmt(row.worst)}</td>
+							<td class="px-3 py-3 text-center text-ayu-green">{row.best !== null ? fmt(row.best) : '—'}</td>
+							<td class="px-3 py-3 text-center text-ayu-muted">{row.worst !== null ? fmt(row.worst) : '—'}</td>
 							<td class="px-3 py-3 text-center text-ayu-muted">{row.played}</td>
 						</tr>
 					{/each}
