@@ -30,10 +30,10 @@
 	{#if !(typeof window !== 'undefined' && window.location.pathname === '/admin/login')}
 		<div class="mb-6 flex items-center justify-between border-b border-ayu-border pb-4">
 			<nav class="flex gap-4 text-sm">
-				<a href="/admin" class="text-zinc-300 hover:text-ayu-gold transition">Sessions</a>
+				<a href="/admin" class="text-zinc-300 hover:text-ayu-gold transition">Dashboard</a>
+				<a href="/admin/schedule" class="text-zinc-300 hover:text-ayu-gold transition">Schedule</a>
 				<a href="/admin/games" class="text-zinc-300 hover:text-ayu-gold transition">Games</a>
 				<a href="/admin/players" class="text-zinc-300 hover:text-ayu-gold transition">Players</a>
-				<a href="/admin/scheduler" class="text-zinc-300 hover:text-ayu-gold transition">Scheduler</a>
 				<a href="/admin/backup" class="text-zinc-300 hover:text-ayu-gold transition">Backup</a>
 			</nav>
 			<button

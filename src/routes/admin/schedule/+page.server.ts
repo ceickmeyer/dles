@@ -5,6 +5,14 @@ import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => {
 	const supabase = createClient<Database>(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY);
-	const { data: games } = await supabase.from('games').select('*').order('name');
-	return { games: games ?? [] };
+
+	const [{ data: schedule }, { data: games }] = await Promise.all([
+		supabase.from('weekly_schedule').select('*').order('day_of_week'),
+		supabase.from('games').select('id, name, icon_emoji').order('name')
+	]);
+
+	return {
+		schedule: schedule ?? [],
+		games: games ?? []
+	};
 };

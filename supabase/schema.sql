@@ -182,3 +182,21 @@ begin
     alter publication supabase_realtime add table messages;
   end if;
 end $$;
+
+-- Weekly schedule: one row per day of week (0=Sun … 6=Sat)
+create table if not exists weekly_schedule (
+  day_of_week smallint primary key check (day_of_week between 0 and 6),
+  game_ids uuid[] not null default '{}',
+  special_game_id uuid references games(id) on delete set null
+);
+
+-- Seed all 7 days (safe to re-run)
+insert into weekly_schedule (day_of_week)
+values (0),(1),(2),(3),(4),(5),(6)
+on conflict (day_of_week) do nothing;
+
+alter table weekly_schedule enable row level security;
+create policy "weekly_schedule_select" on weekly_schedule for select using (true);
+create policy "weekly_schedule_insert" on weekly_schedule for insert with check (auth.role() = 'authenticated');
+create policy "weekly_schedule_update" on weekly_schedule for update using (auth.role() = 'authenticated');
+create policy "weekly_schedule_delete" on weekly_schedule for delete using (auth.role() = 'authenticated');

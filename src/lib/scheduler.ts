@@ -5,10 +5,9 @@ export interface SchedulerResult {
 	created: boolean;
 	sessionName?: string;
 	skippedReason?: 'no_schedule' | 'session_exists';
-	finished?: number; // how many stale sessions were finished
+	finished?: number;
 }
 
-// Returns today's date string and day-of-week in America/New_York timezone
 function getNYDate(date: Date): { dateStr: string; dayOfWeek: number } {
 	const dateStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(date);
 	const [y, m, d] = dateStr.split('-').map(Number);
@@ -35,36 +34,40 @@ export async function runScheduler(supabase: SupabaseClient<Database>): Promise<
 	const finished = stale?.length ?? 0;
 
 	// If any session exists for today, don't create another one
-	// (use limit+array, not maybeSingle — maybeSingle errors when >1 row exists)
 	const { data: existing } = await supabase
 		.from('sessions')
 		.select('id')
 		.eq('date', todayStr)
 		.limit(1);
+	if (existing && existing.length > 0) return { created: false, skippedReason: 'session_exists', finished };
 
-	if (existing && existing.length > 0) return { created: false, skippedReason: 'session_exists' };
-
-	// Find the first active schedule that covers today
-	const { data: schedules } = await supabase
-		.from('schedules')
+	// Look up today's weekly schedule
+	const { data: schedule } = await supabase
+		.from('weekly_schedule')
 		.select('*')
-		.eq('active', true)
-		.order('created_at', { ascending: true });
+		.eq('day_of_week', dayOfWeek)
+		.maybeSingle();
 
-	const schedule = schedules?.find(s => (s.days_of_week as number[]).includes(dayOfWeek));
-	if (!schedule) return { created: false, skippedReason: 'no_schedule' };
+	if (!schedule || (schedule.game_ids as string[]).length === 0) {
+		return { created: false, skippedReason: 'no_schedule', finished };
+	}
 
-	// Build session name (replace {date} with readable date in NY timezone)
-	const dateStr = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'long', month: 'long', day: 'numeric' }).format(now);
-	const sessionName = schedule.session_name_template.replace('{date}', dateStr);
+	// Auto-generate session name from date
+	const readableDate = new Intl.DateTimeFormat('en-US', {
+		timeZone: 'America/New_York',
+		weekday: 'long',
+		month: 'long',
+		day: 'numeric'
+	}).format(now);
+	const sessionName = `Game Night — ${readableDate}`;
 
 	const { data: session, error } = await supabase
 		.from('sessions')
-		.insert({ name: sessionName, date: todayStr, status: schedule.auto_activate ? 'active' : 'lobby' })
+		.insert({ name: sessionName, date: todayStr, status: 'active' })
 		.select('id')
 		.single();
 
-	if (error || !session) return { created: false };
+	if (error || !session) return { created: false, finished };
 
 	const gameInserts = (schedule.game_ids as string[]).map((gameId, i) => ({
 		session_id: session.id,
@@ -77,5 +80,5 @@ export async function runScheduler(supabase: SupabaseClient<Database>): Promise<
 		await supabase.from('session_games').insert(gameInserts);
 	}
 
-	return { created: true, sessionName };
+	return { created: true, sessionName, finished };
 }

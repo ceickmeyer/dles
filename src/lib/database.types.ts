@@ -105,6 +105,26 @@ export interface Database {
 				};
 				Relationships: [];
 			};
+			weekly_schedule: {
+				Row: {
+					day_of_week: number;
+					game_ids: string[];
+					special_game_id: string | null;
+				};
+				Insert: {
+					day_of_week: number;
+					game_ids?: string[];
+					special_game_id?: string | null;
+				};
+				Update: {
+					day_of_week?: number;
+					game_ids?: string[];
+					special_game_id?: string | null;
+				};
+				Relationships: [
+					{ foreignKeyName: 'weekly_schedule_special_game_id_fkey'; columns: ['special_game_id']; referencedRelation: 'games'; referencedColumns: ['id'] }
+				];
+			};
 			scores: {
 				Row: {
 					id: string;
@@ -154,6 +174,7 @@ export type SessionGame = Database['public']['Tables']['session_games']['Row'];
 export type Score = Database['public']['Tables']['scores']['Row'];
 
 export type Schedule = Database['public']['Tables']['schedules']['Row'];
+export type WeeklyScheduleRow = Database['public']['Tables']['weekly_schedule']['Row'];
 export type GameWithDetails = Game & { session_games?: SessionGame[] };
 export type SessionWithGames = Session & { session_games: (SessionGame & { game: Game })[] };
 export type ScoreWithPlayer = Score & { player: Player };
