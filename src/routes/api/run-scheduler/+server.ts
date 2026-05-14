@@ -8,7 +8,7 @@ import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ request }) => {
 	const auth = request.headers.get('authorization');
-	if (!env.CRON_SECRET || auth !== `Bearer ${env.CRON_SECRET}`) {
+	if (!env.SCHEDULER_SECRET || auth !== `Bearer ${env.SCHEDULER_SECRET}`) {
 		return new Response('Unauthorized', { status: 401 });
 	}
 
