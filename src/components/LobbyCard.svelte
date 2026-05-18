@@ -8,6 +8,8 @@
 	import ConnectionsForm from './ConnectionsForm.svelte';
 	import DecipherForm from './DecipherForm.svelte';
 	import type { Game } from '$lib/database.types';
+	import type { RankedScore } from '$lib/scoring';
+	import { MEDAL_EMOJI } from '$lib/scoring';
 
 	let {
 		game,
@@ -15,7 +17,11 @@
 		playerId = '',
 		myScore = null,
 		preview = false,
-		onscored
+		onscored,
+		rankedScores = [],
+		currentPlayerId = '',
+		onCopyResults,
+		resultsCopied = false
 	}: {
 		game: Game;
 		sessionId?: string;
@@ -23,6 +29,10 @@
 		myScore?: number | null;
 		preview?: boolean;
 		onscored?: () => void;
+		rankedScores?: RankedScore[];
+		currentPlayerId?: string;
+		onCopyResults?: () => void;
+		resultsCopied?: boolean;
 	} = $props();
 
 	let previewScore = $state<number | null>(null);
@@ -179,23 +189,33 @@
 		: 'border-color:var(--color-ayu-border);background-color:var(--color-ayu-surface)'}
 >
 	<!-- Always-visible header -->
-	<div class="flex items-center gap-3 px-4 py-3">
-		<span
-			role="img"
-			aria-label={game.name}
-			class="text-3xl shrink-0 {tip ? 'cursor-default' : ''}"
-			onmouseenter={tip ? showTip : undefined}
-			onmouseleave={tip ? hideTip : undefined}
-		>{game.icon_emoji ?? '🎮'}</span>
+	<div class="flex items-center gap-3 px-4 py-3 bg-ayu-surface2/40">
+		<span role="img" aria-label={game.name} class="text-3xl shrink-0">{game.icon_emoji ?? '🎮'}</span>
 		<div class="flex-1 min-w-0">
-			<p class="font-semibold text-white leading-tight">{game.name}</p>
+			<div class="flex items-center gap-1.5 leading-tight">
+				<p class="font-semibold text-white">{game.name}</p>
+				{#if tip}
+					<button
+						onmouseenter={showTip}
+						onmouseleave={hideTip}
+						class="shrink-0 text-ayu-muted transition-colors hover:text-zinc-300"
+						aria-label="Game info"
+					>
+						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+							<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5"/>
+							<path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+							<circle cx="1" cy="1" r="1" transform="matrix(1 0 0 -1 11 9)" fill="currentColor"/>
+						</svg>
+					</button>
+				{/if}
+			</div>
 			{#if game.url}
 				<a
 					href={game.url}
 					target="_blank"
 					rel="noopener noreferrer"
 					onclick={(e) => e.stopPropagation()}
-					class="text-xs text-ayu-muted underline decoration-dotted hover:text-ayu-blue"
+					class="inline-flex items-center gap-0.5 rounded-md bg-ayu-blue/20 px-1.5 py-0.5 text-xs font-semibold text-ayu-blue transition hover:bg-ayu-blue/30"
 				>
 					Play ↗
 				</a>
@@ -206,7 +226,7 @@
 			<div class="flex items-center gap-2">
 				<div class="flex items-center gap-1.5 {myDnf ? 'text-ayu-red' : 'text-ayu-green'}">
 					<span>{myDnf ? '✗' : '✓'}</span>
-					<span class="font-mono text-sm font-semibold">
+					<span class="tabular-nums text-sm font-semibold">
 						{effectiveScore !== null ? formatScore(effectiveScore, game) : ''}
 					</span>
 				</div>
@@ -360,6 +380,42 @@
 			{/if}
 
 		{/if}<!-- end connections/decipher else -->
+		</div>
+	{/if}
+
+	{#if rankedScores.length > 0}
+		<div class="border-t border-ayu-border px-4 py-2.5">
+			<div class="mb-1.5 flex items-center gap-1.5">
+				<span class="text-sm font-semibold text-ayu-muted">Standings</span>
+				{#if onCopyResults}
+					<button
+						onclick={onCopyResults}
+						title="Copy results"
+						class="transition-colors {resultsCopied ? 'text-ayu-green' : 'text-ayu-muted hover:text-white'}"
+					>
+						{#if resultsCopied}
+							<svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+								<path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+							</svg>
+						{:else}
+							<svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+								<path fill-rule="evenodd" clip-rule="evenodd" d="M19.6495 0.799565C18.4834 -0.72981 16.0093 0.081426 16.0093 1.99313V3.91272C12.2371 3.86807 9.65665 5.16473 7.9378 6.97554C6.10034 8.9113 5.34458 11.3314 5.02788 12.9862C4.86954 13.8135 5.41223 14.4138 5.98257 14.6211C6.52743 14.8191 7.25549 14.7343 7.74136 14.1789C9.12036 12.6027 11.7995 10.4028 16.0093 10.5464V13.0069C16.0093 14.9186 18.4834 15.7298 19.6495 14.2004L23.3933 9.29034C24.2022 8.2294 24.2022 6.7706 23.3933 5.70966L19.6495 0.799565Z" fill="currentColor"/>
+								<path d="M7 1.00391H4C2.34315 1.00391 1 2.34705 1 4.00391V20.0039C1 21.6608 2.34315 23.0039 4 23.0039H20C21.6569 23.0039 23 21.6608 23 20.0039V17.0039C23 16.4516 22.5523 16.0039 22 16.0039C21.4477 16.0039 21 16.4516 21 17.0039V20.0039C21 20.5562 20.5523 21.0039 20 21.0039H4C3.44772 21.0039 3 20.5562 3 20.0039V4.00391C3 3.45162 3.44772 3.00391 4 3.00391H7C7.55228 3.00391 8 2.55619 8 2.00391C8 1.45162 7.55228 1.00391 7 1.00391Z" fill="currentColor"/>
+							</svg>
+						{/if}
+					</button>
+				{/if}
+			</div>
+			<div class="space-y-1.5">
+				{#each rankedScores as s}
+					<div class="flex items-baseline gap-2 text-sm">
+						<span class="w-5 shrink-0 text-center leading-none">{s.medal ? MEDAL_EMOJI[s.medal] : ''}</span>
+						<span class="shrink-0 {s.player_id === currentPlayerId ? 'font-semibold text-white' : 'text-zinc-300'}">{s.player_name}</span>
+						<span class="flex-1 border-b border-dashed border-zinc-600 mb-1"></span>
+						<span class="shrink-0 tabular-nums font-semibold {isDnf(s.raw_score, game) ? 'text-ayu-red' : s.player_id === currentPlayerId ? 'text-ayu-gold' : 'text-zinc-400'}">{formatScore(s.raw_score, game)}</span>
+					</div>
+				{/each}
+			</div>
 		</div>
 	{/if}
 </div>

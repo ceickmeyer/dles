@@ -58,6 +58,7 @@
 			: []
 	);
 	const gamesWithScores = $derived(gameResults.filter((gr) => gr.scores.length > 0));
+	const gameScoresMap = $derived(new Map(gameResults.map(gr => [gr.game.id, gr.scores])));
 	const allDone = $derived(
 		!!session && session.session_games.length > 0 && myScores.size === session.session_games.length
 	);
@@ -189,7 +190,7 @@
 		setTimeout(() => { shareCopied = false; }, 2000);
 	}
 
-	// Play finished sound when player completes all their games (not on initial load)
+	// Play finished sound when player submits all games for the session
 	let prevMyScoresSize = $state<number | null>(null);
 	$effect(() => {
 		const total = session?.session_games.length ?? 0;
@@ -198,16 +199,32 @@
 		prevMyScoresSize = current;
 	});
 
-	// Track reveal transition for podium animation
+	// Track reveal transition for podium animation (no sound — scores always visible)
 	let prevHidden = $state(false);
 	let justRevealed = $state(false);
 	$effect(() => {
 		if (prevHidden && !scoresHidden) {
 			justRevealed = true;
-			sounds.others();
 			setTimeout(() => { justRevealed = false; }, 1500);
 		}
 		prevHidden = scoresHidden;
+	});
+
+	// Play uptempo when current player takes 1st place on any game
+	let _goldInit = false;
+	let _prevGolds = new Map<string, string | null>();
+	$effect(() => {
+		if (!player.id) { _goldInit = false; return; }
+		const medals = new Map(
+			gameResults.map(gr => [gr.game.id, gr.scores.find(s => s.player_id === player.id)?.medal ?? null])
+		);
+		if (_goldInit) {
+			for (const [id, m] of medals) {
+				if (m === 'gold' && _prevGolds.get(id) !== 'gold') { sounds.uptempo(); break; }
+			}
+		}
+		_goldInit = true;
+		_prevGolds = medals;
 	});
 
 	async function refreshScores() {
@@ -322,6 +339,10 @@
 							playerId={player.id}
 							myScore={myScores.get(specialGame.game.id) ?? null}
 							onscored={refreshScores}
+							rankedScores={scoresHidden ? [] : (gameScoresMap.get(specialGame.game.id) ?? [])}
+							currentPlayerId={player.id}
+							onCopyResults={() => copyGameResults(specialGame.game, gameScoresMap.get(specialGame.game.id) ?? [])}
+							resultsCopied={copiedGameId === specialGame.game.id}
 						/>
 					</div>
 				{:else}
@@ -347,6 +368,10 @@
 								playerId={player.id}
 								myScore={myScores.get(sg.game.id) ?? null}
 								onscored={refreshScores}
+								rankedScores={scoresHidden ? [] : (gameScoresMap.get(sg.game.id) ?? [])}
+								currentPlayerId={player.id}
+								onCopyResults={() => copyGameResults(sg.game, gameScoresMap.get(sg.game.id) ?? [])}
+								resultsCopied={copiedGameId === sg.game.id}
 							/>
 						{/each}
 					{:else}
@@ -405,40 +430,7 @@
 				</div>
 			{/if}
 
-			<!-- Per-game results -->
-			{#if gamesWithScores.length > 0}
-				<div transition:fly={{ y: 24, duration: 400 }}>
-					<h2 class="mb-3 text-xs font-semibold uppercase tracking-widest text-ayu-muted">Results So Far</h2>
-					<div class="space-y-2">
-						{#each gamesWithScores as { game, is_special, scores: ranked }}
-							<div class="rounded-xl border {is_special ? 'border-ayu-gold/60 bg-ayu-surface' : 'border-ayu-border bg-ayu-surface'} px-4 py-3">
-								<button
-									onclick={() => copyGameResults(game, ranked)}
-									class="mb-2 flex items-center gap-1.5 text-sm font-semibold {is_special ? 'text-ayu-gold' : 'text-white'} hover:text-ayu-gold transition-colors group"
-									title="Click to copy results"
-								>
-									{game.icon_emoji ?? '🎮'} {game.name}
-									{#if is_special}<span class="text-xs font-normal text-ayu-gold/70">⭐</span>{/if}
-									<span class="text-xs font-normal {copiedGameId === game.id ? 'text-ayu-green' : 'text-ayu-muted opacity-0 group-hover:opacity-100'} transition-opacity">
-										{copiedGameId === game.id ? '✓ copied' : 'copy'}
-									</span>
-								</button>
-								<div class="space-y-1">
-									{#each ranked as s}
-										<div class="flex items-center justify-between text-sm">
-											<span class="text-zinc-300">
-												{#if s.medal}{MEDAL[s.medal]}{:else}<span class="inline-block w-5"></span>{/if}
-												<a href="/player/{s.player_id}" class="hover:text-ayu-gold transition-colors {s.player_id === player.id ? 'font-semibold text-white' : ''}">{s.player_name}</a>
-											</span>
-											<span class="font-mono {s.raw_score !== null && game.allow_dnf && game.max_score !== null && s.raw_score === game.max_score + 1 ? 'text-ayu-red' : 'text-ayu-gold'}">{formatScore(s.raw_score, game)}</span>
-										</div>
-									{/each}
-								</div>
-							</div>
-						{/each}
-					</div>
-				</div>
-			{/if}
+
 
 			<!-- Badges -->
 			{#if sessionBadges.length > 0}

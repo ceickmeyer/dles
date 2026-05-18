@@ -87,7 +87,7 @@
 				const msg = payload.new as Message;
 				messages = [...messages, msg];
 				if (msg.player_id !== playerId) {
-					sounds.others();
+					sounds.positive();
 					if (!open) unread++;
 				}
 				scrollToBottom();
@@ -110,7 +110,7 @@
 			</div>
 
 			<!-- Messages -->
-			<div bind:this={listEl} class="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-0" style="height: 320px">
+			<div bind:this={listEl} class="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-0" style="min-height:200px;max-height:360px">
 				{#if messages.length === 0}
 					<p class="text-center text-xs text-ayu-muted pt-8">No messages yet. Say something!</p>
 				{:else}

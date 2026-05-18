@@ -3,6 +3,12 @@
 
 	let { tally, currentPlayerId = null }: { tally: MedalTally[]; currentPlayerId?: string | null } =
 		$props();
+
+	// Tie-aware ranks: players with identical gold/silver/bronze share the same rank number
+	const ranks = $derived(tally.map(row => {
+		const first = tally.findIndex(r => r.gold === row.gold && r.silver === row.silver && r.bronze === row.bronze);
+		return first + 1;
+	}));
 </script>
 
 <div class="overflow-x-auto">
@@ -24,7 +30,7 @@
 						? 'border-b border-zinc-800 bg-amber-900/20 transition-colors'
 						: 'border-b border-zinc-800 transition-colors'}
 				>
-					<td class="py-2 text-zinc-500">{i + 1}</td>
+					<td class="py-2 text-zinc-500">{ranks[i]}</td>
 					<td class="py-2 font-medium text-white">
 						<a href="/player/{row.player_id}" class="hover:text-ayu-gold transition-colors">
 							{row.player_name}
