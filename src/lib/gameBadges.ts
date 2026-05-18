@@ -43,33 +43,33 @@ const GAME_BADGES: GameBadgeDef[] = [
 	// ── NYT Connections ──────────────────────────────────────────────
 	{
 		id: 'connections_perfect', emoji: '🟣', name: 'Flawless Victory',
-		description: 'Solved Connections with zero mistakes',
+		description: 'Perfect 200 — solved hardest-first with zero mistakes',
 		match: g => g.share_parser === 'connections',
-		condition: s => s === 100
+		condition: s => s === 200
 	},
 	{
 		id: 'connections_great', emoji: '💡', name: 'Galaxy Brain',
-		description: 'Scored 80 or higher on Connections',
+		description: 'Scored 160 or higher on Connections',
 		match: g => g.share_parser === 'connections',
-		condition: s => s >= 80 && s < 100
+		condition: s => s >= 160 && s < 200
 	},
 	{
 		id: 'connections_decent', emoji: '🎲', name: 'Educated Guesser',
-		description: 'Held it together despite a few mistakes',
+		description: 'Solved it, held it together mostly',
 		match: g => g.share_parser === 'connections',
-		condition: s => s >= 60 && s < 80
+		condition: s => s >= 100 && s < 160
 	},
 	{
 		id: 'connections_bad', emoji: '🤡', name: 'Fell For Every Trap',
 		description: 'Connections had its way with you',
 		match: g => g.share_parser === 'connections',
-		condition: s => s > 25 && s <= 40
+		condition: s => s >= 50 && s < 100
 	},
 	{
 		id: 'connections_disaster', emoji: '💀', name: 'Where Were You',
-		description: 'Scored 25 or below on Connections',
+		description: 'Scored under 50 on Connections',
 		match: g => g.share_parser === 'connections',
-		condition: s => s <= 25
+		condition: s => s < 50
 	},
 
 	// ── Wordle ───────────────────────────────────────────────────────
@@ -113,9 +113,9 @@ const GAME_BADGES: GameBadgeDef[] = [
 	},
 	{
 		id: 'bandle_two', emoji: '🎧', name: 'Music Nerd',
-		description: 'Got Bandle in just two clips',
+		description: 'Got Bandle in just three clips',
 		match: g => g.name.toLowerCase().includes('bandle'),
-		condition: (s, g) => !isDnf(s, g) && s === 2
+		condition: (s, g) => !isDnf(s, g) && s === 3
 	},
 	{
 		id: 'bandle_dnf', emoji: '🔇', name: 'Needs New Ears',
@@ -126,13 +126,13 @@ const GAME_BADGES: GameBadgeDef[] = [
 
 	// ── Costcodle ────────────────────────────────────────────────────
 	{
-		id: 'costcodle_expert', emoji: '🛒', name: 'Raised in a Costco',
+		id: 'costcodle_expert', emoji: '🛒', name: '$1.50 Hot Dog Combo',
 		description: 'Got Costcodle in 1 or 2 guesses',
 		match: g => g.share_parser === 'costcodle',
 		condition: (s, g) => !isDnf(s, g) && s <= 2
 	},
 	{
-		id: 'costcodle_dnf', emoji: '💸', name: 'Never Seen a Price Tag',
+		id: 'costcodle_dnf', emoji: '💸', name: 'Chicken Bake',
 		description: 'Could not figure out the Costcodle price',
 		match: g => g.share_parser === 'costcodle',
 		condition: isDnf
@@ -141,21 +141,15 @@ const GAME_BADGES: GameBadgeDef[] = [
 	// ── Decipher ─────────────────────────────────────────────────────
 	{
 		id: 'decipher_fast', emoji: '⚡', name: 'Cracked the Code',
-		description: 'Solved Decipher in under 30 seconds',
+		description: 'Solved Decipher in under 2 minutes',
 		match: g => g.share_parser === 'decipher',
-		condition: (s, g) => !isDnf(s, g) && s < 30
+		condition: s => s < 120
 	},
 	{
 		id: 'decipher_slow', emoji: '🐌', name: 'Got There Eventually',
-		description: 'Solved Decipher, but it took everything you had',
+		description: 'Needed 5 to 10 minutes to crack it',
 		match: g => g.share_parser === 'decipher',
-		condition: (s, g) => !isDnf(s, g) && s >= 180
-	},
-	{
-		id: 'decipher_dnf', emoji: '💀', name: 'Functionally Illiterate',
-		description: 'Failed to decipher the message',
-		match: g => g.share_parser === 'decipher',
-		condition: isDnf
+		condition: s => s >= 300 && s < 600
 	},
 
 	// ── Framed ───────────────────────────────────────────────────────
@@ -200,7 +194,7 @@ const GAME_BADGES: GameBadgeDef[] = [
 		condition: (s, g) => g.max_score !== null && !isDnf(s, g) && s >= g.max_score * 0.8
 	},
 	{
-		id: 'bird_city', emoji: '🐦', name: 'City Kid',
+		id: 'bird_city', emoji: '🐦', name: 'Oof',
 		description: 'Couldn\'t tell a real bird from a fake one',
 		match: g => g.name.toLowerCase().includes('bird'),
 		condition: (s, g) => g.max_score !== null && !isDnf(s, g) && s <= g.max_score * 0.4
@@ -228,16 +222,16 @@ const GAME_BADGES: GameBadgeDef[] = [
 		condition: (s, g) => !isDnf(s, g) && s > 45000
 	},
 	{
-		id: 'timeguessr_great', emoji: '🌍', name: 'Geographically Gifted Bastard',
+		id: 'timeguessr_great', emoji: '🌍', name: 'Geographically Gifted',
 		description: 'Scored over 40,000 on TimeGuessr',
 		match: g => g.share_parser === 'timeguessr',
 		condition: (s, g) => !isDnf(s, g) && s > 40000 && s <= 45000
 	},
 	{
 		id: 'timeguessr_lost', emoji: '🗺️', name: 'Confidently Wrong',
-		description: 'Scored under 10,000 on TimeGuessr',
+		description: 'Scored 20,000 or below on TimeGuessr',
 		match: g => g.share_parser === 'timeguessr',
-		condition: (s, g) => !isDnf(s, g) && s < 10000
+		condition: (s, g) => !isDnf(s, g) && s <= 20000
 	},
 ];
 
