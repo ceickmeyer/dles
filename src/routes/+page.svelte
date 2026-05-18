@@ -288,11 +288,11 @@
 
 <!-- Score toasts -->
 {#if toasts.length > 0}
-	<div class="fixed bottom-4 left-4 z-50 flex flex-col gap-2 items-start pointer-events-none">
+	<div class="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 items-center pointer-events-none">
 		{#each toasts as toast (toast.id)}
 			<div
-				transition:fly={{ x: -16, duration: 200 }}
-				class="rounded-xl border border-ayu-border bg-zinc-950 px-4 py-2.5 text-sm text-white shadow-xl"
+				transition:fly={{ y: -16, duration: 200 }}
+				class="rounded-xl border border-ayu-border bg-zinc-950 px-5 py-3 text-base font-medium text-white shadow-2xl"
 			>
 				{toast.message}
 			</div>
