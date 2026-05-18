@@ -102,8 +102,8 @@
 <!-- Floating chat button -->
 <div class="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-2">
 	{#if open}
-		<div class="flex flex-col w-80 sm:w-96 rounded-xl border border-ayu-border bg-zinc-950 shadow-2xl overflow-hidden"
-			style="max-height: min(500px, calc(100vh - 5rem))">
+		<div class="flex flex-col w-72 sm:w-80 rounded-xl border border-ayu-border bg-zinc-950 shadow-2xl overflow-hidden"
+			style="max-height: min(420px, calc(100vh - 5rem))">
 			<!-- Header -->
 			<div class="flex items-center justify-between border-b border-ayu-border bg-ayu-surface px-4 py-3">
 				<p class="text-sm font-semibold text-white">💬 Chat</p>
@@ -111,7 +111,7 @@
 			</div>
 
 			<!-- Messages -->
-			<div bind:this={listEl} class="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-0" style="min-height:200px;max-height:360px">
+			<div bind:this={listEl} class="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-0" style="min-height:140px;max-height:260px">
 				{#if messages.length === 0}
 					<p class="text-center text-xs text-ayu-muted pt-8">No messages yet. Say something!</p>
 				{:else}
@@ -123,7 +123,7 @@
 								</span>
 								<span class="text-xs text-zinc-600">{formatTime(msg.created_at)}</span>
 							</div>
-							<div class="max-w-[85%] rounded-2xl px-3 py-2 text-sm {msg.player_id === playerId
+							<div class="max-w-[85%] wrap-break-word rounded-2xl px-3 py-2 text-sm {msg.player_id === playerId
 								? 'bg-ayu-gold text-ayu-bg rounded-br-sm'
 								: 'bg-ayu-surface2 text-white rounded-bl-sm'}">
 								{msg.content}

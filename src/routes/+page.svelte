@@ -210,21 +210,21 @@
 		prevHidden = scoresHidden;
 	});
 
-	// Play uptempo when current player takes 1st place on any game
+	// Play uptempo when any player takes 1st place on any game
 	let _goldInit = false;
-	let _prevGolds = new Map<string, string | null>();
+	let _prevGoldHolders = new Map<string, string | null>();
 	$effect(() => {
-		if (!player.id) { _goldInit = false; return; }
-		const medals = new Map(
-			gameResults.map(gr => [gr.game.id, gr.scores.find(s => s.player_id === player.id)?.medal ?? null])
+		const holders = new Map(
+			gameResults.map(gr => [gr.game.id, gr.scores.find(s => s.medal === 'gold')?.player_id ?? null])
 		);
 		if (_goldInit) {
-			for (const [id, m] of medals) {
-				if (m === 'gold' && _prevGolds.get(id) !== 'gold') { sounds.uptempo(); break; }
+			for (const gr of gameResults) {
+				const holder = holders.get(gr.game.id);
+				if (holder !== null && gr.scores.length >= 2 && holder !== _prevGoldHolders.get(gr.game.id)) { sounds.uptempo(); break; }
 			}
 		}
 		_goldInit = true;
-		_prevGolds = medals;
+		_prevGoldHolders = holders;
 	});
 
 	async function refreshScores() {
