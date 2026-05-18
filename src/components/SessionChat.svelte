@@ -63,6 +63,7 @@
 			content
 		});
 		if (error) { sendError = 'Failed to send.'; draft = content; }
+		else sounds.positive();
 		sending = false;
 	}
 
