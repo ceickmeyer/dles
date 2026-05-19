@@ -5,6 +5,7 @@
 	import { playerStore } from '$lib/stores/player';
 	import { supabase } from '$lib/supabase';
 	import { sounds } from '$lib/sounds';
+	import { fireConfetti } from '$lib/confetti';
 	import { rankScores, computeSessionTally, sortTally } from '$lib/scoring';
 	import type { PlayerDayStat } from '$lib/scoring';
 	import { displayName, formatScore, isDnf, fmtSeconds } from '$lib/utils';
@@ -215,7 +216,7 @@
 	$effect(() => {
 		const total = session?.session_games.length ?? 0;
 		const current = myScores.size;
-		if (prevMyScoresSize !== null && total > 0 && current === total && prevMyScoresSize < total) sounds.finished();
+		if (prevMyScoresSize !== null && total > 0 && current === total && prevMyScoresSize < total) { sounds.finished(); fireConfetti(); }
 		prevMyScoresSize = current;
 	});
 
@@ -240,7 +241,7 @@
 		if (_goldInit) {
 			for (const gr of gameResults) {
 				const holder = holders.get(gr.game.id);
-				if (holder !== null && gr.scores.length >= 2 && holder !== _prevGoldHolders.get(gr.game.id)) { sounds.uptempo(); break; }
+				if (holder !== null && gr.scores.length >= 2 && holder !== _prevGoldHolders.get(gr.game.id)) { sounds.uptempo(); fireConfetti(); break; }
 			}
 		}
 		_goldInit = true;
