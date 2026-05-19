@@ -6,6 +6,7 @@
 	import { supabase } from '$lib/supabase';
 	import { sounds } from '$lib/sounds';
 	import { rankScores, computeSessionTally, sortTally } from '$lib/scoring';
+	import type { PlayerDayStat } from '$lib/scoring';
 	import { displayName, formatScore, isDnf, fmtSeconds } from '$lib/utils';
 	import type { ScoreWithPlayer } from '$lib/database.types';
 	import PlayerName from '$components/PlayerName.svelte';
@@ -62,6 +63,25 @@
 	const allDone = $derived(
 		!!session && session.session_games.length > 0 && myScores.size === session.session_games.length
 	);
+	const playerDayStats = $derived(new Map(
+		tally.map(row => [
+			row.player_id,
+			gameResults
+				.map(gr => {
+					const s = gr.scores.find(sc => sc.player_id === row.player_id);
+					if (!s) return null;
+					return {
+						gameName: gr.game.name,
+						gameEmoji: gr.game.icon_emoji,
+						formattedScore: formatScore(s.raw_score, gr.game),
+						medal: s.medal,
+						dnf: isDnf(s.raw_score, gr.game)
+					} satisfies PlayerDayStat;
+				})
+				.filter((x): x is PlayerDayStat => x !== null)
+		])
+	));
+
 	const specialGame = $derived(session?.session_games.find(sg => sg.is_special) ?? null);
 	const regularGames = $derived(session?.session_games.filter(sg => !sg.is_special) ?? []);
 
@@ -425,7 +445,7 @@
 						</div>
 					{/if}
 					<div class="rounded-xl border border-ayu-border bg-ayu-surface p-4">
-						<MedalTally {tally} currentPlayerId={player.id} />
+						<MedalTally {tally} currentPlayerId={player.id} playerStats={playerDayStats} />
 					</div>
 				</div>
 			{/if}

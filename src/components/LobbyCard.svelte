@@ -215,7 +215,7 @@
 					target="_blank"
 					rel="noopener noreferrer"
 					onclick={(e) => e.stopPropagation()}
-					class="inline-flex items-center gap-0.5 rounded-md bg-ayu-blue/20 px-1.5 py-0.5 text-xs font-semibold text-ayu-blue transition hover:bg-ayu-blue/30"
+					class="inline-flex items-center gap-0.5 rounded-md bg-ayu-blue/20 px-1.5 py-0.5 text-xs font-semibold transition hover:bg-ayu-blue/30 {submitted ? 'text-ayu-blue/40' : 'text-ayu-blue'}"
 				>
 					Play ↗
 				</a>

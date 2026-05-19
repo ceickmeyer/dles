@@ -2,6 +2,7 @@
 	import type { MedalTally } from '$lib/scoring';
 
 	let { tally, animate = false }: { tally: MedalTally[]; animate?: boolean } = $props();
+
 	const top3 = $derived(tally.slice(0, 3));
 
 	const BASE_HEIGHTS = ['10rem', '8rem', '4.5rem'];
@@ -45,7 +46,7 @@
 			{#if player}
 				<div class="flex flex-col items-center gap-2">
 					<span class="text-3xl">{medalEmojis[ranks[pos] - 1]}</span>
-					<span class="max-w-25 truncate text-center text-sm font-semibold text-white">
+					<span class="max-w-32 text-center text-sm font-semibold text-white leading-tight">
 						{player.player_name}
 					</span>
 					<div

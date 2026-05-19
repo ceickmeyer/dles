@@ -50,6 +50,14 @@ function medalForRank(rank: number): Medal {
 	return null;
 }
 
+export interface PlayerDayStat {
+	gameName: string;
+	gameEmoji: string | null;
+	formattedScore: string;
+	medal: Medal;
+	dnf: boolean;
+}
+
 export const MEDAL_EMOJI: Record<NonNullable<Medal>, string> = {
 	gold: '🥇',
 	silver: '🥈',
@@ -77,7 +85,7 @@ export function computeSessionTally(
 			if (score.medal === 'gold') t.gold++;
 			else if (score.medal === 'silver') t.silver++;
 			else if (score.medal === 'bronze') t.bronze++;
-			if (score.medal) t.total++;
+			t.total = t.gold * 4 + t.silver * 2 + t.bronze * 1;
 		}
 	}
 
@@ -86,6 +94,7 @@ export function computeSessionTally(
 
 export function sortTally(tally: MedalTally[]): MedalTally[] {
 	return [...tally].sort((a, b) => {
+		if (b.total !== a.total) return b.total - a.total;
 		if (b.gold !== a.gold) return b.gold - a.gold;
 		if (b.silver !== a.silver) return b.silver - a.silver;
 		if (b.bronze !== a.bronze) return b.bronze - a.bronze;
