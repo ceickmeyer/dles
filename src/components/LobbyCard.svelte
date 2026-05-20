@@ -11,6 +11,18 @@
 	import type { RankedScore } from '$lib/scoring';
 	import { MEDAL_EMOJI } from '$lib/scoring';
 
+	// Catppuccin Mocha
+	const CARD_ACCENTS = [
+		{ header: 'rgba(137,180,250,0.14)', border: 'rgba(137,180,250,0.45)' },  // blue
+		{ header: 'rgba(166,227,161,0.14)', border: 'rgba(166,227,161,0.45)' },  // green
+		{ header: 'rgba(250,179,135,0.14)', border: 'rgba(250,179,135,0.45)' },  // peach
+		{ header: 'rgba(203,166,247,0.14)', border: 'rgba(203,166,247,0.45)' },  // mauve
+		{ header: 'rgba(148,226,213,0.14)', border: 'rgba(148,226,213,0.45)' },  // teal
+		{ header: 'rgba(243,139,168,0.14)', border: 'rgba(243,139,168,0.45)' },  // flamingo
+	];
+
+	const FEATURED_ACCENT = { header: 'rgba(249,226,175,0.16)', border: 'rgba(249,226,175,0.70)' };
+
 	let {
 		game,
 		sessionId = '',
@@ -21,7 +33,9 @@
 		rankedScores = [],
 		currentPlayerId = '',
 		onCopyResults,
-		resultsCopied = false
+		resultsCopied = false,
+		colorIndex = 0,
+		featured = false
 	}: {
 		game: Game;
 		sessionId?: string;
@@ -33,7 +47,11 @@
 		currentPlayerId?: string;
 		onCopyResults?: () => void;
 		resultsCopied?: boolean;
+		colorIndex?: number;
+		featured?: boolean;
 	} = $props();
+
+	const accent = $derived(featured ? FEATURED_ACCENT : CARD_ACCENTS[colorIndex % CARD_ACCENTS.length]);
 
 	let previewScore = $state<number | null>(null);
 
@@ -182,14 +200,14 @@
 
 <div
 	class="overflow-hidden rounded-xl border transition-all duration-200"
-	style={submitted
+	style={`border-color:${accent.border};background-color:${submitted
 		? myDnf
-			? 'border-color:color-mix(in srgb,var(--color-ayu-red) 50%,transparent);background-color:color-mix(in srgb,var(--color-ayu-red) 6%,var(--color-ayu-surface))'
-			: 'border-color:color-mix(in srgb,var(--color-ayu-green) 60%,transparent);background-color:color-mix(in srgb,var(--color-ayu-green) 6%,var(--color-ayu-surface))'
-		: 'border-color:var(--color-ayu-border);background-color:var(--color-ayu-surface)'}
+			? 'color-mix(in srgb,var(--color-ayu-red) 6%,var(--color-ayu-surface))'
+			: 'color-mix(in srgb,var(--color-ayu-green) 6%,var(--color-ayu-surface))'
+		: 'var(--color-ayu-surface)'}`}
 >
 	<!-- Always-visible header -->
-	<div class="flex items-center gap-3 px-4 py-3 bg-ayu-surface2/40">
+	<div class="flex items-center gap-3 px-4 py-3" style="background-color:{accent.header}">
 		<span role="img" aria-label={game.name} class="text-3xl shrink-0">{game.icon_emoji ?? '🎮'}</span>
 		<div class="flex-1 min-w-0">
 			<div class="flex items-center gap-1.5 leading-tight">

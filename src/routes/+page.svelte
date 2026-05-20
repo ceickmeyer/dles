@@ -353,7 +353,7 @@
 			<div>
 				<h2 class="mb-3 text-xs font-semibold uppercase tracking-widest text-ayu-gold">⭐ Featured Game</h2>
 				{#if player.id}
-					<div class="rounded-xl ring-2 ring-ayu-gold/60">
+					<div class="rounded-xl" style="box-shadow:0px 0px 12px 7px rgba(249,226,175,0.35)">
 						<LobbyCard
 							game={specialGame.game}
 							sessionId={session.id}
@@ -364,6 +364,7 @@
 							currentPlayerId={player.id}
 							onCopyResults={() => copyGameResults(specialGame.game, gameScoresMap.get(specialGame.game.id) ?? [])}
 							resultsCopied={copiedGameId === specialGame.game.id}
+							featured
 						/>
 					</div>
 				{:else}
@@ -382,7 +383,7 @@
 				<h2 class="mb-3 text-xs font-semibold uppercase tracking-widest text-ayu-muted">Tonight's Games</h2>
 				<div class="space-y-2">
 					{#if player.id}
-						{#each regularGames as sg}
+						{#each regularGames as sg, i}
 							<LobbyCard
 								game={sg.game}
 								sessionId={session.id}
@@ -393,6 +394,7 @@
 								currentPlayerId={player.id}
 								onCopyResults={() => copyGameResults(sg.game, gameScoresMap.get(sg.game.id) ?? [])}
 								resultsCopied={copiedGameId === sg.game.id}
+								colorIndex={i}
 							/>
 						{/each}
 					{:else}
