@@ -200,7 +200,7 @@
 
 <div
 	class="overflow-hidden rounded-xl border transition-all duration-200"
-	style={`border-color:${accent.border};background-color:${submitted
+	style={`border-width:${submitted ? '1px' : '2px'};border-color:${accent.border};background-color:${submitted
 		? myDnf
 			? 'color-mix(in srgb,var(--color-ayu-red) 6%,var(--color-ayu-surface))'
 			: 'color-mix(in srgb,var(--color-ayu-green) 6%,var(--color-ayu-surface))'
