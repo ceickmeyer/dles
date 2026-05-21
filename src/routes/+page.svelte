@@ -264,9 +264,37 @@
 		if (fresh) scores = fresh as ScoreWithPlayer[];
 	}
 
+	function buildRankSuffix(
+		ranked: ReturnType<typeof rankScores>,
+		forPlayerId: string,
+		prevOverallLeaderId: string | null,
+		newOverallLeaderId: string | null
+	): string {
+		const parts: string[] = [];
+		const playerRank = ranked.find(r => r.player_id === forPlayerId);
+		if (ranked.length >= 2 && playerRank?.medal) {
+			const tied = ranked.filter(r => r.rank === playerRank.rank).length > 1;
+			if (playerRank.rank === 1) parts.push(tied ? 'Tied for 1st 🥇' : '1st place 🥇');
+			else if (playerRank.rank === 2) parts.push(tied ? 'Tied for 2nd 🥈' : '2nd place 🥈');
+			else if (playerRank.rank === 3) parts.push(tied ? 'Tied for 3rd 🥉' : '3rd place 🥉');
+		}
+		if (newOverallLeaderId === forPlayerId && prevOverallLeaderId !== forPlayerId) {
+			parts.push('Leads overall');
+		}
+		return parts.length > 0 ? ' · ' + parts.join(' · ') : '';
+	}
+
+	function overallLeaderId(t: typeof tally): string | null {
+		if (t.length === 0 || t[0].total === 0) return null;
+		if (t.length > 1 && t[0].total === t[1].total) return null; // tied — no sole leader
+		return t[0].player_id;
+	}
+
 	function makeOnscoredHandler(game: Game) {
 		return async (rawScore: number) => {
+			const prevLeader = overallLeaderId(tally);
 			await refreshScores();
+			const newLeader = overallLeaderId(tally);
 			const gameScores = scores
 				.filter(s => s.game_id === game.id)
 				.map(s => ({
@@ -275,19 +303,8 @@
 					raw_score: s.raw_score
 				}));
 			const ranked = rankScores(gameScores, game.scoring_direction);
-			const playerRank = ranked.find(r => r.player_id === player.id);
 			const dnf = isDnf(rawScore, game);
-			let rankSuffix = '';
-			if (!dnf && ranked.length >= 2) {
-				if (playerRank?.medal === 'gold') {
-					const goldCount = ranked.filter(r => r.rank === 1).length;
-					rankSuffix = goldCount > 1 ? ' · Tied for 1st 🥇' : ' · Takes the lead! 🥇';
-				} else if (playerRank?.medal === 'silver') {
-					rankSuffix = ' · 2nd place 🥈';
-				} else if (playerRank?.medal === 'bronze') {
-					rankSuffix = ' · 3rd place 🥉';
-				}
-			}
+			const rankSuffix = dnf ? '' : buildRankSuffix(ranked, player.id!, prevLeader, newLeader);
 			const logMsg = dnf
 				? `You DNF'd ${game.icon_emoji ?? '🎮'} ${game.name}`
 				: `You scored ${formatScore(rawScore, game)} on ${game.icon_emoji ?? '🎮'} ${game.name}${rankSuffix}`;
@@ -313,7 +330,9 @@
 					const isOtherInsert = row.player_id && row.player_id !== player.id && payload.eventType === 'INSERT';
 					if (isOtherInsert) sounds.others();
 
+					const prevLeader = overallLeaderId(tally);
 					await refreshScores(); // scores now contains fresh player info via join
+					const newLeader = overallLeaderId(tally);
 
 					if (isOtherInsert && row.raw_score !== undefined) {
 						const game = session.session_games.find(sg => sg.game.id === row.game_id)?.game;
@@ -324,7 +343,6 @@
 
 							addToast(toastMessage(row.raw_score, game, name));
 
-							// Compute rank from fresh scores for this game
 							const gameScores = scores
 								.filter(s => s.game_id === row.game_id)
 								.map(s => ({
@@ -333,21 +351,8 @@
 									raw_score: s.raw_score
 								}));
 							const ranked = rankScores(gameScores, game.scoring_direction);
-							const playerRank = ranked.find(r => r.player_id === row.player_id);
-
 							const dnf = isDnf(row.raw_score, game);
-							let rankSuffix = '';
-							if (!dnf && ranked.length >= 2) {
-								if (playerRank?.medal === 'gold') {
-									const goldCount = ranked.filter(r => r.rank === 1).length;
-									rankSuffix = goldCount > 1 ? ' · Tied for 1st 🥇' : ' · Takes the lead! 🥇';
-								} else if (playerRank?.medal === 'silver') {
-									rankSuffix = ' · 2nd place 🥈';
-								} else if (playerRank?.medal === 'bronze') {
-									rankSuffix = ' · 3rd place 🥉';
-								}
-							}
-
+							const rankSuffix = dnf ? '' : buildRankSuffix(ranked, row.player_id!, prevLeader, newLeader);
 							const logMsg = dnf
 								? `${name} DNF'd ${game.icon_emoji ?? '🎮'} ${game.name}`
 								: `${name} scored ${formatScore(row.raw_score, game)} on ${game.icon_emoji ?? '🎮'} ${game.name}${rankSuffix}`;
