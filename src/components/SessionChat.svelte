@@ -6,11 +6,13 @@
 	let {
 		sessionId,
 		playerId = null,
-		playerName = null
+		playerName = null,
+		logEntries = []
 	}: {
 		sessionId: string;
 		playerId?: string | null;
 		playerName?: string | null;
+		logEntries?: { id: number; message: string; ts: number }[];
 	} = $props();
 
 	interface Message {
@@ -21,6 +23,10 @@
 		created_at: string;
 	}
 
+	type ChatItem =
+		| { kind: 'message'; msg: Message; sortKey: number }
+		| { kind: 'log'; entry: { id: number; message: string; ts: number }; sortKey: number };
+
 	let messages = $state<Message[]>([]);
 	let draft = $state('');
 	let open = $state(true);
@@ -30,7 +36,12 @@
 	let listEl = $state<HTMLElement | null>(null);
 	let subscription: ReturnType<typeof supabase.channel> | null = null;
 
-	function formatTime(ts: string): string {
+	const merged = $derived(([
+		...messages.map(m => ({ kind: 'message' as const, msg: m, sortKey: new Date(m.created_at).getTime() })),
+		...logEntries.map(e => ({ kind: 'log' as const, entry: e, sortKey: e.ts }))
+	] as ChatItem[]).sort((a, b) => a.sortKey - b.sortKey));
+
+	function formatTime(ts: string | number): string {
 		return new Date(ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 	}
 
@@ -75,6 +86,13 @@
 		}
 	}
 
+	// Scroll when new log entries arrive
+	let prevLogCount = 0;
+	$effect(() => {
+		if (logEntries.length > prevLogCount) scrollToBottom();
+		prevLogCount = logEntries.length;
+	});
+
 	onMount(async () => {
 		await load();
 		subscription = supabase
@@ -112,23 +130,31 @@
 
 			<!-- Messages -->
 			<div bind:this={listEl} class="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-0" style="min-height:140px;max-height:260px">
-				{#if messages.length === 0}
+				{#if merged.length === 0}
 					<p class="text-center text-xs text-ayu-muted pt-8">No messages yet. Say something!</p>
 				{:else}
-					{#each messages as msg (msg.id)}
-						<div class="flex flex-col {msg.player_id === playerId ? 'items-end' : 'items-start'}">
-							<div class="flex items-baseline gap-1.5 mb-0.5">
-								<span class="text-xs font-semibold {msg.player_id === playerId ? 'text-zinc-400' : 'text-ayu-gold'}">
-									{msg.player_id === playerId ? 'You' : msg.player_name}
-								</span>
-								<span class="text-xs text-zinc-600">{formatTime(msg.created_at)}</span>
+					{#each merged as item (item.kind === 'message' ? `m-${item.msg.id}` : `l-${item.entry.id}`)}
+						{#if item.kind === 'log'}
+							<div class="flex items-center gap-2 py-0.5">
+								<div class="flex-1 h-px bg-ayu-border"></div>
+								<span class="text-xs text-ayu-blue/80 px-1 text-center">{item.entry.message}</span>
+								<div class="flex-1 h-px bg-ayu-border"></div>
 							</div>
-							<div class="max-w-[85%] wrap-break-word rounded-2xl px-3 py-2 text-sm {msg.player_id === playerId
-								? 'bg-ayu-gold text-ayu-bg rounded-br-sm'
-								: 'bg-ayu-surface2 text-white rounded-bl-sm'}">
-								{msg.content}
+						{:else}
+							<div class="flex flex-col {item.msg.player_id === playerId ? 'items-end' : 'items-start'}">
+								<div class="flex items-baseline gap-1.5 mb-0.5">
+									<span class="text-xs font-semibold {item.msg.player_id === playerId ? 'text-zinc-400' : 'text-ayu-gold'}">
+										{item.msg.player_id === playerId ? 'You' : item.msg.player_name}
+									</span>
+									<span class="text-xs text-zinc-600">{formatTime(item.msg.created_at)}</span>
+								</div>
+								<div class="max-w-[85%] wrap-break-word rounded-2xl px-3 py-2 text-sm {item.msg.player_id === playerId
+									? 'bg-ayu-gold text-ayu-bg rounded-br-sm'
+									: 'bg-ayu-surface2 text-white rounded-bl-sm'}">
+									{item.msg.content}
+								</div>
 							</div>
-						</div>
+						{/if}
 					{/each}
 				{/if}
 			</div>

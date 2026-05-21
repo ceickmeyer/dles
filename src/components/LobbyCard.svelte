@@ -42,7 +42,7 @@
 		playerId?: string;
 		myScore?: number | null;
 		preview?: boolean;
-		onscored?: () => void;
+		onscored?: (rawScore: number) => void;
 		rankedScores?: RankedScore[];
 		currentPlayerId?: string;
 		onCopyResults?: () => void;
@@ -170,7 +170,7 @@
 		pendingPick = null;
 		expanded = false;
 		sounds.submit();
-		onscored?.();
+		onscored?.(score);
 	}
 
 	function quickPickClass(n: number): string {

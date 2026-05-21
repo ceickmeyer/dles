@@ -9,7 +9,7 @@
 	import { rankScores, computeSessionTally, sortTally } from '$lib/scoring';
 	import type { PlayerDayStat } from '$lib/scoring';
 	import { displayName, formatScore, isDnf, fmtSeconds } from '$lib/utils';
-	import type { ScoreWithPlayer } from '$lib/database.types';
+	import type { ScoreWithPlayer, Game } from '$lib/database.types';
 	import PlayerName from '$components/PlayerName.svelte';
 	import LobbyCard from '$components/LobbyCard.svelte';
 	import Podium from '$components/Podium.svelte';
@@ -103,6 +103,13 @@
 		}
 		copiedGameId = game.id;
 		setTimeout(() => { copiedGameId = null; }, 2000);
+	}
+
+	// Game log entries (passed to chat)
+	let logEntries = $state<{ id: number; message: string; ts: number }[]>([]);
+	let logSeq = 0;
+	function addLogEntry(message: string) {
+		logEntries = [...logEntries, { id: ++logSeq, message, ts: Date.now() }];
 	}
 
 	// Score toasts
@@ -257,6 +264,37 @@
 		if (fresh) scores = fresh as ScoreWithPlayer[];
 	}
 
+	function makeOnscoredHandler(game: Game) {
+		return async (rawScore: number) => {
+			await refreshScores();
+			const gameScores = scores
+				.filter(s => s.game_id === game.id)
+				.map(s => ({
+					player_id: s.player_id,
+					player_name: displayName(s.player as { name: string; alias?: string | null }),
+					raw_score: s.raw_score
+				}));
+			const ranked = rankScores(gameScores, game.scoring_direction);
+			const playerRank = ranked.find(r => r.player_id === player.id);
+			const dnf = isDnf(rawScore, game);
+			let rankSuffix = '';
+			if (!dnf && ranked.length >= 2) {
+				if (playerRank?.medal === 'gold') {
+					const goldCount = ranked.filter(r => r.rank === 1).length;
+					rankSuffix = goldCount > 1 ? ' · Tied for 1st 🥇' : ' · Takes the lead! 🥇';
+				} else if (playerRank?.medal === 'silver') {
+					rankSuffix = ' · 2nd place 🥈';
+				} else if (playerRank?.medal === 'bronze') {
+					rankSuffix = ' · 3rd place 🥉';
+				}
+			}
+			const logMsg = dnf
+				? `You DNF'd ${game.icon_emoji ?? '🎮'} ${game.name}`
+				: `You scored ${formatScore(rawScore, game)} on ${game.icon_emoji ?? '🎮'} ${game.name}${rankSuffix}`;
+			addLogEntry(logMsg);
+		};
+	}
+
 	onMount(async () => {
 		// Verify stored player ID still exists (handles DB reset / admin deletion)
 		if (player.id) {
@@ -272,15 +310,50 @@
 				.channel(`scores:${session.id}`)
 				.on('postgres_changes', { event: '*', schema: 'public', table: 'scores', filter: `session_id=eq.${session.id}` }, async (payload) => {
 					const row = payload.new as { player_id?: string; game_id?: string; raw_score?: number };
-					if (row.player_id && row.player_id !== player.id && payload.eventType === 'INSERT') {
-						sounds.others();
+					const isOtherInsert = row.player_id && row.player_id !== player.id && payload.eventType === 'INSERT';
+					if (isOtherInsert) sounds.others();
+
+					await refreshScores(); // scores now contains fresh player info via join
+
+					if (isOtherInsert && row.raw_score !== undefined) {
 						const game = session.session_games.find(sg => sg.game.id === row.game_id)?.game;
-						if (game && row.raw_score !== undefined) {
-							const { data: p } = await supabase.from('players').select('name, alias').eq('id', row.player_id).maybeSingle();
-							if (p) addToast(toastMessage(row.raw_score, game, displayName(p)));
+						if (game) {
+							const entry = scores.find(s => s.player_id === row.player_id && s.game_id === row.game_id);
+							const pData = entry?.player as { name: string; alias?: string | null } | null | undefined;
+							const name = pData ? displayName(pData) : 'Someone';
+
+							addToast(toastMessage(row.raw_score, game, name));
+
+							// Compute rank from fresh scores for this game
+							const gameScores = scores
+								.filter(s => s.game_id === row.game_id)
+								.map(s => ({
+									player_id: s.player_id,
+									player_name: displayName(s.player as { name: string; alias?: string | null }),
+									raw_score: s.raw_score
+								}));
+							const ranked = rankScores(gameScores, game.scoring_direction);
+							const playerRank = ranked.find(r => r.player_id === row.player_id);
+
+							const dnf = isDnf(row.raw_score, game);
+							let rankSuffix = '';
+							if (!dnf && ranked.length >= 2) {
+								if (playerRank?.medal === 'gold') {
+									const goldCount = ranked.filter(r => r.rank === 1).length;
+									rankSuffix = goldCount > 1 ? ' · Tied for 1st 🥇' : ' · Takes the lead! 🥇';
+								} else if (playerRank?.medal === 'silver') {
+									rankSuffix = ' · 2nd place 🥈';
+								} else if (playerRank?.medal === 'bronze') {
+									rankSuffix = ' · 3rd place 🥉';
+								}
+							}
+
+							const logMsg = dnf
+								? `${name} DNF'd ${game.icon_emoji ?? '🎮'} ${game.name}`
+								: `${name} scored ${formatScore(row.raw_score, game)} on ${game.icon_emoji ?? '🎮'} ${game.name}${rankSuffix}`;
+							addLogEntry(logMsg);
 						}
 					}
-					refreshScores();
 				})
 				.subscribe()
 		);
@@ -304,7 +377,7 @@
 {/if}
 
 {#if session}
-	<SessionChat sessionId={session.id} playerId={player.id || null} playerName={player.name || null} />
+	<SessionChat sessionId={session.id} playerId={player.id || null} playerName={player.name || null} {logEntries} />
 {/if}
 
 <!-- Score toasts -->
@@ -359,7 +432,7 @@
 							sessionId={session.id}
 							playerId={player.id}
 							myScore={myScores.get(specialGame.game.id) ?? null}
-							onscored={refreshScores}
+							onscored={makeOnscoredHandler(specialGame.game)}
 							rankedScores={scoresHidden ? [] : (gameScoresMap.get(specialGame.game.id) ?? [])}
 							currentPlayerId={player.id}
 							onCopyResults={() => copyGameResults(specialGame.game, gameScoresMap.get(specialGame.game.id) ?? [])}
@@ -389,7 +462,7 @@
 								sessionId={session.id}
 								playerId={player.id}
 								myScore={myScores.get(sg.game.id) ?? null}
-								onscored={refreshScores}
+								onscored={makeOnscoredHandler(sg.game)}
 								rankedScores={scoresHidden ? [] : (gameScoresMap.get(sg.game.id) ?? [])}
 								currentPlayerId={player.id}
 								onCopyResults={() => copyGameResults(sg.game, gameScoresMap.get(sg.game.id) ?? [])}
