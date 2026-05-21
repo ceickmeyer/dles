@@ -8,7 +8,7 @@ export interface DecipherResult {
 	display: string;
 }
 
-const MAX_STARS = 3;
+const MAX_STARS = 5;
 const FAIL_SCORE = 600; // 10 minutes — cap for a failed game
 
 function extractSeconds(text: string): number | null {
