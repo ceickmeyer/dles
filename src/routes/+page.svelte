@@ -297,7 +297,8 @@
 				}));
 			const ranked = rankScores(gameScores, game.scoring_direction);
 			const dnf = isDnf(rawScore, game);
-			const name = displayName(player as { name: string; alias?: string | null });
+			const myEntry = scores.find(s => s.player_id === player.id && s.game_id === game.id);
+			const name = myEntry ? displayName(myEntry.player as { name: string; alias?: string | null }) : player.name ?? 'Someone';
 			const rankSuffix = dnf ? '' : buildRankSuffix(ranked, player.id!, prevLeader, newLeader);
 			const logMsg = dnf
 				? `${name} DNF'd ${game.icon_emoji ?? '🎮'} ${game.name}`
