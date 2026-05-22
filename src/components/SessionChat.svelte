@@ -21,32 +21,16 @@
 		created_at: string;
 	}
 
-	interface LogEntry {
-		id: string;
-		message: string;
-		created_at: string;
-	}
-
-	type ChatItem =
-		| { kind: 'message'; msg: Message; sortKey: number }
-		| { kind: 'log'; entry: LogEntry; sortKey: number };
-
 	let messages = $state<Message[]>([]);
-	let logEntries = $state<LogEntry[]>([]);
 	let draft = $state('');
 	let open = $state(true);
 	let sending = $state(false);
 	let sendError = $state('');
 	let unread = $state(0);
 	let listEl = $state<HTMLElement | null>(null);
-	let subscriptions: ReturnType<typeof supabase.channel>[] = [];
+	let subscription: ReturnType<typeof supabase.channel> | null = null;
 
-	const merged = $derived(([
-		...messages.map(m => ({ kind: 'message' as const, msg: m, sortKey: new Date(m.created_at).getTime() })),
-		...logEntries.map(e => ({ kind: 'log' as const, entry: e, sortKey: new Date(e.created_at).getTime() }))
-	] as ChatItem[]).sort((a, b) => a.sortKey - b.sortKey));
-
-	function formatTime(ts: string | number): string {
+	function formatTime(ts: string): string {
 		return new Date(ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 	}
 
@@ -56,22 +40,13 @@
 	}
 
 	async function load() {
-		const [{ data: msgs }, { data: logs }] = await Promise.all([
-			supabase
-				.from('messages')
-				.select('id, player_id, player_name, content, created_at')
-				.eq('session_id', sessionId)
-				.order('created_at', { ascending: true })
-				.limit(100),
-			supabase
-				.from('session_logs')
-				.select('id, message, created_at')
-				.eq('session_id', sessionId)
-				.order('created_at', { ascending: true })
-				.limit(200),
-		]);
-		messages = (msgs ?? []) as Message[];
-		logEntries = (logs ?? []) as LogEntry[];
+		const { data } = await supabase
+			.from('messages')
+			.select('id, player_id, player_name, content, created_at')
+			.eq('session_id', sessionId)
+			.order('created_at', { ascending: true })
+			.limit(200);
+		messages = (data ?? []) as Message[];
 		scrollToBottom();
 	}
 
@@ -102,8 +77,7 @@
 
 	onMount(async () => {
 		await load();
-
-		const chatSub = supabase
+		subscription = supabase
 			.channel(`chat:${sessionId}`)
 			.on('postgres_changes', {
 				event: 'INSERT',
@@ -113,31 +87,16 @@
 			}, (payload) => {
 				const msg = payload.new as Message;
 				messages = [...messages, msg];
-				if (msg.player_id !== playerId) {
+				if (msg.player_id !== playerId && msg.player_id !== null) {
 					sounds.positive();
 					if (!open) unread++;
 				}
 				scrollToBottom();
 			})
 			.subscribe();
-
-		const logSub = supabase
-			.channel(`session_logs:${sessionId}`)
-			.on('postgres_changes', {
-				event: 'INSERT',
-				schema: 'public',
-				table: 'session_logs',
-				filter: `session_id=eq.${sessionId}`
-			}, (payload) => {
-				logEntries = [...logEntries, payload.new as LogEntry];
-				scrollToBottom();
-			})
-			.subscribe();
-
-		subscriptions = [chatSub, logSub];
 	});
 
-	onDestroy(() => { subscriptions.forEach(s => s.unsubscribe()); });
+	onDestroy(() => { subscription?.unsubscribe(); });
 </script>
 
 <!-- Floating chat button -->
@@ -153,28 +112,28 @@
 
 			<!-- Messages -->
 			<div bind:this={listEl} class="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-0" style="min-height:140px;max-height:260px">
-				{#if merged.length === 0}
+				{#if messages.length === 0}
 					<p class="text-center text-xs text-ayu-muted pt-8">No messages yet. Say something!</p>
 				{:else}
-					{#each merged as item (item.kind === 'message' ? `m-${item.msg.id}` : `l-${item.entry.id}`)}
-						{#if item.kind === 'log'}
+					{#each messages as msg (msg.id)}
+						{#if msg.player_id === null}
 							<div class="flex items-center gap-2 py-0.5">
 								<div class="flex-1 h-px bg-ayu-border"></div>
-								<span class="text-xs text-ayu-blue/80 px-1 text-center">{item.entry.message}</span>
+								<span class="text-xs text-ayu-blue/80 px-1 text-center">{msg.content}</span>
 								<div class="flex-1 h-px bg-ayu-border"></div>
 							</div>
 						{:else}
-							<div class="flex flex-col {item.msg.player_id === playerId ? 'items-end' : 'items-start'}">
+							<div class="flex flex-col {msg.player_id === playerId ? 'items-end' : 'items-start'}">
 								<div class="flex items-baseline gap-1.5 mb-0.5">
-									<span class="text-xs font-semibold {item.msg.player_id === playerId ? 'text-zinc-400' : 'text-ayu-gold'}">
-										{item.msg.player_id === playerId ? 'You' : item.msg.player_name}
+									<span class="text-xs font-semibold {msg.player_id === playerId ? 'text-zinc-400' : 'text-ayu-gold'}">
+										{msg.player_id === playerId ? 'You' : msg.player_name}
 									</span>
-									<span class="text-xs text-zinc-600">{formatTime(item.msg.created_at)}</span>
+									<span class="text-xs text-zinc-600">{formatTime(msg.created_at)}</span>
 								</div>
-								<div class="max-w-[85%] wrap-break-word rounded-2xl px-3 py-2 text-sm {item.msg.player_id === playerId
+								<div class="max-w-[85%] wrap-break-word rounded-2xl px-3 py-2 text-sm {msg.player_id === playerId
 									? 'bg-ayu-gold text-ayu-bg rounded-br-sm'
 									: 'bg-ayu-surface2 text-white rounded-bl-sm'}">
-									{item.msg.content}
+									{msg.content}
 								</div>
 							</div>
 						{/if}

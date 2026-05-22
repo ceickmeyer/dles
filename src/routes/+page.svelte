@@ -301,7 +301,8 @@
 			const logMsg = dnf
 				? `You DNF'd ${game.icon_emoji ?? '🎮'} ${game.name}`
 				: `You scored ${formatScore(rawScore, game)} on ${game.icon_emoji ?? '🎮'} ${game.name}${rankSuffix}`;
-			supabase.from('session_logs').insert({ session_id: session!.id, message: logMsg });
+			const { error: logErr } = await supabase.from('messages').insert({ session_id: session!.id, player_id: null, player_name: '__log__', content: logMsg });
+			if (logErr) console.error('log insert failed:', logErr);
 		};
 	}
 
@@ -349,7 +350,8 @@
 							const logMsg = dnf
 								? `${name} DNF'd ${game.icon_emoji ?? '🎮'} ${game.name}`
 								: `${name} scored ${formatScore(row.raw_score, game)} on ${game.icon_emoji ?? '🎮'} ${game.name}${rankSuffix}`;
-							supabase.from('session_logs').insert({ session_id: session.id, message: logMsg });
+							const { error: logErr } = await supabase.from('messages').insert({ session_id: session.id, player_id: null, player_name: '__log__', content: logMsg });
+							if (logErr) console.error('log insert failed:', logErr);
 						}
 					}
 				})

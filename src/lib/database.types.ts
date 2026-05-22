@@ -125,6 +125,12 @@ export interface Database {
 					{ foreignKeyName: 'weekly_schedule_special_game_id_fkey'; columns: ['special_game_id']; referencedRelation: 'games'; referencedColumns: ['id'] }
 				];
 			};
+			messages: {
+				Row: { id: string; session_id: string; player_id: string | null; player_name: string; content: string; created_at: string };
+				Insert: { id?: string; session_id: string; player_id: string | null; player_name: string; content: string; created_at?: string };
+				Update: { id?: string; session_id?: string; player_id?: string | null; player_name?: string; content?: string; created_at?: string };
+				Relationships: [];
+			};
 			session_logs: {
 				Row: { id: string; session_id: string; message: string; created_at: string };
 				Insert: { id?: string; session_id: string; message: string; created_at?: string };
