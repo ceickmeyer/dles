@@ -105,13 +105,6 @@
 		setTimeout(() => { copiedGameId = null; }, 2000);
 	}
 
-	// Game log entries (passed to chat)
-	let logEntries = $state<{ id: number; message: string; ts: number }[]>([]);
-	let logSeq = 0;
-	function addLogEntry(message: string) {
-		logEntries = [...logEntries, { id: ++logSeq, message, ts: Date.now() }];
-	}
-
 	// Score toasts
 	let toasts = $state<{ id: number; message: string }[]>([]);
 	let toastSeq = 0;
@@ -308,7 +301,7 @@
 			const logMsg = dnf
 				? `You DNF'd ${game.icon_emoji ?? '🎮'} ${game.name}`
 				: `You scored ${formatScore(rawScore, game)} on ${game.icon_emoji ?? '🎮'} ${game.name}${rankSuffix}`;
-			addLogEntry(logMsg);
+			supabase.from('session_logs').insert({ session_id: session!.id, message: logMsg });
 		};
 	}
 
@@ -356,7 +349,7 @@
 							const logMsg = dnf
 								? `${name} DNF'd ${game.icon_emoji ?? '🎮'} ${game.name}`
 								: `${name} scored ${formatScore(row.raw_score, game)} on ${game.icon_emoji ?? '🎮'} ${game.name}${rankSuffix}`;
-							addLogEntry(logMsg);
+							supabase.from('session_logs').insert({ session_id: session.id, message: logMsg });
 						}
 					}
 				})
@@ -382,7 +375,7 @@
 {/if}
 
 {#if session}
-	<SessionChat sessionId={session.id} playerId={player.id || null} playerName={player.name || null} {logEntries} />
+	<SessionChat sessionId={session.id} playerId={player.id || null} playerName={player.name || null} />
 {/if}
 
 <!-- Score toasts -->

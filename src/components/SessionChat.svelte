@@ -7,12 +7,10 @@
 		sessionId,
 		playerId = null,
 		playerName = null,
-		logEntries = []
 	}: {
 		sessionId: string;
 		playerId?: string | null;
 		playerName?: string | null;
-		logEntries?: { id: number; message: string; ts: number }[];
 	} = $props();
 
 	interface Message {
@@ -23,22 +21,29 @@
 		created_at: string;
 	}
 
+	interface LogEntry {
+		id: string;
+		message: string;
+		created_at: string;
+	}
+
 	type ChatItem =
 		| { kind: 'message'; msg: Message; sortKey: number }
-		| { kind: 'log'; entry: { id: number; message: string; ts: number }; sortKey: number };
+		| { kind: 'log'; entry: LogEntry; sortKey: number };
 
 	let messages = $state<Message[]>([]);
+	let logEntries = $state<LogEntry[]>([]);
 	let draft = $state('');
 	let open = $state(true);
 	let sending = $state(false);
 	let sendError = $state('');
 	let unread = $state(0);
 	let listEl = $state<HTMLElement | null>(null);
-	let subscription: ReturnType<typeof supabase.channel> | null = null;
+	let subscriptions: ReturnType<typeof supabase.channel>[] = [];
 
 	const merged = $derived(([
 		...messages.map(m => ({ kind: 'message' as const, msg: m, sortKey: new Date(m.created_at).getTime() })),
-		...logEntries.map(e => ({ kind: 'log' as const, entry: e, sortKey: e.ts }))
+		...logEntries.map(e => ({ kind: 'log' as const, entry: e, sortKey: new Date(e.created_at).getTime() }))
 	] as ChatItem[]).sort((a, b) => a.sortKey - b.sortKey));
 
 	function formatTime(ts: string | number): string {
@@ -51,13 +56,22 @@
 	}
 
 	async function load() {
-		const { data } = await supabase
-			.from('messages')
-			.select('id, player_id, player_name, content, created_at')
-			.eq('session_id', sessionId)
-			.order('created_at', { ascending: true })
-			.limit(100);
-		messages = (data ?? []) as Message[];
+		const [{ data: msgs }, { data: logs }] = await Promise.all([
+			supabase
+				.from('messages')
+				.select('id, player_id, player_name, content, created_at')
+				.eq('session_id', sessionId)
+				.order('created_at', { ascending: true })
+				.limit(100),
+			supabase
+				.from('session_logs')
+				.select('id, message, created_at')
+				.eq('session_id', sessionId)
+				.order('created_at', { ascending: true })
+				.limit(200),
+		]);
+		messages = (msgs ?? []) as Message[];
+		logEntries = (logs ?? []) as LogEntry[];
 		scrollToBottom();
 	}
 
@@ -86,16 +100,10 @@
 		}
 	}
 
-	// Scroll when new log entries arrive
-	let prevLogCount = 0;
-	$effect(() => {
-		if (logEntries.length > prevLogCount) scrollToBottom();
-		prevLogCount = logEntries.length;
-	});
-
 	onMount(async () => {
 		await load();
-		subscription = supabase
+
+		const chatSub = supabase
 			.channel(`chat:${sessionId}`)
 			.on('postgres_changes', {
 				event: 'INSERT',
@@ -112,9 +120,24 @@
 				scrollToBottom();
 			})
 			.subscribe();
+
+		const logSub = supabase
+			.channel(`session_logs:${sessionId}`)
+			.on('postgres_changes', {
+				event: 'INSERT',
+				schema: 'public',
+				table: 'session_logs',
+				filter: `session_id=eq.${sessionId}`
+			}, (payload) => {
+				logEntries = [...logEntries, payload.new as LogEntry];
+				scrollToBottom();
+			})
+			.subscribe();
+
+		subscriptions = [chatSub, logSub];
 	});
 
-	onDestroy(() => { subscription?.unsubscribe(); });
+	onDestroy(() => { subscriptions.forEach(s => s.unsubscribe()); });
 </script>
 
 <!-- Floating chat button -->
