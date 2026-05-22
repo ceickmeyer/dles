@@ -283,27 +283,8 @@
 		return t[0].player_id;
 	}
 
-	function makeOnscoredHandler(game: Game) {
-		return async (rawScore: number) => {
-			const prevLeader = overallLeaderId(tally);
-			await refreshScores();
-			const newLeader = overallLeaderId(tally);
-			const gameScores = scores
-				.filter(s => s.game_id === game.id)
-				.map(s => ({
-					player_id: s.player_id,
-					player_name: displayName(s.player as { name: string; alias?: string | null }),
-					raw_score: s.raw_score
-				}));
-			const ranked = rankScores(gameScores, game.scoring_direction);
-			const dnf = isDnf(rawScore, game);
-			const rankSuffix = dnf ? '' : buildRankSuffix(ranked, player.id!, prevLeader, newLeader);
-			const logMsg = dnf
-				? `You DNF'd ${game.icon_emoji ?? '🎮'} ${game.name}`
-				: `You scored ${formatScore(rawScore, game)} on ${game.icon_emoji ?? '🎮'} ${game.name}${rankSuffix}`;
-			const { error: logErr } = await supabase.from('messages').insert({ session_id: session!.id, player_id: null, player_name: '__log__', content: logMsg });
-			if (logErr) console.error('log insert failed:', logErr);
-		};
+	function makeOnscoredHandler(_game: Game) {
+		return async () => { await refreshScores(); };
 	}
 
 	onMount(async () => {
@@ -328,14 +309,14 @@
 					await refreshScores(); // scores now contains fresh player info via join
 					const newLeader = overallLeaderId(tally);
 
-					if (isOtherInsert && row.raw_score !== undefined) {
+					if (payload.eventType === 'INSERT' && row.raw_score !== undefined) {
 						const game = session.session_games.find(sg => sg.game.id === row.game_id)?.game;
 						if (game) {
 							const entry = scores.find(s => s.player_id === row.player_id && s.game_id === row.game_id);
 							const pData = entry?.player as { name: string; alias?: string | null } | null | undefined;
 							const name = pData ? displayName(pData) : 'Someone';
 
-							addToast(toastMessage(row.raw_score, game, name));
+							if (isOtherInsert) addToast(toastMessage(row.raw_score, game, name));
 
 							const gameScores = scores
 								.filter(s => s.game_id === row.game_id)
