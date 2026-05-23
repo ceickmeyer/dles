@@ -298,6 +298,12 @@
 				}));
 			const ranked = rankScores(gameScores, game.scoring_direction);
 			const dnf = isDnf(rawScore, game);
+			const myRank = ranked.find(r => r.player_id === player.id);
+			if (!dnf && ranked.length >= 2) {
+				if (myRank?.medal === 'gold') sounds.gold();
+				else if (myRank?.medal === 'silver') sounds.silver();
+				else if (myRank?.medal === 'bronze') sounds.bronze();
+			}
 			const myEntry = scores.find(s => s.player_id === player.id && s.game_id === game.id);
 			const name = myEntry ? displayName(myEntry.player as { name: string; alias?: string | null }) : player.name ?? 'Someone';
 			const rankSuffix = dnf ? '' : buildRankSuffix(ranked, player.id!, prevLeader, newLeader);

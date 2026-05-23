@@ -21,4 +21,7 @@ export const sounds = {
 	finished: () => play('/sounds/finished.mp3'),
 	uptempo:  debounced('/sounds/uptempo.mp3', 2000),
 	positive: () => play('/sounds/positive.mp3'),
+	gold:     () => play('/sounds/gold.mp3'),
+	silver:   () => play('/sounds/silver.mp3'),
+	bronze:   () => play('/sounds/bronze.mp3'),
 };
