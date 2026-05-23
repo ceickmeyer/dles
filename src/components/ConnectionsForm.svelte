@@ -6,7 +6,7 @@
 		onsubmit
 	}: {
 		myScore?: number | null;
-		onsubmit: (score: number) => Promise<void>;
+		onsubmit: (score: number, text: string) => Promise<void>;
 	} = $props();
 
 	let shareText = $state('');
@@ -23,11 +23,11 @@
 		else parseError = 'Could not parse that result — make sure you paste the full share text.';
 	}
 
-	async function submit(score: number) {
+	async function submit(score: number, text: string) {
 		submitting = true;
 		error = '';
 		try {
-			await onsubmit(score);
+			await onsubmit(score, text);
 		} catch (e: unknown) {
 			error = e instanceof Error ? e.message : 'Submit failed.';
 		} finally {
@@ -57,7 +57,7 @@
 			</div>
 			<div class="mt-3 flex gap-2">
 				<button
-					onclick={() => submit(parsed!.score)}
+					onclick={() => submit(parsed!.score, shareText.trim())}
 					disabled={submitting}
 					class="flex-1 rounded-lg bg-ayu-gold py-2 font-bold text-ayu-bg transition hover:brightness-110 disabled:opacity-50"
 				>

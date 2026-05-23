@@ -121,6 +121,18 @@
 	}
 	function hideTip() { tipVisible = false; }
 
+	let shareTipText = $state<string | null>(null);
+	let shareTipX = $state(0);
+	let shareTipY = $state(0);
+
+	function showShareTip(e: MouseEvent, text: string) {
+		const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+		shareTipX = rect.left + rect.width / 2;
+		shareTipY = rect.top - 8;
+		shareTipText = text;
+	}
+	function hideShareTip() { shareTipText = null; }
+
 	function toggle() {
 		expanded = !expanded;
 	}
@@ -426,7 +438,11 @@
 			</div>
 			<div class="space-y-1.5">
 				{#each rankedScores as s}
-					<div class="flex items-baseline gap-2 text-sm">
+					<div
+						class="flex items-baseline gap-2 text-sm {s.share_text ? 'cursor-default' : ''}"
+						onmouseenter={s.share_text ? (e) => showShareTip(e, s.share_text!) : undefined}
+						onmouseleave={s.share_text ? hideShareTip : undefined}
+					>
 						<span class="w-5 shrink-0 text-center leading-none">{s.medal ? MEDAL_EMOJI[s.medal] : ''}</span>
 						<span class="shrink-0 {s.player_id === currentPlayerId ? 'font-semibold text-white' : 'text-zinc-300'}">{s.player_name}</span>
 						<span class="flex-1 border-b border-dashed border-zinc-600 mb-1"></span>
@@ -444,5 +460,14 @@
 		style="left:{tipX}px;top:{tipY}px;transform:translateY(-100%)"
 	>
 		{tip}
+	</div>
+{/if}
+
+{#if shareTipText}
+	<div
+		class="pointer-events-none fixed z-50 rounded-lg border border-ayu-border bg-zinc-900 px-3 py-2 shadow-xl"
+		style="left:{shareTipX}px;top:{shareTipY}px;transform:translateY(-100%) translateX(-50%)"
+	>
+		<pre class="text-sm leading-snug">{shareTipText}</pre>
 	</div>
 {/if}

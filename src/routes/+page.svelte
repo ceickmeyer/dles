@@ -38,7 +38,8 @@
 							.map((s) => ({
 								player_id: s.player_id,
 								player_name: displayName(s.player as { name: string; alias?: string | null }),
-								raw_score: s.raw_score
+								raw_score: s.raw_score,
+								share_text: s.share_text ?? null
 							})),
 						game.scoring_direction
 					)

@@ -6,6 +6,7 @@ export interface PlayerScore {
 	player_id: string;
 	player_name: string;
 	raw_score: number;
+	share_text?: string | null;
 }
 
 export interface RankedScore extends PlayerScore {
