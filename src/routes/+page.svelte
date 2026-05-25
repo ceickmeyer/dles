@@ -242,7 +242,7 @@
 		if (_goldInit) {
 			for (const gr of gameResults) {
 				const holder = holders.get(gr.game.id);
-				if (holder !== null && gr.scores.length >= 2 && holder !== _prevGoldHolders.get(gr.game.id)) { sounds.uptempo(); fireConfetti(); break; }
+				if (holder !== null && gr.scores.length >= 2 && holder !== _prevGoldHolders.get(gr.game.id)) { sounds.uptempo(); if (holder === player.id) fireConfetti(); break; }
 			}
 		}
 		_goldInit = true;
