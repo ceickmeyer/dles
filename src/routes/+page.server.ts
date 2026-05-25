@@ -69,6 +69,7 @@ async function loadPrevWinners(supabase: ReturnType<typeof createClient<Database
 
 	const tally = sortTally([...computeSessionTally(gameResults).values()]);
 	return tally.slice(0, 3).map((t, i) => ({
+		player_id: t.player_id,
 		player_name: t.player_name,
 		medal: i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉',
 		gold: t.gold, silver: t.silver, bronze: t.bronze,

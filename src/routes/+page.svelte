@@ -370,7 +370,10 @@
 				<p class="mb-2 text-xs font-semibold uppercase tracking-widest text-ayu-muted">Yesterday's Winners</p>
 				<div class="flex flex-col gap-1">
 					{#each data.prevWinners as w}
-						<span class="text-sm text-white">{w.medal} {w.player_name}</span>
+						<span class="text-sm">
+							{w.medal}
+							<a href="/player/{w.player_id}" class="text-white hover:text-ayu-gold transition">{w.player_name}</a>
+						</span>
 					{/each}
 				</div>
 			</div>
