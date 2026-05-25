@@ -181,7 +181,6 @@
 		}
 		pendingPick = null;
 		expanded = false;
-		sounds.submit();
 		onscored?.(score);
 	}
 
