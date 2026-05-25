@@ -437,6 +437,7 @@
 			</div>
 			<div class="space-y-1.5">
 				{#each rankedScores as s}
+					<!-- svelte-ignore a11y_no_static_element_interactions -->
 					<div
 						class="flex items-baseline gap-2 text-sm {s.share_text ? 'cursor-default' : ''}"
 						onmouseenter={s.share_text ? (e) => showShareTip(e, s.share_text!) : undefined}

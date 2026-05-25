@@ -135,33 +135,7 @@
 		return parseLocalDate(dateStr).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 	}
 
-	// Returns midnight in the user's local timezone at the end of sessionDate
-	function localMidnight(sessionDate: string): Date {
-		const [y, m, d] = sessionDate.split('-').map(Number);
-		return new Date(y, m - 1, d + 1); // start of next day = end of session date
-	}
 
-	// Countdown — uses expires_at if set, otherwise local midnight for active/lobby sessions
-	let timeLeft = $state('');
-	$effect(() => {
-		if (!session) { timeLeft = ''; return; }
-		const endTime = session.expires_at
-			? new Date(session.expires_at)
-			: (session.status === 'active' || session.status === 'lobby') ? localMidnight(session.date) : null;
-		if (!endTime) { timeLeft = ''; return; }
-
-		function tick() {
-			const diff = endTime!.getTime() - Date.now();
-			if (diff <= 0) { timeLeft = 'Session ended'; return; }
-			const h = Math.floor(diff / 3600000);
-			const m = Math.floor((diff % 3600000) / 60000);
-			const s = Math.floor((diff % 60000) / 1000);
-			timeLeft = h > 0 ? `${h}h ${m}m` : `${m}:${String(s).padStart(2, '0')}`;
-		}
-		tick();
-		const id = setInterval(tick, 1000);
-		return () => clearInterval(id);
-	});
 
 	function buildShareText(): string {
 		if (!session) return '';
@@ -390,27 +364,17 @@
 	<NextSessionCountdown {next} />
 {:else}
 	<div class="space-y-8">
-		<!-- Session header -->
-		<div>
-			<div class="flex items-baseline justify-between">
-				<h1 class="text-2xl font-bold text-white">{session.name}</h1>
-				<span
-					class="rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider {
-						session.status === 'active'  ? 'bg-ayu-green text-ayu-bg' :
-						session.status === 'paused'  ? 'bg-amber-700 text-white' :
-						'bg-ayu-surface2 text-ayu-muted'
-					}"
-				>
-					{session.status === 'active' ? '● Live' : session.status === 'paused' ? '⏸ Paused' : 'Lobby'}
-				</span>
+		<!-- Yesterday's winners -->
+		{#if data.prevWinners?.length}
+			<div class="rounded-xl border border-ayu-border bg-ayu-surface px-4 py-3">
+				<p class="mb-2 text-xs font-semibold uppercase tracking-widest text-ayu-muted">Yesterday's Standings</p>
+				<div class="flex flex-col gap-1">
+					{#each data.prevWinners as w}
+						<span class="text-sm text-white">{w.medal} {w.player_name}</span>
+					{/each}
+				</div>
 			</div>
-			<div class="mt-0.5 flex items-center justify-between">
-				<p class="text-sm text-ayu-muted">{formatSessionDate(session.date)}</p>
-				{#if timeLeft}
-					<p class="text-xs text-ayu-muted">Ends in <span class="font-mono text-zinc-300">{timeLeft}</span></p>
-				{/if}
-			</div>
-		</div>
+		{/if}
 
 		<!-- Featured game (if any) -->
 		{#if specialGame}
