@@ -367,7 +367,7 @@
 		<!-- Yesterday's winners -->
 		{#if data.prevWinners?.length}
 			<div class="rounded-xl border border-ayu-border bg-ayu-surface px-4 py-3">
-				<p class="mb-2 text-xs font-semibold uppercase tracking-widest text-ayu-muted">Yesterday's Standings</p>
+				<p class="mb-2 text-xs font-semibold uppercase tracking-widest text-ayu-muted">Yesterday's Winners</p>
 				<div class="flex flex-col gap-1">
 					{#each data.prevWinners as w}
 						<span class="text-sm text-white">{w.medal} {w.player_name}</span>
