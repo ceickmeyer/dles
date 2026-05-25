@@ -373,6 +373,7 @@
 						<span class="text-sm">
 							{w.medal}
 							<a href="/player/{w.player_id}" class="text-white hover:text-ayu-gold transition">{w.player_name}</a>
+							{#if w.goldStreak}<span class="text-orange-400">🔥x{w.goldStreak}</span>{/if}
 						</span>
 					{/each}
 				</div>
