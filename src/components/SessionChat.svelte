@@ -152,6 +152,7 @@
 							bind:value={draft}
 							placeholder="Say something…"
 							maxlength={500}
+							autocomplete="off"
 							disabled={sending}
 							class="flex-1 rounded-lg border border-ayu-border bg-ayu-bg px-3 py-1.5 text-sm text-white placeholder-ayu-muted focus:border-ayu-gold focus:outline-none disabled:opacity-50"
 						/>
