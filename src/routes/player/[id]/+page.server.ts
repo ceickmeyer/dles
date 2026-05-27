@@ -35,7 +35,8 @@ export const load: PageServerLoad = async ({ params }) => {
 			badges: [],
 			favGame: null,
 			perGame: [],
-			recentSessions: []
+			recentSessions: [],
+			rankHistory: [],
 		};
 	}
 
@@ -57,7 +58,8 @@ export const load: PageServerLoad = async ({ params }) => {
 			badges: [],
 			favGame: null,
 			perGame: [],
-			recentSessions: []
+			recentSessions: [],
+			rankHistory: [],
 		};
 	}
 
@@ -74,6 +76,7 @@ export const load: PageServerLoad = async ({ params }) => {
 	// Session history for streaks and recent-sessions display
 	const playerHistory: { won: boolean; podium: boolean }[] = [];
 	const recentSessions: { name: string; date: string; gold: number; silver: number; bronze: number; total: number; rank: number; outOf: number }[] = [];
+	const sessionRankMap = new Map<string, { rank: number; outOf: number }>();
 
 	let overallGold = 0, overallSilver = 0, overallBronze = 0;
 
@@ -133,6 +136,7 @@ export const load: PageServerLoad = async ({ params }) => {
 		const topGolds = sessionTally[0]?.gold ?? 0;
 		const myRank = sessionTally.findIndex(t => t.player_id === params.id) + 1;
 
+		sessionRankMap.set(sessionId, { rank: myRank, outOf: sessionTally.length });
 		overallGold += myTally.gold;
 		overallSilver += myTally.silver;
 		overallBronze += myTally.bronze;
@@ -185,6 +189,13 @@ export const load: PageServerLoad = async ({ params }) => {
 
 	const perGame = [...perGameMap.values()].sort((a, b) => b.gold - a.gold || b.total - a.total);
 
+	const rankHistory = sessions.slice(-10).map(s => ({
+		name: s.name,
+		date: s.date,
+		rank: sessionRankMap.get(s.id)?.rank ?? null,
+		outOf: sessionRankMap.get(s.id)?.outOf ?? null,
+	}));
+
 	return {
 		player,
 		displayName: displayName(player),
@@ -198,6 +209,7 @@ export const load: PageServerLoad = async ({ params }) => {
 		gameBadges,
 		favGame,
 		perGame,
-		recentSessions: recentSessions.slice(-10).reverse()
+		recentSessions: recentSessions.slice(-10).reverse(),
+		rankHistory,
 	};
 };

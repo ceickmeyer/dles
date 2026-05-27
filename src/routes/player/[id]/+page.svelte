@@ -1,4 +1,5 @@
 <script lang="ts">
+	import RankChart from '$components/RankChart.svelte';
 	let { data } = $props();
 </script>
 
@@ -24,6 +25,14 @@
 	</div>
 
 	{#if data.nights > 0}
+		<!-- Rank history chart -->
+		{#if data.rankHistory.length >= 2}
+			<div class="rounded-xl border border-ayu-border bg-ayu-surface px-4 py-3">
+				<p class="mb-2 text-xs font-semibold uppercase tracking-widest text-ayu-muted">Rank History</p>
+				<RankChart sessions={data.rankHistory} />
+			</div>
+		{/if}
+
 		<!-- Medals overview -->
 		<div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
 			{#each [
