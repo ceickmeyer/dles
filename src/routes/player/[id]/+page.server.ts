@@ -43,13 +43,21 @@ export const load: PageServerLoad = async ({ params }) => {
 	const sessionIds = sessions.map(s => s.id);
 	const sessionMeta = new Map(sessions.map(s => [s.id, { name: s.name, date: s.date }]));
 
-	// Fetch all scores in these sessions (not just this player — needed to rank properly)
-	const { data: allScores } = await supabase
-		.from('scores')
-		.select('*, player:players(name, alias), game:games(id, name, icon_emoji, scoring_direction, max_score, allow_dnf)')
-		.in('session_id', sessionIds);
+	// Fetch all scores — paginated to avoid Supabase's 1000-row default limit
+	const allScores: any[] = [];
+	for (let from = 0; ; from += 1000) {
+		const { data: page } = await supabase
+			.from('scores')
+			.select('*, player:players(name, alias), game:games(id, name, icon_emoji, scoring_direction, max_score, allow_dnf)')
+			.in('session_id', sessionIds)
+			.order('session_id').order('game_id').order('player_id')
+			.range(from, from + 999);
+		if (!page?.length) break;
+		allScores.push(...page);
+		if (page.length < 1000) break;
+	}
 
-	if (!allScores || allScores.length === 0) {
+	if (allScores.length === 0) {
 		return {
 			player,
 			displayName: displayName(player),

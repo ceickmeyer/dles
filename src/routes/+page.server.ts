@@ -34,34 +34,40 @@ function computeNextSession(schedules: { name: string; days_of_week: number[]; s
 	return { isToday: best.daysAhead === 0, daysAhead: best.daysAhead, label: best.label };
 }
 
-type SessionRow = { id: string; session_games: { game: { id: string; scoring_direction: string } }[] };
-type ScoreRow = { session_id: string; game_id: string; player_id: string; raw_score: number; player: { name: string; alias?: string | null } };
+type ScoreRow = {
+	session_id: string;
+	game_id: string;
+	player_id: string;
+	raw_score: number;
+	player: { name: string; alias?: string | null };
+	game: { scoring_direction: string };
+};
 
-function sessionGoldWinner(session: SessionRow, allScores: ScoreRow[]): string | null {
-	const sessionScores = allScores.filter(s => s.session_id === session.id);
-	if (!sessionScores.length) return null;
-	const games = session.session_games.map(sg => sg.game);
-	const gameResults = games.map(game => ({
+function tallyFromScores(scores: ScoreRow[]): ReturnType<typeof sortTally> {
+	const byGame = new Map<string, ScoreRow[]>();
+	for (const s of scores) {
+		if (!byGame.has(s.game_id)) byGame.set(s.game_id, []);
+		byGame.get(s.game_id)!.push(s);
+	}
+	const gameResults = [...byGame.values()].map(group => ({
 		scores: rankScores(
-			sessionScores
-				.filter(s => s.game_id === game.id)
-				.map(s => ({
-					player_id: s.player_id,
-					player_name: displayName(s.player),
-					raw_score: s.raw_score,
-				})),
-			game.scoring_direction as 'higher_is_better' | 'lower_is_better'
+			group.map(s => ({
+				player_id: s.player_id,
+				player_name: displayName(s.player),
+				raw_score: s.raw_score,
+			})),
+			group[0].game.scoring_direction as 'higher_is_better' | 'lower_is_better'
 		)
 	}));
-	const tally = sortTally([...computeSessionTally(gameResults).values()]);
-	return tally[0]?.player_id ?? null;
+	return sortTally([...computeSessionTally(gameResults).values()]);
 }
 
 async function loadPrevWinners(supabase: ReturnType<typeof createClient<Database>>, excludeSessionId: string | null) {
 	let sessionsQuery = supabase
 		.from('sessions')
-		.select('id, name, session_games(game:games(id, scoring_direction))')
-		.order('created_at', { ascending: false })
+		.select('id')
+		.eq('status', 'finished')
+		.order('date', { ascending: false })
 		.limit(10);
 
 	if (excludeSessionId) sessionsQuery = sessionsQuery.neq('id', excludeSessionId);
@@ -71,36 +77,23 @@ async function loadPrevWinners(supabase: ReturnType<typeof createClient<Database
 
 	const { data: allScores } = await supabase
 		.from('scores')
-		.select('session_id, game_id, player_id, raw_score, player:players(name, alias)')
+		.select('session_id, game_id, player_id, raw_score, player:players(name, alias), game:games(scoring_direction)')
 		.in('session_id', sessions.map(s => s.id));
 
 	if (!allScores?.length) return null;
 
-	const prev = sessions[0] as SessionRow;
-	const prevScores = allScores.filter(s => s.session_id === prev.id) as ScoreRow[];
+	const prevId = sessions[0].id;
+	const prevScores = (allScores as ScoreRow[]).filter(s => s.session_id === prevId);
 	if (!prevScores.length) return null;
 
-	const games = prev.session_games.map(sg => sg.game);
-	const gameResults = games.map(game => ({
-		scores: rankScores(
-			prevScores
-				.filter(s => s.game_id === game.id)
-				.map(s => ({
-					player_id: s.player_id,
-					player_name: displayName(s.player as { name: string; alias?: string | null }),
-					raw_score: s.raw_score,
-				})),
-			game.scoring_direction as 'higher_is_better' | 'lower_is_better'
-		)
-	}));
-
-	const tally = sortTally([...computeSessionTally(gameResults).values()]);
+	const tally = tallyFromScores(prevScores);
 	if (!tally.length) return null;
 
 	const goldWinnerId = tally[0].player_id;
 	let goldStreak = 1;
 	for (let i = 1; i < sessions.length; i++) {
-		const winner = sessionGoldWinner(sessions[i] as SessionRow, allScores as ScoreRow[]);
+		const sessionScores = (allScores as ScoreRow[]).filter(s => s.session_id === sessions[i].id);
+		const winner = tallyFromScores(sessionScores)[0]?.player_id ?? null;
 		if (winner === goldWinnerId) goldStreak++;
 		else break;
 	}
