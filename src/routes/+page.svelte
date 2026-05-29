@@ -12,7 +12,6 @@
 	import type { ScoreWithPlayer, Game } from '$lib/database.types';
 	import PlayerName from '$components/PlayerName.svelte';
 	import LobbyCard from '$components/LobbyCard.svelte';
-	import Podium from '$components/Podium.svelte';
 	import MedalTally from '$components/MedalTally.svelte';
 	import SessionChat from '$components/SessionChat.svelte';
 	import NextSessionCountdown from '$components/NextSessionCountdown.svelte';
@@ -195,17 +194,6 @@
 		prevMyScoresSize = current;
 	});
 
-	// Track reveal transition for podium animation (no sound — scores always visible)
-	let prevHidden = $state(false);
-	let justRevealed = $state(false);
-	$effect(() => {
-		if (prevHidden && !scoresHidden) {
-			justRevealed = true;
-			setTimeout(() => { justRevealed = false; }, 1500);
-		}
-		prevHidden = scoresHidden;
-	});
-
 	// Play uptempo when any player takes 1st place on any game
 	let _goldInit = false;
 	let _prevGoldHolders = new Map<string, string | null>();
@@ -366,15 +354,23 @@
 	<div class="space-y-8">
 		<!-- Yesterday's winners -->
 		{#if data.prevWinners?.length}
-			<div class="rounded-xl border border-ayu-border bg-ayu-surface px-4 py-3">
+			<div>
 				<p class="mb-2 text-xs font-semibold uppercase tracking-widest text-ayu-muted">Yesterday's Winners</p>
-				<div class="flex flex-col gap-1">
-					{#each data.prevWinners as w}
-						<span class="text-sm">
-							{w.medal}
-							<a href="/player/{w.player_id}" class="text-white hover:text-ayu-gold transition">{w.player_name}</a>
-							{#if w.goldStreak}<span class="text-orange-400">🔥x{w.goldStreak}</span>{/if}
-						</span>
+				<div class="grid gap-2" style="grid-template-columns: repeat({data.prevWinners.length}, minmax(0, 1fr))">
+					{#each data.prevWinners as w, i}
+						<div class="rounded-xl border px-3 py-3 text-center
+							{i === 0 ? 'border-ayu-gold/40 bg-yellow-400/10' : i === 1 ? 'border-zinc-500/40 bg-slate-400/8' : 'border-amber-700/40 bg-amber-800/10'}">
+							<p class="text-2xl">{w.medal}</p>
+							<a href="/player/{w.player_id}" class="mt-1 block text-sm font-semibold leading-tight text-white transition hover:text-ayu-gold">
+								{w.player_name}
+							</a>
+							{#if w.goldStreak}
+								<p class="mt-1 text-xs text-orange-400">🔥×{w.goldStreak}</p>
+							{/if}
+							<p class="mt-1 text-xs text-ayu-muted">
+								{[w.gold > 0 ? `🥇×${w.gold}` : '', w.silver > 0 ? `🥈×${w.silver}` : '', w.bronze > 0 ? `🥉×${w.bronze}` : ''].filter(Boolean).join(' ')}
+							</p>
+						</div>
 					{/each}
 				</div>
 			</div>
@@ -473,12 +469,7 @@
 			<!-- Live standings -->
 			{#if tally.length > 0}
 				<div>
-					<h2 class="mb-4 text-xs font-semibold uppercase tracking-widest text-ayu-muted">Live Standings</h2>
-					{#if tally.length >= 2}
-						<div class="mb-6 rounded-xl border border-ayu-border bg-ayu-surface p-6">
-							<Podium {tally} animate={justRevealed} />
-						</div>
-					{/if}
+					<h2 class="mb-3 text-xs font-semibold uppercase tracking-widest text-ayu-muted">Live Standings</h2>
 					<div class="rounded-xl border border-ayu-border bg-ayu-surface p-4">
 						<MedalTally {tally} currentPlayerId={player.id} playerStats={playerDayStats} />
 					</div>

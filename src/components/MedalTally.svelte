@@ -76,11 +76,11 @@
 		<tbody>
 			{#each tally as row, i}
 				<tr
-					class={row.player_id === currentPlayerId
-						? 'border-b border-zinc-800 bg-amber-900/20 transition-colors'
-						: 'border-b border-zinc-800 transition-colors'}
+					class="border-b border-zinc-800 transition-colors
+						{ranks[i] === 1 ? 'bg-yellow-400/10' : ranks[i] === 2 ? 'bg-slate-400/8' : ranks[i] === 3 ? 'bg-amber-700/10' : row.player_id === currentPlayerId ? 'bg-amber-900/20' : ''}"
 				>
-					<td class="py-2 text-zinc-500">{ranks[i]}</td>
+					<td class="py-2
+						{ranks[i] === 1 ? 'text-ayu-gold font-bold' : ranks[i] === 2 ? 'text-zinc-400 font-bold' : ranks[i] === 3 ? 'text-amber-700 font-bold' : 'text-zinc-600'}">{ranks[i]}</td>
 					<td
 						class="py-2 font-medium text-white"
 						onmouseenter={(e) => showPlayerTip(e, row)}
