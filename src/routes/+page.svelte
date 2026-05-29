@@ -64,6 +64,10 @@
 	const allDone = $derived(
 		!!session && session.session_games.length > 0 && myScores.size === session.session_games.length
 	);
+	const prevRankMap = $derived(
+		new Map((data.prevRanks ?? []).map((r: { player_id: string; rank: number; outOf: number }) => [r.player_id, r]))
+	);
+
 	const playerDayStats = $derived(new Map(
 		tally.map(row => [
 			row.player_id,
@@ -471,7 +475,7 @@
 				<div>
 					<h2 class="mb-3 text-xs font-semibold uppercase tracking-widest text-ayu-muted">Live Standings</h2>
 					<div class="rounded-xl border border-ayu-border bg-ayu-surface p-4">
-						<MedalTally {tally} currentPlayerId={player.id} playerStats={playerDayStats} />
+						<MedalTally {tally} currentPlayerId={player.id} playerStats={playerDayStats} {prevRankMap} />
 					</div>
 				</div>
 			{/if}

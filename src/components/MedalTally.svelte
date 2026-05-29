@@ -2,10 +2,11 @@
 	import type { MedalTally, PlayerDayStat } from '$lib/scoring';
 	import { MEDAL_EMOJI } from '$lib/scoring';
 
-	let { tally, currentPlayerId = null, playerStats = new Map() }: {
+	let { tally, currentPlayerId = null, playerStats = new Map(), prevRankMap = new Map() }: {
 		tally: MedalTally[];
 		currentPlayerId?: string | null;
 		playerStats?: Map<string, PlayerDayStat[]>;
+		prevRankMap?: Map<string, { rank: number; outOf: number }>;
 	} = $props();
 
 	// Tie-aware ranks: players with identical gold/silver/bronze share the same rank number
@@ -30,6 +31,7 @@
 	let playerTipY = $state(0);
 	let tipStats = $state<PlayerDayStat[]>([]);
 	let tipName = $state('');
+	let tipPlayerId = $state('');
 
 	const MEDAL_ORDER: Record<string, number> = { gold: 0, silver: 1, bronze: 2 };
 
@@ -41,6 +43,7 @@
 			.filter(s => s.medal !== null)
 			.sort((a, b) => MEDAL_ORDER[a.medal!] - MEDAL_ORDER[b.medal!]);
 		tipName = row.player_name;
+		tipPlayerId = row.player_id;
 		playerTipVisible = true;
 	}
 </script>
@@ -50,6 +53,7 @@
 		<thead>
 			<tr class="border-b border-zinc-700 text-zinc-400">
 				<th class="py-2 text-left font-medium">#</th>
+				<th class="py-2 w-5"></th>
 				<th class="py-2 text-left font-medium">Player</th>
 				<th class="py-2 text-center font-medium">🥇</th>
 				<th class="py-2 text-center font-medium">🥈</th>
@@ -81,6 +85,25 @@
 				>
 					<td class="py-2
 						{ranks[i] === 1 ? 'text-ayu-gold font-bold' : ranks[i] === 2 ? 'text-zinc-400 font-bold' : ranks[i] === 3 ? 'text-amber-700 font-bold' : 'text-zinc-600'}">{ranks[i]}</td>
+					<td class="py-2 pr-1">
+						{#if prevRankMap.has(row.player_id)}
+							{@const prev = prevRankMap.get(row.player_id)!}
+							{@const delta = prev.rank - ranks[i]}
+							{#if delta > 0}
+								<svg class="w-3.5 h-3.5" style="color: var(--color-ayu-green)" fill="currentColor" viewBox="0 0 512 512">
+									<path stroke="currentColor" stroke-width="40" stroke-linejoin="round" d="M505.752,358.248L271.085,123.582c-8.331-8.331-21.839-8.331-30.17,0L6.248,358.248c-8.331,8.331-8.331,21.839,0,30.17s21.839,8.331,30.17,0L256,168.837l219.582,219.582c8.331,8.331,21.839,8.331,30.17,0S514.083,366.58,505.752,358.248z"/>
+								</svg>
+							{:else if delta < 0}
+								<svg class="w-3.5 h-3.5 rotate-180" style="color: var(--color-ayu-red)" fill="currentColor" viewBox="0 0 512 512">
+									<path stroke="currentColor" stroke-width="40" stroke-linejoin="round" d="M505.752,358.248L271.085,123.582c-8.331-8.331-21.839-8.331-30.17,0L6.248,358.248c-8.331,8.331-8.331,21.839,0,30.17s21.839,8.331,30.17,0L256,168.837l219.582,219.582c8.331,8.331,21.839,8.331,30.17,0S514.083,366.58,505.752,358.248z"/>
+								</svg>
+							{:else}
+								<svg class="w-3.5 h-3.5" style="color: var(--color-ayu-muted)" fill="currentColor" viewBox="0 0 52 52">
+									<path d="M50,27.5c0,0.8-0.7,1.5-1.5,1.5h-45C2.7,29,2,28.3,2,27.5v-3C2,23.7,2.7,23,3.5,23h45c0.8,0,1.5,0.7,1.5,1.5V27.5z"/>
+								</svg>
+							{/if}
+						{/if}
+					</td>
 					<td
 						class="py-2 font-medium text-white"
 						onmouseenter={(e) => showPlayerTip(e, row)}
@@ -114,22 +137,28 @@
 	</div>
 {/if}
 
-{#if playerTipVisible && tipStats.length > 0}
+{#if playerTipVisible && (tipStats.length > 0 || prevRankMap.has(tipPlayerId))}
 	<div
 		class="pointer-events-none fixed z-50 min-w-44 rounded-lg border border-ayu-border bg-zinc-900 px-3 py-2 text-xs shadow-xl"
 		style="left:{playerTipX}px;top:{playerTipY}px;transform:translateY(-100%)"
 	>
-		<p class="mb-1.5 font-semibold text-white">{tipName}</p>
-		<div class="space-y-1">
-			{#each tipStats as stat}
-				<div class="flex items-center justify-between gap-6">
-					<span class="flex items-center gap-1.5">
-						<span>{stat.gameEmoji ?? '🎮'}</span>
-						<span class="text-zinc-300">{stat.gameName}</span>
-					</span>
-					<span>{MEDAL_EMOJI[stat.medal!]}</span>
-				</div>
-			{/each}
-		</div>
+		<p class="font-semibold text-white">{tipName}</p>
+		{#if prevRankMap.has(tipPlayerId)}
+			{@const pr = prevRankMap.get(tipPlayerId)!}
+			<p class="mt-0.5 text-ayu-muted" class:mb-1.5={tipStats.length > 0}>Yesterday: #{pr.rank} of {pr.outOf}</p>
+		{/if}
+		{#if tipStats.length > 0}
+			<div class="space-y-1 mt-1.5">
+				{#each tipStats as stat}
+					<div class="flex items-center justify-between gap-6">
+						<span class="flex items-center gap-1.5">
+							<span>{stat.gameEmoji ?? '🎮'}</span>
+							<span class="text-zinc-300">{stat.gameName}</span>
+						</span>
+						<span>{MEDAL_EMOJI[stat.medal!]}</span>
+					</div>
+				{/each}
+			</div>
+		{/if}
 	</div>
 {/if}
