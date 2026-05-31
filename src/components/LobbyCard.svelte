@@ -106,6 +106,7 @@
 	const GAME_TIPS: Record<string, string> = {
 		connections: 'More points for solving hardest-first — 🟪🟦🟩🟨. Points off for mistakes. Perfect score is 200.',
 		decipher:    '10 minute time limit. Each hint used adds 1 minute penalty.',
+		quordle:     'Each word scores 10 minus your guess count (1 guess = 9 pts, DNF = 0). Max score across all 4 words is 36.',
 	};
 	const tip = $derived(game.share_parser ? (GAME_TIPS[game.share_parser] ?? null) : null);
 
