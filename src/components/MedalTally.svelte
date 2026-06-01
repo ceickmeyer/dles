@@ -2,11 +2,12 @@
 	import type { MedalTally, PlayerDayStat } from '$lib/scoring';
 	import { MEDAL_EMOJI } from '$lib/scoring';
 
-	let { tally, currentPlayerId = null, playerStats = new Map(), prevRankMap = new Map() }: {
+	let { tally, currentPlayerId = null, playerStats = new Map(), prevRankMap = new Map(), completedPlayerIds = new Set() }: {
 		tally: MedalTally[];
 		currentPlayerId?: string | null;
 		playerStats?: Map<string, PlayerDayStat[]>;
 		prevRankMap?: Map<string, { rank: number; outOf: number }>;
+		completedPlayerIds?: Set<string>;
 	} = $props();
 
 	// Tie-aware ranks: players with identical gold/silver/bronze share the same rank number
@@ -112,6 +113,11 @@
 						<a href="/player/{row.player_id}" class="hover:text-ayu-gold transition-colors">
 							{row.player_name}
 						</a>
+						{#if completedPlayerIds.has(row.player_id)}
+							<svg class="inline w-3.5 h-3.5 ml-0.5 -translate-y-px" style="color: var(--color-ayu-green)" viewBox="0 0 24 24" fill="none">
+								<path d="M12,21h0a9,9,0,0,1-9-9H3a9,9,0,0,1,9-9h0a9,9,0,0,1,9,9h0A9,9,0,0,1,12,21ZM8,11.5l3,3,5-5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"/>
+							</svg>
+						{/if}
 						{#if row.player_id === currentPlayerId}
 							<span class="ml-1 text-xs text-amber-400">(you)</span>
 						{/if}
@@ -137,12 +143,15 @@
 	</div>
 {/if}
 
-{#if playerTipVisible && (tipStats.length > 0 || prevRankMap.has(tipPlayerId))}
+{#if playerTipVisible && (tipStats.length > 0 || prevRankMap.has(tipPlayerId) || completedPlayerIds.has(tipPlayerId))}
 	<div
 		class="pointer-events-none fixed z-50 min-w-44 rounded-lg border border-ayu-border bg-zinc-900 px-3 py-2 text-xs shadow-xl"
 		style="left:{playerTipX}px;top:{playerTipY}px;transform:translateY(-100%)"
 	>
 		<p class="font-semibold text-white">{tipName}</p>
+		{#if completedPlayerIds.has(tipPlayerId)}
+			<p class="mt-0.5" style="color: var(--color-ayu-green)">All games completed!</p>
+		{/if}
 		{#if prevRankMap.has(tipPlayerId)}
 			{@const pr = prevRankMap.get(tipPlayerId)!}
 			<p class="mt-0.5 text-ayu-muted" class:mb-1.5={tipStats.length > 0}>Yesterday: #{pr.rank} of {pr.outOf}</p>

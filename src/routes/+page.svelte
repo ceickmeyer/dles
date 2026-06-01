@@ -68,6 +68,21 @@
 		new Map((data.prevRanks ?? []).map((r: { player_id: string; rank: number; outOf: number }) => [r.player_id, r]))
 	);
 
+	const completedPlayerIds = $derived((() => {
+		const totalGames = session?.session_games.length ?? 0;
+		if (totalGames === 0) return new Set<string>();
+		const gamesByPlayer = new Map<string, Set<string>>();
+		for (const s of scores) {
+			if (!gamesByPlayer.has(s.player_id)) gamesByPlayer.set(s.player_id, new Set());
+			gamesByPlayer.get(s.player_id)!.add(s.game_id);
+		}
+		const done = new Set<string>();
+		for (const [pid, games] of gamesByPlayer) {
+			if (games.size >= totalGames) done.add(pid);
+		}
+		return done;
+	})());
+
 	const playerDayStats = $derived(new Map(
 		tally.map(row => [
 			row.player_id,
@@ -475,7 +490,7 @@
 				<div>
 					<h2 class="mb-3 text-xs font-semibold uppercase tracking-widest text-ayu-muted">Live Standings</h2>
 					<div class="rounded-xl border border-ayu-border bg-ayu-surface p-4">
-						<MedalTally {tally} currentPlayerId={player.id} playerStats={playerDayStats} {prevRankMap} />
+						<MedalTally {tally} currentPlayerId={player.id} playerStats={playerDayStats} {prevRankMap} {completedPlayerIds} />
 					</div>
 				</div>
 			{/if}
