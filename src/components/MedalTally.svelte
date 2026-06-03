@@ -2,12 +2,13 @@
 	import type { MedalTally, PlayerDayStat } from '$lib/scoring';
 	import { MEDAL_EMOJI } from '$lib/scoring';
 
-	let { tally, currentPlayerId = null, playerStats = new Map(), prevRankMap = new Map(), completedPlayerIds = new Set() }: {
+	let { tally, currentPlayerId = null, playerStats = new Map(), prevRankMap = new Map(), completedPlayerIds = new Set(), prevWinnerId = null }: {
 		tally: MedalTally[];
 		currentPlayerId?: string | null;
 		playerStats?: Map<string, PlayerDayStat[]>;
 		prevRankMap?: Map<string, { rank: number; outOf: number }>;
 		completedPlayerIds?: Set<string>;
+		prevWinnerId?: string | null;
 	} = $props();
 
 	// Tie-aware ranks: players with identical gold/silver/bronze share the same rank number
@@ -113,6 +114,9 @@
 						<a href="/player/{row.player_id}" class="hover:text-ayu-gold transition-colors">
 							{row.player_name}
 						</a>
+						{#if row.player_id === prevWinnerId}
+							<span class="text-sm" title="Yesterday's winner">👑</span>
+						{/if}
 						{#if completedPlayerIds.has(row.player_id)}
 							<svg class="inline w-3.5 h-3.5 ml-0.5 -translate-y-px" style="color: var(--color-ayu-green)" viewBox="0 0 24 24" fill="none">
 								<path d="M12,21h0a9,9,0,0,1-9-9H3a9,9,0,0,1,9-9h0a9,9,0,0,1,9,9h0A9,9,0,0,1,12,21ZM8,11.5l3,3,5-5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"/>

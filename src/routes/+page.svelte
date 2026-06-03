@@ -64,6 +64,8 @@
 	const allDone = $derived(
 		!!session && session.session_games.length > 0 && myScores.size === session.session_games.length
 	);
+	const prevWinnerId = $derived(data.prevWinners?.[0]?.player_id ?? null);
+
 	const prevRankMap = $derived(
 		new Map((data.prevRanks ?? []).map((r: { player_id: string; rank: number; outOf: number }) => [r.player_id, r]))
 	);
@@ -412,6 +414,7 @@
 							onCopyResults={() => copyGameResults(specialGame.game, gameScoresMap.get(specialGame.game.id) ?? [])}
 							resultsCopied={copiedGameId === specialGame.game.id}
 							featured
+							{prevWinnerId}
 						/>
 					</div>
 				{:else}
@@ -442,6 +445,7 @@
 								onCopyResults={() => copyGameResults(sg.game, gameScoresMap.get(sg.game.id) ?? [])}
 								resultsCopied={copiedGameId === sg.game.id}
 								colorIndex={i}
+								{prevWinnerId}
 							/>
 						{/each}
 					{:else}
@@ -490,7 +494,7 @@
 				<div>
 					<h2 class="mb-3 text-xs font-semibold uppercase tracking-widest text-ayu-muted">Live Standings</h2>
 					<div class="rounded-xl border border-ayu-border bg-ayu-surface p-4">
-						<MedalTally {tally} currentPlayerId={player.id} playerStats={playerDayStats} {prevRankMap} {completedPlayerIds} />
+						<MedalTally {tally} currentPlayerId={player.id} playerStats={playerDayStats} {prevRankMap} {completedPlayerIds} {prevWinnerId} />
 					</div>
 				</div>
 			{/if}
