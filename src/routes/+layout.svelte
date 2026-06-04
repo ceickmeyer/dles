@@ -1,8 +1,38 @@
 <script lang="ts">
 	import './layout.css';
 	import { onDestroy } from 'svelte';
+	import { playerStore } from '$lib/stores/player';
+	import { supabase } from '$lib/supabase';
 
 	let { data, children } = $props();
+
+	const player = $derived($playerStore);
+
+	let confirmLogout = $state(false);
+	let pin = $state<string | null>(null);
+	let pinLoading = $state(false);
+
+	async function openLogout() {
+		confirmLogout = true;
+		pin = null;
+		if (player.id) {
+			pinLoading = true;
+			const { data: row } = await supabase.from('players').select('pin').eq('id', player.id).maybeSingle();
+			pin = row?.pin ?? null;
+			pinLoading = false;
+		}
+	}
+
+	function cancelLogout() {
+		confirmLogout = false;
+		pin = null;
+	}
+
+	function doLogout() {
+		playerStore.clear();
+		confirmLogout = false;
+		pin = null;
+	}
 
 	const ogSession = $derived(data.ogSession);
 
@@ -93,10 +123,41 @@
 			</div>
 
 			<!-- Nav links -->
-			<div class="flex items-center gap-4 shrink-0 text-sm text-zinc-400">
-				<a href="/leaderboard" class="transition hover:text-ayu-gold">Leaderboard</a>
-				<a href="/admin" class="transition hover:text-ayu-gold" aria-label="Admin">
-					<svg width="16" height="16" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+			<div class="flex items-center gap-2 shrink-0">
+				<a href="/leaderboard" class="rounded-full border border-ayu-blue/30 bg-ayu-blue/10 px-3 py-1 text-xs font-medium text-ayu-blue transition hover:bg-ayu-blue/20">
+					Leaderboard
+				</a>
+				{#if player.id}
+					<div class="relative">
+						<button onclick={() => confirmLogout ? cancelLogout() : openLogout()} class="rounded-full border border-ayu-gold/30 bg-ayu-gold/10 px-3 py-1 text-xs font-medium text-ayu-gold transition hover:bg-ayu-gold/20">
+							{player.name}
+						</button>
+						{#if confirmLogout}
+							<div class="absolute right-0 top-full mt-2 w-56 rounded-xl border border-ayu-border bg-zinc-950 p-4 shadow-2xl z-50">
+								<p class="text-xs text-zinc-300 leading-snug">
+									Log out of <span class="font-semibold text-white">{player.name}</span>?
+								</p>
+								{#if pinLoading}
+									<p class="mt-1.5 text-xs text-ayu-muted">Loading PIN…</p>
+								{:else if pin}
+									<p class="mt-1.5 text-xs text-ayu-muted">
+										Your PIN: <span class="font-mono font-bold text-ayu-gold">{pin}</span>
+									</p>
+								{/if}
+								<div class="mt-3 flex gap-2">
+									<button onclick={doLogout} class="flex-1 rounded-lg bg-ayu-red/20 py-1.5 text-xs font-semibold text-ayu-red transition hover:bg-ayu-red/30">
+										Log out
+									</button>
+									<button onclick={cancelLogout} class="flex-1 rounded-lg bg-ayu-surface2 py-1.5 text-xs text-zinc-400 transition hover:text-white">
+										Cancel
+									</button>
+								</div>
+							</div>
+						{/if}
+					</div>
+				{/if}
+				<a href="/admin" aria-label="Admin" class="flex h-7 w-7 items-center justify-center rounded-full border border-ayu-border bg-ayu-surface2 text-zinc-400 transition hover:border-zinc-500 hover:text-white">
+					<svg width="14" height="14" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
 						<path d="M18 12h-2.18c-.17.7-.44 1.35-.81 1.93l1.54 1.54-2.1 2.1-1.54-1.54c-.58.36-1.23.63-1.91.79V19H8v-2.18c-.68-.16-1.33-.43-1.91-.79l-1.54 1.54-2.12-2.12 1.54-1.54c-.36-.58-.63-1.23-.79-1.91H1V9.03h2.17c.16-.7.44-1.35.8-1.94L2.43 5.55l2.1-2.1 1.54 1.54c.58-.37 1.24-.64 1.93-.81V2h3v2.18c.68.16 1.33.43 1.91.79l1.54-1.54 2.12 2.12-1.54 1.54c.36.59.64 1.24.8 1.94H18V12zm-8.5 1.5c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3z"/>
 					</svg>
 				</a>
