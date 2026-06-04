@@ -8,30 +8,48 @@
 
 	const player = $derived($playerStore);
 
+	let dropdownOpen = $state(false);
 	let confirmLogout = $state(false);
 	let pin = $state<string | null>(null);
-	let pinLoading = $state(false);
+	let alias = $state('');
+	let loading = $state(false);
+	let savingAlias = $state(false);
+	let aliasError = $state('');
 
-	async function openLogout() {
-		confirmLogout = true;
+	async function openDropdown() {
+		dropdownOpen = true;
+		confirmLogout = false;
 		pin = null;
+		alias = '';
+		aliasError = '';
 		if (player.id) {
-			pinLoading = true;
-			const { data: row } = await supabase.from('players').select('pin').eq('id', player.id).maybeSingle();
+			loading = true;
+			const { data: row } = await supabase.from('players').select('pin, alias').eq('id', player.id).maybeSingle();
 			pin = row?.pin ?? null;
-			pinLoading = false;
+			alias = row?.alias ?? '';
+			loading = false;
 		}
 	}
 
-	function cancelLogout() {
+	function closeDropdown() {
+		dropdownOpen = false;
 		confirmLogout = false;
 		pin = null;
+		aliasError = '';
+	}
+
+	async function saveAlias() {
+		if (!player.id) return;
+		savingAlias = true;
+		aliasError = '';
+		const { error } = await supabase.from('players').update({ alias: alias.trim() || null }).eq('id', player.id);
+		savingAlias = false;
+		if (error) { aliasError = 'Failed to save.'; return; }
 	}
 
 	function doLogout() {
 		playerStore.clear();
-		confirmLogout = false;
-		pin = null;
+		closeDropdown();
 	}
 
 	const ogSession = $derived(data.ogSession);
@@ -129,29 +147,70 @@
 				</a>
 				{#if player.id}
 					<div class="relative">
-						<button onclick={() => confirmLogout ? cancelLogout() : openLogout()} class="rounded-full border border-ayu-gold/30 bg-ayu-gold/10 px-3 py-1 text-xs font-medium text-ayu-gold transition hover:bg-ayu-gold/20">
+						<button onclick={() => dropdownOpen ? closeDropdown() : openDropdown()} class="rounded-full border border-ayu-gold/30 bg-ayu-gold/10 px-3 py-1 text-xs font-medium text-ayu-gold transition hover:bg-ayu-gold/20">
 							{player.name}
 						</button>
-						{#if confirmLogout}
-							<div class="absolute right-0 top-full mt-2 w-56 rounded-xl border border-ayu-border bg-zinc-950 p-4 shadow-2xl z-50">
-								<p class="text-xs text-zinc-300 leading-snug">
-									Log out of <span class="font-semibold text-white">{player.name}</span>?
-								</p>
-								{#if pinLoading}
-									<p class="mt-1.5 text-xs text-ayu-muted">Loading PIN…</p>
-								{:else if pin}
-									<p class="mt-1.5 text-xs text-ayu-muted">
-										Your PIN: <span class="font-mono font-bold text-ayu-gold">{pin}</span>
-									</p>
+						{#if dropdownOpen}
+							<div class="absolute right-0 top-full mt-2 w-56 rounded-xl border border-ayu-border bg-ayu-surface shadow-2xl z-50 overflow-hidden">
+								{#if !confirmLogout}
+									<div class="p-3 space-y-3">
+										<!-- Alias -->
+										{#if loading}
+											<p class="text-xs text-ayu-muted">Loading…</p>
+										{:else}
+											<div class="flex items-center gap-2">
+												<input
+													bind:value={alias}
+													placeholder="Alias…"
+													maxlength={32}
+													class="flex-1 min-w-0 rounded-lg border border-ayu-border bg-ayu-bg px-2.5 py-1.5 text-xs text-white placeholder-ayu-muted focus:border-ayu-gold focus:outline-none"
+												/>
+												<button
+													onclick={saveAlias}
+													disabled={savingAlias}
+													class="shrink-0 rounded-lg border border-ayu-border px-2.5 py-1.5 text-xs text-zinc-300 transition hover:border-ayu-gold hover:text-white disabled:opacity-50"
+												>
+													{savingAlias ? '…' : 'Save'}
+												</button>
+											</div>
+											{#if aliasError}
+												<p class="text-xs text-ayu-red">{aliasError}</p>
+											{/if}
+										{/if}
+										<!-- PIN -->
+										{#if pin}
+											<div class="flex items-center justify-between">
+												<span class="text-xs text-ayu-muted">Your PIN</span>
+												<span class="font-mono font-bold text-ayu-gold">{pin}</span>
+											</div>
+										{/if}
+									</div>
+									<div class="border-t border-ayu-border">
+										<button
+											onclick={() => confirmLogout = true}
+											class="w-full py-2.5 text-xs text-ayu-muted transition hover:bg-ayu-surface2 hover:text-ayu-red"
+										>
+											Log out…
+										</button>
+									</div>
+								{:else}
+									<div class="p-3 space-y-3">
+										<p class="text-xs text-zinc-300 leading-relaxed">
+											Log out of <span class="font-semibold text-white">{player.name}</span>?
+											{#if pin}
+												Your PIN is <span class="font-mono font-bold text-ayu-gold">{pin}</span>.
+											{/if}
+										</p>
+										<div class="flex gap-2">
+											<button onclick={doLogout} class="flex-1 rounded-lg bg-ayu-red/20 py-1.5 text-xs font-semibold text-ayu-red transition hover:bg-ayu-red/30">
+												Log out
+											</button>
+											<button onclick={() => confirmLogout = false} class="flex-1 rounded-lg border border-ayu-border py-1.5 text-xs text-zinc-400 transition hover:text-white">
+												Cancel
+											</button>
+										</div>
+									</div>
 								{/if}
-								<div class="mt-3 flex gap-2">
-									<button onclick={doLogout} class="flex-1 rounded-lg bg-ayu-red/20 py-1.5 text-xs font-semibold text-ayu-red transition hover:bg-ayu-red/30">
-										Log out
-									</button>
-									<button onclick={cancelLogout} class="flex-1 rounded-lg bg-ayu-surface2 py-1.5 text-xs text-zinc-400 transition hover:text-white">
-										Cancel
-									</button>
-								</div>
 							</div>
 						{/if}
 					</div>
