@@ -15,6 +15,7 @@
 	let loading = $state(false);
 	let savingAlias = $state(false);
 	let aliasError = $state('');
+	let aliasSaved = $state(false);
 
 	async function openDropdown() {
 		dropdownOpen = true;
@@ -42,9 +43,12 @@
 		if (!player.id) return;
 		savingAlias = true;
 		aliasError = '';
+		aliasSaved = false;
 		const { error } = await supabase.from('players').update({ alias: alias.trim() || null }).eq('id', player.id);
 		savingAlias = false;
 		if (error) { aliasError = 'Failed to save.'; return; }
+		aliasSaved = true;
+		setTimeout(() => { aliasSaved = false; }, 2000);
 	}
 
 	function doLogout() {
@@ -174,8 +178,10 @@
 												</button>
 											</div>
 											{#if aliasError}
-												<p class="text-xs text-ayu-red">{aliasError}</p>
-											{/if}
+											<p class="mt-1 text-xs text-ayu-red">{aliasError}</p>
+										{:else if aliasSaved}
+											<p class="mt-1 text-xs" style="color: var(--color-ayu-green)">✓ Saved</p>
+										{/if}
 										{/if}
 										<!-- PIN -->
 										{#if pin}
