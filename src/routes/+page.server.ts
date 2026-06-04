@@ -40,7 +40,7 @@ type ScoreRow = {
 	player_id: string;
 	raw_score: number;
 	player: { name: string; alias?: string | null };
-	game: { scoring_direction: string };
+	game: { scoring_direction: string; max_score: number | null; allow_dnf: boolean };
 };
 
 function tallyFromScores(scores: ScoreRow[]): ReturnType<typeof sortTally> {
@@ -56,7 +56,8 @@ function tallyFromScores(scores: ScoreRow[]): ReturnType<typeof sortTally> {
 				player_name: displayName(s.player),
 				raw_score: s.raw_score,
 			})),
-			group[0].game.scoring_direction as 'higher_is_better' | 'lower_is_better'
+			group[0].game.scoring_direction as 'higher_is_better' | 'lower_is_better',
+			group[0].game.allow_dnf && group[0].game.max_score !== null ? group[0].game.max_score + 1 : null
 		)
 	}));
 	return sortTally([...computeSessionTally(gameResults).values()]);
@@ -77,7 +78,7 @@ async function loadPrevWinners(supabase: ReturnType<typeof createClient<Database
 
 	const { data: allScores } = await supabase
 		.from('scores')
-		.select('session_id, game_id, player_id, raw_score, player:players(name, alias), game:games(scoring_direction)')
+		.select('session_id, game_id, player_id, raw_score, player:players(name, alias), game:games(scoring_direction, max_score, allow_dnf)')
 		.in('session_id', sessions.map(s => s.id));
 
 	if (!allScores?.length) return null;

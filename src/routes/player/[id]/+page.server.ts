@@ -102,16 +102,20 @@ export const load: PageServerLoad = async ({ params }) => {
 			byGame.get(s.game_id)!.push(s);
 		}
 
-		const sessionGameResults = [...byGame.values()].map(group => ({
-			scores: rankScores(
-				group.map(s => ({
-					player_id: s.player_id,
-					player_name: displayName(s.player as { name: string; alias?: string | null }),
-					raw_score: s.raw_score
-				})),
-				(group[0].game as { scoring_direction: 'higher_is_better' | 'lower_is_better' }).scoring_direction
-			)
-		}));
+		const sessionGameResults = [...byGame.values()].map(group => {
+			const g = group[0].game as { scoring_direction: 'higher_is_better' | 'lower_is_better'; max_score: number | null; allow_dnf: boolean };
+			return {
+				scores: rankScores(
+					group.map(s => ({
+						player_id: s.player_id,
+						player_name: displayName(s.player as { name: string; alias?: string | null }),
+						raw_score: s.raw_score
+					})),
+					g.scoring_direction,
+					g.allow_dnf && g.max_score !== null ? g.max_score + 1 : null
+				)
+			};
+		});
 
 		// Per-game medal tracking for this player
 		for (const group of [...byGame.values()]) {
@@ -122,7 +126,8 @@ export const load: PageServerLoad = async ({ params }) => {
 					player_name: '',
 					raw_score: s.raw_score
 				})),
-				game.scoring_direction as 'higher_is_better' | 'lower_is_better'
+				game.scoring_direction as 'higher_is_better' | 'lower_is_better',
+				game.allow_dnf && game.max_score !== null ? game.max_score + 1 : null
 			);
 			const mine = ranked.find(r => r.player_id === params.id);
 			if (!mine) continue;

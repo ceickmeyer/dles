@@ -40,7 +40,8 @@
 								raw_score: s.raw_score,
 								share_text: s.share_text ?? null
 							})),
-						game.scoring_direction
+						game.scoring_direction,
+						game.allow_dnf && game.max_score !== null ? game.max_score + 1 : null
 					)
 				}))
 			: []

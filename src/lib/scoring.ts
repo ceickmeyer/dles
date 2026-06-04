@@ -23,7 +23,7 @@ export interface MedalTally {
 	total: number;
 }
 
-export function rankScores(scores: PlayerScore[], direction: ScoringDirection): RankedScore[] {
+export function rankScores(scores: PlayerScore[], direction: ScoringDirection, dnfValue?: number | null): RankedScore[] {
 	if (scores.length === 0) return [];
 
 	const sorted = [...scores].sort((a, b) =>
@@ -38,7 +38,8 @@ export function rankScores(scores: PlayerScore[], direction: ScoringDirection): 
 		if (i > 0 && sorted[i].raw_score !== sorted[i - 1].raw_score) {
 			currentRank = i + 1;
 		}
-		ranked.push({ ...sorted[i], rank: currentRank, medal: medalForRank(currentRank) });
+		const isDnf = dnfValue != null && sorted[i].raw_score === dnfValue;
+		ranked.push({ ...sorted[i], rank: currentRank, medal: isDnf ? null : medalForRank(currentRank) });
 	}
 
 	return ranked;

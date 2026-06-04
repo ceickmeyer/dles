@@ -23,7 +23,7 @@
 
 	let messages = $state<Message[]>([]);
 	let draft = $state('');
-	let open = $state(true);
+	let open = $state(false);
 	let sending = $state(false);
 	let sendError = $state('');
 	let unread = $state(0);
@@ -76,6 +76,7 @@
 	}
 
 	onMount(async () => {
+		open = window.innerWidth >= 640;
 		await load();
 		subscription = supabase
 			.channel(`chat:${sessionId}`)
