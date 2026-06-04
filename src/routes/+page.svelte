@@ -110,6 +110,42 @@
 
 	let shareCopied = $state(false);
 	let copiedGameId = $state<string | null>(null);
+	let standingsCopied = $state(false);
+
+	function buildStandingsShare(): string {
+		if (!session) return '';
+		const date = parseLocalDate(session.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+		const lines = [`Live Standings — ${date}`, ''];
+		const tallyRanks = tally.map((row, _, arr) => {
+			const first = arr.findIndex(r => r.gold === row.gold && r.silver === row.silver && r.bronze === row.bronze);
+			return first + 1;
+		});
+		for (let i = 0; i < tally.length; i++) {
+			const row = tally[i];
+			const rank = tallyRanks[i];
+			const rankStr = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `${rank}.`;
+			const medals = [
+				row.gold > 0 ? `🥇×${row.gold}` : '',
+				row.silver > 0 ? `🥈×${row.silver}` : '',
+				row.bronze > 0 ? `🥉×${row.bronze}` : '',
+			].filter(Boolean).join(' ');
+			lines.push(`${rankStr} ${row.player_name}${medals ? ' — ' + medals : ''}`);
+		}
+		lines.push('', 'https://dles.cooody.com');
+		return lines.join('\n');
+	}
+
+	async function copyStandings() {
+		const text = buildStandingsShare();
+		try {
+			await navigator.clipboard.writeText(text);
+		} catch {
+			window.prompt('Copy standings:', text);
+			return;
+		}
+		standingsCopied = true;
+		setTimeout(() => { standingsCopied = false; }, 2000);
+	}
 
 	async function copyGameResults(game: typeof gamesWithScores[number]['game'], ranked: typeof gamesWithScores[number]['scores']) {
 		const lines = [`${game.icon_emoji ?? '🎮'} ${game.name}`];
@@ -493,7 +529,22 @@
 			<!-- Live standings -->
 			{#if tally.length > 0}
 				<div>
-					<h2 class="mb-3 text-xs font-semibold uppercase tracking-widest text-ayu-muted">Live Standings</h2>
+					<div class="mb-3 flex items-center justify-between">
+						<h2 class="text-xs font-semibold uppercase tracking-widest text-ayu-muted">Live Standings</h2>
+						<button
+							onclick={copyStandings}
+							class="flex items-center gap-1 text-xs transition {standingsCopied ? 'text-ayu-green' : 'text-ayu-muted hover:text-white'}"
+							title="Copy standings"
+						>
+							{#if standingsCopied}
+								<svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+								Copied!
+							{:else}
+								<svg width="13" height="13" viewBox="0 0 24 24" fill="none"><rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+								Share
+							{/if}
+						</button>
+					</div>
 					<div class="rounded-xl border border-ayu-border bg-ayu-surface p-4">
 						<MedalTally {tally} currentPlayerId={player.id} playerStats={playerDayStats} {prevRankMap} {completedPlayerIds} {prevWinnerId} />
 					</div>
