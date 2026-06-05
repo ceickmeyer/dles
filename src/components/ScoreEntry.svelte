@@ -32,15 +32,32 @@
 		}
 	}
 
+	function validateScore(score: number): string {
+		if (!Number.isFinite(score)) return 'Enter a valid number.';
+		if (score < 0) return 'Score cannot be negative.';
+		if (game.max_score !== null && score > game.max_score) {
+			return `Score cannot exceed ${game.max_score}.`;
+		}
+		return '';
+	}
+
 	async function confirmParsed(score: number) {
 		showConfirm = false;
+		const validationError = validateScore(score);
+		if (validationError) { error = validationError; return; }
 		await doSubmit(score, shareText.trim());
 	}
 
 	async function submitManual() {
 		const n = Number(manualScore);
-		if (isNaN(n)) { error = 'Enter a valid number.'; return; }
+		const validationError = validateScore(n);
+		if (validationError) { error = validationError; return; }
 		await doSubmit(n);
+	}
+
+	async function submitDnf() {
+		if (game.max_score === null) return;
+		await doSubmit(game.max_score + 1);
 	}
 
 	async function doSubmit(score: number, text?: string) {
@@ -79,6 +96,7 @@
 					<div class="mt-2">
 						<ParseConfirm
 							{parsedScore}
+							maxScore={game.max_score}
 							onconfirm={confirmParsed}
 							oncancel={() => { showConfirm = false; }}
 						/>
@@ -114,7 +132,9 @@
 					id="manual-score"
 					type="number"
 					bind:value={manualScore}
-					placeholder={game.max_score ? `0–${game.max_score}` : 'Score'}
+					min={0}
+					max={game.max_score ?? undefined}
+					placeholder={game.max_score !== null ? `0–${game.max_score}` : 'Score'}
 					class="w-36 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-white placeholder-zinc-500 focus:border-amber-400 focus:outline-none"
 				/>
 				<button
@@ -124,6 +144,15 @@
 				>
 					{submitting ? 'Submitting…' : existingScore !== null ? 'Update' : 'Submit'}
 				</button>
+				{#if game.allow_dnf && game.max_score !== null}
+					<button
+						onclick={submitDnf}
+						disabled={submitting}
+						class="rounded-lg border border-zinc-600 px-4 py-2 text-sm font-medium text-zinc-300 transition hover:border-ayu-red hover:text-ayu-red disabled:opacity-50"
+					>
+						DNF
+					</button>
+				{/if}
 			</div>
 		</div>
 

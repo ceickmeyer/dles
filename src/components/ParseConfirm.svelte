@@ -1,10 +1,12 @@
 <script lang="ts">
 	let {
 		parsedScore,
+		maxScore = null,
 		onconfirm,
 		oncancel
 	}: {
 		parsedScore: number;
+		maxScore?: number | null;
 		onconfirm: (score: number) => void;
 		oncancel: () => void;
 	} = $props();
@@ -24,6 +26,8 @@
 			id="edit-score"
 			type="number"
 			bind:value={editedScore}
+			min={0}
+			max={maxScore ?? undefined}
 			class="w-28 rounded-lg border border-zinc-600 bg-zinc-900 px-3 py-1.5 text-white focus:border-amber-400 focus:outline-none"
 		/>
 	</div>
