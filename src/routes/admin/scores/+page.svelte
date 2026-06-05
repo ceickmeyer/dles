@@ -5,6 +5,7 @@
 	const statusColor: Record<string, string> = {
 		lobby: 'bg-zinc-700 text-zinc-300',
 		active: 'bg-ayu-green/20 text-ayu-green',
+		paused: 'bg-amber-700/20 text-amber-400',
 		finished: 'bg-zinc-800 text-zinc-500'
 	};
 
@@ -17,12 +18,12 @@
 
 <div class="space-y-6">
 	<div>
-		<h1 class="text-2xl font-bold text-white">Dashboard</h1>
-		<p class="mt-0.5 text-sm text-ayu-muted">Recent sessions — scheduler runs automatically on page load.</p>
+		<h1 class="text-2xl font-bold text-white">Score Management</h1>
+		<p class="mt-0.5 text-sm text-ayu-muted">Click a session to view and delete individual scores.</p>
 	</div>
 
 	{#if sessions.length === 0}
-		<p class="text-ayu-muted">No sessions yet. Configure the <a href="/admin/schedule" class="text-ayu-gold hover:underline">weekly schedule</a> and run the scheduler.</p>
+		<p class="text-ayu-muted">No sessions found.</p>
 	{:else}
 		<div class="overflow-hidden rounded-xl border border-ayu-border">
 			<table class="w-full text-sm">
@@ -35,9 +36,9 @@
 				</thead>
 				<tbody>
 					{#each sessions as s}
-						<tr class="border-b border-ayu-border bg-ayu-surface last:border-0">
-							<td class="px-4 py-3 font-medium text-white">
-								<a href="/admin/sessions/{s.id}" class="hover:text-ayu-gold transition">{s.name}</a>
+						<tr class="border-b border-ayu-border bg-ayu-surface last:border-0 hover:bg-ayu-surface2 transition">
+							<td class="px-4 py-3 font-medium">
+								<a href="/admin/sessions/{s.id}" class="text-white hover:text-ayu-gold transition">{s.name}</a>
 							</td>
 							<td class="px-4 py-3 text-ayu-muted">{fmtDate(s.date)}</td>
 							<td class="px-4 py-3">
