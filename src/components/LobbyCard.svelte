@@ -147,14 +147,25 @@
 		else error = 'Could not parse — make sure you paste the full share text.';
 	}
 
+	function validateScore(score: number): string {
+		if (!Number.isFinite(score)) return 'Enter a valid number.';
+		if (score < 0) return 'Score cannot be negative.';
+		if (game.max_score !== null && score > game.max_score) return `Score cannot exceed ${game.max_score}.`;
+		return '';
+	}
+
 	async function confirmParsed(score: number) {
 		showConfirm = false;
+		const err = validateScore(score);
+		if (err) { error = err; return; }
 		await doSubmit(score, shareText.trim());
 	}
 
 	async function submitManual() {
 		const n = Number(manualScore);
 		if (isNaN(n) || manualScore === '') { error = 'Enter a valid number.'; return; }
+		const err = validateScore(n);
+		if (err) { error = err; return; }
 		await doSubmit(n);
 	}
 
@@ -372,7 +383,9 @@
 							id="score-{game.id}"
 							type="number"
 							bind:value={manualScore}
-							placeholder={game.max_score ? `1–${game.max_score}` : 'Score'}
+							min={0}
+							max={game.max_score ?? undefined}
+							placeholder={game.max_score !== null ? `0–${game.max_score}` : 'Score'}
 							class="w-full rounded-lg border border-ayu-border bg-ayu-bg px-3 py-2 text-white placeholder-ayu-muted focus:border-ayu-gold focus:outline-none"
 						/>
 					</div>
