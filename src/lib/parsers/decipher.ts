@@ -12,8 +12,10 @@ const MAX_STARS = 5;
 const FAIL_SCORE = 600; // 10 minutes — cap for a failed game
 
 function extractSeconds(text: string): number | null {
-	const minsMatch = text.match(/(\d+)m\s*(\d+)s/);
-	if (minsMatch) return parseInt(minsMatch[1], 10) * 60 + parseInt(minsMatch[2], 10);
+	const minsSecsMatch = text.match(/(\d+)m\s*(\d+)s/);
+	if (minsSecsMatch) return parseInt(minsSecsMatch[1], 10) * 60 + parseInt(minsSecsMatch[2], 10);
+	const minsOnlyMatch = text.match(/(\d+)m\b/);
+	if (minsOnlyMatch) return parseInt(minsOnlyMatch[1], 10) * 60;
 	const secsMatch = text.match(/(\d+)s/);
 	if (secsMatch) return parseInt(secsMatch[1], 10);
 	return null;
