@@ -81,7 +81,7 @@
 			? new Date(ogSession.expires_at)
 			: (() => {
 				const [y, m, d] = ogSession.date.split('-').map(Number);
-				return new Date(y, m - 1, d + 1);
+				return new Date(y, m - 1, d, 2, 5, 0);
 			})();
 		const diff = Math.max(0, Math.floor((end.getTime() - Date.now()) / 1000));
 		if (diff === 0) { timeLeft = ''; return; }
