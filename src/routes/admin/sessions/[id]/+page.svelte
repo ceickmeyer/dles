@@ -12,7 +12,25 @@
 
 	let confirmDeleteId = $state<string | null>(null);
 	let deleting = $state(false);
+	let confirmRemoveGameId = $state<string | null>(null);
+	let removingGame = $state(false);
 	let globalError = $state('');
+
+	async function removeGame(gameId: string) {
+		removingGame = true;
+		globalError = '';
+		// Delete scores for this game in this session first
+		const { error: e1 } = await supabase.from('scores').delete()
+			.eq('session_id', session.id).eq('game_id', gameId);
+		if (e1) { globalError = e1.message; removingGame = false; return; }
+		// Remove from lineup
+		const { error: e2 } = await supabase.from('session_games').delete()
+			.eq('session_id', session.id).eq('game_id', gameId);
+		removingGame = false;
+		if (e2) { globalError = e2.message; return; }
+		confirmRemoveGameId = null;
+		await invalidateAll();
+	}
 
 	function fmtDate(dateStr: string) {
 		return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', {
@@ -74,7 +92,34 @@
 					<div class="flex items-center gap-2 border-b border-ayu-border bg-ayu-surface2 px-4 py-2.5">
 						{#if game.icon_emoji}<span>{game.icon_emoji}</span>{/if}
 						<span class="font-semibold text-white text-sm">{game.name}</span>
-						<span class="text-xs text-ayu-muted ml-auto">{scores.length} submission{scores.length === 1 ? '' : 's'}</span>
+						<span class="text-xs text-ayu-muted">{scores.length} submission{scores.length === 1 ? '' : 's'}</span>
+						<div class="ml-auto flex items-center gap-3">
+							{#if confirmRemoveGameId === game.id}
+								<span class="text-xs text-zinc-400">
+									Remove game{scores.length > 0 ? ` + delete ${scores.length} score${scores.length === 1 ? '' : 's'}` : ''}?
+								</span>
+								<button
+									onclick={() => removeGame(game.id)}
+									disabled={removingGame}
+									class="text-xs font-semibold text-ayu-red hover:brightness-125 disabled:opacity-50"
+								>
+									{removingGame ? '…' : 'Yes, remove'}
+								</button>
+								<button
+									onclick={() => (confirmRemoveGameId = null)}
+									class="text-xs text-ayu-muted hover:text-white"
+								>
+									Cancel
+								</button>
+							{:else}
+								<button
+									onclick={() => (confirmRemoveGameId = game.id)}
+									class="text-xs text-ayu-muted transition hover:text-ayu-red"
+								>
+									Remove from lineup
+								</button>
+							{/if}
+						</div>
 					</div>
 					{#if scores.length === 0}
 						<p class="px-4 py-3 text-xs text-ayu-muted">No scores yet.</p>
