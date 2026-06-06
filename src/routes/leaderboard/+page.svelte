@@ -83,7 +83,7 @@
 					<div class="mb-4 flex items-center gap-3 border-b border-ayu-border pb-4">
 						<span class="text-3xl">{game.emoji}</span>
 						<div>
-							<p class="font-semibold text-white leading-tight">{game.name}</p>
+							<a href="/leaderboard/game/{game.id}" class="font-semibold text-white hover:text-ayu-gold transition-colors leading-tight">{game.name}</a>
 							<p class="text-xs text-ayu-muted mt-0.5">
 								{game.direction === 'lower_is_better' ? 'Lower is better' : 'Higher is better'} · avg score
 							</p>
