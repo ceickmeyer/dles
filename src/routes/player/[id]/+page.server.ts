@@ -147,7 +147,7 @@ export const load: PageServerLoad = async ({ params }) => {
 		if (!myTally) continue;
 
 		const topGolds = sessionTally[0]?.gold ?? 0;
-		const myRank = sessionTally.findIndex(t => t.player_id === params.id) + 1;
+		const myRank = sessionTally.findIndex(t => t.gold === myTally.gold && t.silver === myTally.silver && t.bronze === myTally.bronze) + 1;
 
 		sessionRankMap.set(sessionId, { rank: myRank, outOf: sessionTally.length });
 		overallGold += myTally.gold;

@@ -428,9 +428,9 @@
 			<div>
 				<p class="mb-2 text-xs font-semibold uppercase tracking-widest text-ayu-muted">Yesterday's Winners</p>
 				<div class="grid gap-2" style="grid-template-columns: repeat({data.prevWinners.length}, minmax(0, 1fr))">
-					{#each data.prevWinners as w, i}
+					{#each data.prevWinners as w}
 						<div class="rounded-xl border px-3 py-3 text-center
-							{i === 0 ? 'border-ayu-gold/40 bg-yellow-400/10' : i === 1 ? 'border-zinc-500/40 bg-slate-400/8' : 'border-amber-700/40 bg-amber-800/10'}">
+							{w.medal === '🥇' ? 'border-ayu-gold/40 bg-yellow-400/10' : w.medal === '🥈' ? 'border-zinc-500/40 bg-slate-400/8' : 'border-amber-700/40 bg-amber-800/10'}">
 							<p class="text-2xl">{w.medal}</p>
 							<a href="/player/{w.player_id}" class="mt-1 block text-sm font-semibold leading-tight text-white transition hover:text-ayu-gold">
 								{w.player_name}
