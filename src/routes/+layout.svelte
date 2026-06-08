@@ -129,7 +129,7 @@
 			<div class="flex-1 min-w-0">
 				{#if ogSession}
 					<div class="flex items-center gap-2 min-w-0">
-						<span class="truncate text-sm font-semibold text-white">{ogSession.name}</span>
+						<a href="/" class="truncate text-sm font-semibold text-white hover:text-ayu-gold transition-colors">{ogSession.name}</a>
 						<span class="shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold uppercase tracking-wider {
 							ogSession.status === 'active' ? 'bg-ayu-green text-ayu-bg' :
 							ogSession.status === 'paused' ? 'bg-amber-700 text-white' :

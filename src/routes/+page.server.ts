@@ -105,14 +105,19 @@ async function loadPrevWinners(supabase: ReturnType<typeof createClient<Database
 		else break;
 	}
 
+	const medalEmoji = (rank: number) => rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉';
+
 	return {
-		winners: tally.slice(0, 3).map((t, i) => ({
-			player_id: t.player_id,
-			player_name: t.player_name,
-			medal: i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉',
-			gold: t.gold, silver: t.silver, bronze: t.bronze,
-			goldStreak: i === 0 && goldStreak >= 2 ? goldStreak : null,
-		})),
+		winners: tally
+			.map((t, idx) => ({ ...t, rank: ranks[idx].rank }))
+			.filter(t => t.rank <= 3)
+			.map(t => ({
+				player_id: t.player_id,
+				player_name: t.player_name,
+				medal: medalEmoji(t.rank),
+				gold: t.gold, silver: t.silver, bronze: t.bronze,
+				goldStreak: t.rank === 1 && goldStreak >= 2 ? goldStreak : null,
+			})),
 		ranks,
 	};
 }
