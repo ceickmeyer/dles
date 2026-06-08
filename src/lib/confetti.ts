@@ -15,3 +15,26 @@ export function fireConfetti() {
 	fire(0.1, { spread: 120, startVelocity: 25, decay: 0.92, scalar: 1.2 });
 	fire(0.1, { spread: 120, startVelocity: 45 });
 }
+
+const MEDAL_IMAGES: Record<'gold' | 'silver' | 'bronze', string> = {
+	gold: '/first_place_medal.png',
+	silver: '/second_place_medal.png',
+	bronze: '/third_place_medal.png',
+};
+
+export function fireMedalConfetti(medal: 'gold' | 'silver' | 'bronze') {
+	if (typeof confetti === 'undefined') return;
+	confetti({
+		spread: 360,
+		ticks: 200,
+		gravity: 1,
+		decay: 0.94,
+		startVelocity: 30,
+		particleCount: 100,
+		scalar: 3,
+		shapes: ['image'],
+		shapeOptions: {
+			image: [{ src: MEDAL_IMAGES[medal], width: 32, height: 32 }],
+		},
+	});
+}

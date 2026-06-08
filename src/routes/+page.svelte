@@ -5,7 +5,7 @@
 	import { playerStore } from '$lib/stores/player';
 	import { supabase } from '$lib/supabase';
 	import { sounds } from '$lib/sounds';
-	import { fireConfetti } from '$lib/confetti';
+	import { fireConfetti, fireMedalConfetti } from '$lib/confetti';
 	import { rankScores, computeSessionTally, sortTally } from '$lib/scoring';
 	import type { PlayerDayStat } from '$lib/scoring';
 	import { displayName, formatScore, isDnf, fmtSeconds } from '$lib/utils';
@@ -252,21 +252,34 @@
 		prevMyScoresSize = current;
 	});
 
-	// Play uptempo when any player takes 1st place on any game
-	let _goldInit = false;
-	let _prevGoldHolders = new Map<string, string | null>();
+	// Play uptempo / fire medal confetti when any player takes a podium spot on any game
+	let _medalInit = false;
+	let _prevMedalHolders = new Map<string, { gold: string | null; silver: string | null; bronze: string | null }>();
 	$effect(() => {
 		const holders = new Map(
-			gameResults.map(gr => [gr.game.id, gr.scores.find(s => s.medal === 'gold')?.player_id ?? null])
+			gameResults.map(gr => ({
+				id: gr.game.id,
+				gold: gr.scores.find(s => s.medal === 'gold')?.player_id ?? null,
+				silver: gr.scores.find(s => s.medal === 'silver')?.player_id ?? null,
+				bronze: gr.scores.find(s => s.medal === 'bronze')?.player_id ?? null,
+			})).map(h => [h.id, { gold: h.gold, silver: h.silver, bronze: h.bronze }])
 		);
-		if (_goldInit) {
+		if (_medalInit) {
 			for (const gr of gameResults) {
-				const holder = holders.get(gr.game.id);
-				if (holder !== null && gr.scores.length >= 2 && holder !== _prevGoldHolders.get(gr.game.id)) { sounds.uptempo(); if (holder === player.id) fireConfetti(); break; }
+				const cur = holders.get(gr.game.id);
+				const prev = _prevMedalHolders.get(gr.game.id);
+				if (!cur || gr.scores.length < 2) continue;
+				if (cur.gold !== prev?.gold) {
+					sounds.uptempo();
+					if (cur.gold === player.id) fireMedalConfetti('gold');
+					break;
+				}
+				if (cur.silver !== prev?.silver && cur.silver === player.id) { fireMedalConfetti('silver'); break; }
+				if (cur.bronze !== prev?.bronze && cur.bronze === player.id) { fireMedalConfetti('bronze'); break; }
 			}
 		}
-		_goldInit = true;
-		_prevGoldHolders = holders;
+		_medalInit = true;
+		_prevMedalHolders = holders;
 	});
 
 	async function refreshScores() {
