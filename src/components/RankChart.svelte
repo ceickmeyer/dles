@@ -6,7 +6,7 @@
 		outOf: number | null;
 	}
 
-	interface Pt { x: number; y: number; rank: number; name: string; date: string; }
+	interface Pt { x: number; y: number; rank: number; outOf: number; name: string; date: string; }
 
 	let { sessions }: { sessions: Session[] } = $props();
 
@@ -35,7 +35,7 @@
 		for (let i = 0; i < n; i++) {
 			const s = sessions[i];
 			if (s.rank != null) {
-				cur.push({ x: xAt(i), y: yAt(s.rank), rank: s.rank, name: s.name, date: s.date });
+				cur.push({ x: xAt(i), y: yAt(s.rank), rank: s.rank, outOf: s.outOf ?? 0, name: s.name, date: s.date });
 			} else {
 				if (cur.length) { segs.push(cur); cur = []; }
 			}
@@ -71,6 +71,21 @@
 	function fmtDate(d: string): string {
 		return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 	}
+
+	let hoveredPt = $state<Pt | null>(null);
+
+	// Tooltip dimensions
+	const TW = 72, TH = 26, TR = 5;
+
+	function tipX(pt: Pt): number {
+		// Flip to left side if near right edge
+		return pt.x + TW + 10 > W ? pt.x - TW - 6 : pt.x + 6;
+	}
+
+	function tipY(pt: Pt): number {
+		// Flip below if near top
+		return pt.y - TH / 2 < PT ? PT : pt.y - TH / 2;
+	}
 </script>
 
 <svg viewBox="0 0 {W} {H}" class="w-full" style="overflow: visible; display: block;">
@@ -100,15 +115,25 @@
 		{/if}
 	{/each}
 
-	<!-- Dots -->
+	<!-- Dots + invisible hit targets -->
 	{#each allPoints as pt}
 		<circle
 			cx={pt.x}
 			cy={pt.y}
 			r={pt.rank === 1 ? 5 : 3.5}
 			fill={pt.rank === 1 ? '#e6b450' : '#13203a'}
-			stroke={pt.rank === 1 ? '#e6b450' : '#39bae6'}
-			stroke-width="1.5"
+			stroke={hoveredPt === pt ? '#ffffff' : pt.rank === 1 ? '#e6b450' : '#39bae6'}
+			stroke-width={hoveredPt === pt ? 2 : 1.5}
+		/>
+		<!-- Transparent larger hit area -->
+		<circle
+			cx={pt.x}
+			cy={pt.y}
+			r={10}
+			fill="transparent"
+			style="cursor: pointer;"
+			onmouseenter={() => hoveredPt = pt}
+			onmouseleave={() => hoveredPt = null}
 		/>
 	{/each}
 
@@ -123,4 +148,28 @@
 			font-family="ui-sans-serif, system-ui, sans-serif"
 		>{fmtDate(s.date)}</text>
 	{/each}
+
+	<!-- Tooltip -->
+	{#if hoveredPt}
+		{@const tx = tipX(hoveredPt)}
+		{@const ty = tipY(hoveredPt)}
+		<g style="pointer-events: none;">
+			<rect
+				x={tx} y={ty}
+				width={TW} height={TH}
+				rx={TR} ry={TR}
+				fill="#0d1e30"
+				stroke="#2a3f56"
+				stroke-width="1"
+			/>
+			<text
+				x={tx + TW / 2} y={ty + 17}
+				text-anchor="middle"
+				font-size="11"
+				font-weight="600"
+				fill="#e6b450"
+				font-family="ui-monospace, monospace"
+			>#{hoveredPt.rank} of {hoveredPt.outOf}</text>
+		</g>
+	{/if}
 </svg>
