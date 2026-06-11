@@ -19,7 +19,7 @@
 		const { data: existing } = await supabase
 			.from('players')
 			.select('id, name, pin')
-			.eq('name', trimmed)
+			.ilike('name', trimmed)
 			.maybeSingle();
 
 		loading = false;
@@ -39,7 +39,7 @@
 		const { data } = await supabase
 			.from('players')
 			.select('id, name')
-			.eq('name', trimmed)
+			.ilike('name', trimmed)
 			.eq('pin', pinInput.trim())
 			.maybeSingle();
 		loading = false;
