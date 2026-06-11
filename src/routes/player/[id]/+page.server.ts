@@ -86,7 +86,7 @@ export const load: PageServerLoad = async ({ params }) => {
 	const recentSessions: { name: string; date: string; gold: number; silver: number; bronze: number; total: number; rank: number; outOf: number }[] = [];
 	const sessionRankMap = new Map<string, { rank: number; outOf: number }>();
 
-	let overallGold = 0, overallSilver = 0, overallBronze = 0;
+	let overallGold = 0, overallSilver = 0, overallBronze = 0, sessionWins = 0;
 
 	for (const sessionId of sessionIds) {
 		const sessionScores = bySession.get(sessionId);
@@ -153,6 +153,7 @@ export const load: PageServerLoad = async ({ params }) => {
 		overallGold += myTally.gold;
 		overallSilver += myTally.silver;
 		overallBronze += myTally.bronze;
+		if (myRank === 1) sessionWins++;
 
 		playerHistory.push({
 			won: myTally.gold > 0 && myTally.gold === topGolds,
@@ -174,7 +175,7 @@ export const load: PageServerLoad = async ({ params }) => {
 	const nights = recentSessions.length;
 	const totalMedals = overallGold + overallSilver + overallBronze;
 	const winRate = totalMedals > 0 ? Math.round((overallGold / totalMedals) * 100) : 0;
-	const { winStreak, podiumStreak, bestWinStreak } = computeStreaks(playerHistory);
+	const { winStreak, podiumStreak, bestWinStreak, bestPodiumStreak } = computeStreaks(playerHistory);
 
 	const golds = new Map([...perGameMap.entries()].filter(([, v]) => v.gold > 0));
 	const favGame = golds.size > 0
@@ -218,6 +219,8 @@ export const load: PageServerLoad = async ({ params }) => {
 		winStreak,
 		podiumStreak,
 		bestWinStreak,
+		bestPodiumStreak,
+		sessionWins,
 		achievementBadges,
 		gameBadges,
 		favGame,

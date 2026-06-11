@@ -1,6 +1,18 @@
 <script lang="ts">
 	import RankChart from '$components/RankChart.svelte';
 	let { data } = $props();
+
+	type PerGame = typeof data.perGame[number];
+
+	// Medal rate for ranking best/worst — only games played 3+ times
+	const qualified = $derived(
+		(data.perGame as PerGame[]).filter(g => g.played >= 3)
+	);
+
+	const medalRate = (g: PerGame) => g.played > 0 ? g.total / g.played : 0;
+
+	const bestAt  = $derived([...qualified].sort((a, b) => medalRate(b) - medalRate(a)).slice(0, 3));
+	const worstAt = $derived([...qualified].sort((a, b) => medalRate(a) - medalRate(b)).slice(0, 3));
 </script>
 
 <div class="space-y-8 max-w-2xl">
@@ -51,41 +63,54 @@
 
 		<!-- Stats row -->
 		<div class="grid grid-cols-3 gap-3">
-			{#each [
-				{ label: 'Nights played', value: String(data.nights) },
-				{ label: 'Win rate', value: data.winRate > 0 ? `${data.winRate}%` : '—' },
-				{ label: 'Best at', value: data.favGame ? `${data.favGame.emoji} ${data.favGame.name}` : '—' }
-			] as stat}
-				<div class="rounded-xl border border-ayu-border bg-ayu-surface p-4 text-center">
-					<p class="text-lg font-bold text-white">{stat.value}</p>
-					<p class="text-xs text-ayu-muted">{stat.label}</p>
-				</div>
-			{/each}
+			<div class="rounded-xl border border-ayu-border bg-ayu-surface p-4 text-center">
+				<p class="text-2xl font-bold text-white">{data.nights}</p>
+				<p class="text-xs text-ayu-muted">Nights played</p>
+			</div>
+			<div class="rounded-xl border border-ayu-border bg-ayu-surface p-4">
+				<p class="mb-2 text-xs font-semibold uppercase tracking-wider text-ayu-muted">Best at</p>
+				{#if bestAt.length === 0}
+					<p class="text-xs text-ayu-muted">Not enough data</p>
+				{:else}
+					<div class="space-y-1">
+						{#each bestAt as g}
+							<p class="text-sm text-white">{g.emoji} {g.name}</p>
+						{/each}
+					</div>
+				{/if}
+			</div>
+			<div class="rounded-xl border border-ayu-border bg-ayu-surface p-4">
+				<p class="mb-2 text-xs font-semibold uppercase tracking-wider text-ayu-muted">Worst at</p>
+				{#if worstAt.length === 0}
+					<p class="text-xs text-ayu-muted">Not enough data</p>
+				{:else}
+					<div class="space-y-1">
+						{#each worstAt as g}
+							<p class="text-sm text-white">{g.emoji} {g.name}</p>
+						{/each}
+					</div>
+				{/if}
+			</div>
 		</div>
 
 		<!-- Streaks -->
-		{#if data.winStreak > 0 || data.podiumStreak > 0 || data.bestWinStreak > 0}
-			<div class="rounded-xl border border-ayu-border bg-ayu-surface p-5">
-				<h2 class="mb-3 text-xs font-semibold uppercase tracking-wider text-ayu-muted">Streaks</h2>
-				<div class="flex flex-wrap gap-6">
-					{#if data.winStreak > 0}
-						<div>
-							<p class="text-2xl font-bold text-ayu-gold">🔥 {data.winStreak}</p>
-							<p class="text-xs text-ayu-muted">Current win streak</p>
-						</div>
-					{/if}
-					{#if data.podiumStreak > 0}
-						<div>
-							<p class="text-2xl font-bold text-white">{data.podiumStreak}</p>
-							<p class="text-xs text-ayu-muted">Current podium streak</p>
-						</div>
-					{/if}
-					{#if data.bestWinStreak > 1}
-						<div>
-							<p class="text-2xl font-bold text-zinc-400">{data.bestWinStreak}</p>
-							<p class="text-xs text-ayu-muted">Best win streak ever</p>
-						</div>
-					{/if}
+		{#if data.bestWinStreak > 0 || data.bestPodiumStreak > 0 || data.sessionWins > 0}
+			<div class="grid grid-cols-3 gap-3">
+				<div class="rounded-xl border border-ayu-border bg-ayu-surface p-4 text-center">
+					<p class="text-2xl font-bold text-ayu-gold">👑 {data.sessionWins}</p>
+					<p class="text-xs text-ayu-muted">Wins</p>
+				</div>
+				<div class="rounded-xl border border-ayu-border bg-ayu-surface p-4 text-center">
+					<p class="text-2xl font-bold text-ayu-gold">
+						{data.bestWinStreak > 0 ? `🔥 ${data.bestWinStreak}` : '—'}
+					</p>
+					<p class="text-xs text-ayu-muted">Longest 1st place streak</p>
+				</div>
+				<div class="rounded-xl border border-ayu-border bg-ayu-surface p-4 text-center">
+					<p class="text-2xl font-bold text-white">
+						{data.bestPodiumStreak > 0 ? data.bestPodiumStreak : '—'}
+					</p>
+					<p class="text-xs text-ayu-muted">Longest podium streak</p>
 				</div>
 			</div>
 		{/if}
@@ -145,35 +170,5 @@
 			</div>
 		{/if}
 
-		<!-- Recent sessions -->
-		{#if data.recentSessions.length > 0}
-			<div class="rounded-xl border border-ayu-border bg-ayu-surface p-5">
-				<h2 class="mb-3 text-xs font-semibold uppercase tracking-wider text-ayu-muted">Recent Sessions</h2>
-				<div class="space-y-1.5">
-					{#each data.recentSessions as s}
-						<div class="flex items-center justify-between rounded-lg bg-ayu-surface2 px-3 py-2 text-sm">
-							<div>
-								<span class="text-white">{s.name}</span>
-								<span class="ml-2 text-xs text-ayu-muted">
-									{new Date(s.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-								</span>
-							</div>
-							<div class="flex items-center gap-3">
-								<span class="text-xs text-ayu-muted">#{s.rank} of {s.outOf}</span>
-								{#if s.total > 0}
-									<span class="text-xs">
-										{#if s.gold > 0}<span class="text-ayu-gold">🥇×{s.gold}</span>{/if}
-										{#if s.silver > 0}<span class="text-zinc-400 ml-1">🥈×{s.silver}</span>{/if}
-										{#if s.bronze > 0}<span class="text-amber-700 ml-1">🥉×{s.bronze}</span>{/if}
-									</span>
-								{:else}
-									<span class="text-xs text-ayu-muted">No medals</span>
-								{/if}
-							</div>
-						</div>
-					{/each}
-				</div>
-			</div>
-		{/if}
 	{/if}
 </div>

@@ -37,6 +37,7 @@ export function computeStreaks(history: { won: boolean; podium: boolean }[]): {
 	winStreak: number;
 	podiumStreak: number;
 	bestWinStreak: number;
+	bestPodiumStreak: number;
 } {
 	// history is in chronological order (oldest first) — reverse for "most recent first"
 	const desc = [...history].reverse();
@@ -47,12 +48,12 @@ export function computeStreaks(history: { won: boolean; podium: boolean }[]): {
 	let podiumStreak = 0;
 	for (const r of desc) { if (r.podium) podiumStreak++; else break; }
 
-	let bestWinStreak = 0;
-	let run = 0;
+	let bestWinStreak = 0, winRun = 0;
+	let bestPodiumStreak = 0, podiumRun = 0;
 	for (const r of desc) {
-		if (r.won) { run++; bestWinStreak = Math.max(bestWinStreak, run); }
-		else run = 0;
+		if (r.won) { winRun++; bestWinStreak = Math.max(bestWinStreak, winRun); } else winRun = 0;
+		if (r.podium) { podiumRun++; bestPodiumStreak = Math.max(bestPodiumStreak, podiumRun); } else podiumRun = 0;
 	}
 
-	return { winStreak, podiumStreak, bestWinStreak };
+	return { winStreak, podiumStreak, bestWinStreak, bestPodiumStreak };
 }
