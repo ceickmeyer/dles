@@ -133,10 +133,9 @@ export const load: PageServerLoad = async ({ params }) => {
 			if (!mine) continue;
 
 			const existing = perGameMap.get(game.id) ?? { name: game.name, emoji: game.icon_emoji ?? '🎮', scoring_direction: game.scoring_direction, gold: 0, silver: 0, bronze: 0, total: 0, played: 0 };
-			if (mine.medal === 'gold') existing.gold++;
-			if (mine.medal === 'silver') existing.silver++;
-			if (mine.medal === 'bronze') existing.bronze++;
-			if (mine.medal) existing.total++;
+			if (mine.medal === 'gold') { existing.gold++; existing.total += 4; }
+			else if (mine.medal === 'silver') { existing.silver++; existing.total += 2; }
+			else if (mine.medal === 'bronze') { existing.bronze++; existing.total += 1; }
 			existing.played++;
 			perGameMap.set(game.id, existing);
 		}
