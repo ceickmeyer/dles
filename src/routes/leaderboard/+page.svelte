@@ -31,7 +31,7 @@
 		<div class="rounded-xl border border-ayu-border bg-ayu-surface p-5">
 			<div class="mb-4 border-b border-ayu-border pb-4">
 				<p class="font-semibold text-white">⚡ Power Rankings</p>
-				<p class="text-xs text-ayu-muted mt-0.5">Average percentile finish across every individual game entered — skipping a game doesn't count against you. Min. 10 game entries to appear.</p>
+				<p class="text-xs text-ayu-muted mt-0.5">Average percentile finish across every individual game entered — skipping a game doesn't count against you. Min. 10 days played to appear.</p>
 			</div>
 			<div class="space-y-0.5">
 				{#each data.powerRankings as row, i}

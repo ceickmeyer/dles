@@ -7,7 +7,7 @@ import type { PageServerLoad } from './$types';
 
 const MIN_PLAYS = 3;
 const ROLLING_WINDOW = 10;
-const MIN_GAME_ENTRIES = 10;
+const MIN_DAYS = 10;
 
 export const load: PageServerLoad = async () => {
 	const supabase = createClient<Database>(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY);
@@ -119,9 +119,10 @@ export const load: PageServerLoad = async () => {
 	const mostRecentSessionId = sessions[0]?.id ?? null;
 
 	function buildRankings(excludeSessionId?: string | null) {
-		const pm = new Map<string, { name: string; percentiles: number[] }>();
+		const pm = new Map<string, { name: string; percentiles: number[]; sessions: Set<string> }>();
 		for (const [key, group] of bySessionGame) {
-			if (excludeSessionId && key.split('::')[0] === excludeSessionId) continue;
+			const sessionId = key.split('::')[0];
+			if (excludeSessionId && sessionId === excludeSessionId) continue;
 			if (group.length < 2) continue;
 			const ranked = rankScores(
 				group.map(p => ({ player_id: p.player_id, player_name: p.player_name, raw_score: p.raw_score })),
@@ -130,17 +131,20 @@ export const load: PageServerLoad = async () => {
 			const n = group.length;
 			for (const r of ranked) {
 				const pct = (n - r.rank) / (n - 1) * 100;
-				if (!pm.has(r.player_id)) pm.set(r.player_id, { name: r.player_name, percentiles: [] });
-				pm.get(r.player_id)!.percentiles.push(pct);
+				if (!pm.has(r.player_id)) pm.set(r.player_id, { name: r.player_name, percentiles: [], sessions: new Set() });
+				const entry = pm.get(r.player_id)!;
+				entry.percentiles.push(pct);
+				entry.sessions.add(sessionId);
 			}
 		}
 		return [...pm.entries()]
-			.filter(([, { percentiles }]) => percentiles.length >= MIN_GAME_ENTRIES)
-			.map(([player_id, { name, percentiles }]) => ({
+			.filter(([, { sessions }]) => sessions.size >= MIN_DAYS)
+			.map(([player_id, { name, percentiles, sessions }]) => ({
 				player_id,
 				name,
 				percentile: percentiles.reduce((a, b) => a + b, 0) / percentiles.length,
 				gamesEntered: percentiles.length,
+				daysPlayed: sessions.size,
 			}))
 			.sort((a, b) => b.percentile - a.percentile);
 	}
