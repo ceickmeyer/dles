@@ -11,8 +11,10 @@
 
 	const medalRate = (g: PerGame) => g.played > 0 ? g.total / g.played : 0;
 
-	const bestAt  = $derived([...qualified].sort((a, b) => medalRate(b) - medalRate(a)).slice(0, 3));
-	const worstAt = $derived([...qualified].sort((a, b) => medalRate(a) - medalRate(b)).slice(0, 3));
+	const bestAt  = $derived([...qualified].sort((a, b) => medalRate(b) - medalRate(a)).slice(0, 5));
+	const worstAt = $derived([...qualified].sort((a, b) => medalRate(a) - medalRate(b)).slice(0, 5));
+
+	let perGameOpen = $state(false);
 </script>
 
 <div class="space-y-8 max-w-2xl">
@@ -45,28 +47,32 @@
 			</div>
 		{/if}
 
-		<!-- Medals overview -->
-		<div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-			{#each [
-				{ label: 'Gold', value: data.medals.gold, color: 'text-ayu-gold', emoji: '🥇' },
-				{ label: 'Silver', value: data.medals.silver, color: 'text-zinc-400', emoji: '🥈' },
-				{ label: 'Bronze', value: data.medals.bronze, color: 'text-amber-700', emoji: '🥉' },
-				{ label: 'Total', value: data.medals.total, color: 'text-white', emoji: '🏅' }
-			] as stat}
-				<div class="rounded-xl border border-ayu-border bg-ayu-surface p-4 text-center">
-					<p class="text-2xl">{stat.emoji}</p>
-					<p class="mt-1 text-2xl font-bold {stat.color}">{stat.value}</p>
-					<p class="text-xs text-ayu-muted">{stat.label}</p>
-				</div>
-			{/each}
-		</div>
-
-		<!-- Stats row -->
-		<div class="grid grid-cols-3 gap-3">
+		<!-- Wins / streaks / nights -->
+		<div class="grid grid-cols-4 gap-3">
 			<div class="rounded-xl border border-ayu-border bg-ayu-surface p-4 text-center">
 				<p class="text-2xl font-bold text-white">{data.nights}</p>
 				<p class="text-xs text-ayu-muted">Nights played</p>
 			</div>
+			<div class="rounded-xl border border-ayu-border bg-ayu-surface p-4 text-center">
+				<p class="text-2xl font-bold text-ayu-gold">👑 {data.sessionWins}</p>
+				<p class="text-xs text-ayu-muted">Wins</p>
+			</div>
+			<div class="rounded-xl border border-ayu-border bg-ayu-surface p-4 text-center">
+				<p class="text-2xl font-bold text-ayu-gold">
+					{data.bestWinStreak > 0 ? `🔥 ${data.bestWinStreak}` : '—'}
+				</p>
+				<p class="text-xs text-ayu-muted">Longest 1st streak</p>
+			</div>
+			<div class="rounded-xl border border-ayu-border bg-ayu-surface p-4 text-center">
+				<p class="text-2xl font-bold text-white">
+					{data.bestPodiumStreak > 0 ? data.bestPodiumStreak : '—'}
+				</p>
+				<p class="text-xs text-ayu-muted">Longest podium streak</p>
+			</div>
+		</div>
+
+		<!-- Best / worst at -->
+		<div class="grid grid-cols-2 gap-3">
 			<div class="rounded-xl border border-ayu-border bg-ayu-surface p-4">
 				<p class="mb-2 text-xs font-semibold uppercase tracking-wider text-ayu-muted">Best at</p>
 				{#if bestAt.length === 0}
@@ -93,80 +99,33 @@
 			</div>
 		</div>
 
-		<!-- Streaks -->
-		{#if data.bestWinStreak > 0 || data.bestPodiumStreak > 0 || data.sessionWins > 0}
-			<div class="grid grid-cols-3 gap-3">
-				<div class="rounded-xl border border-ayu-border bg-ayu-surface p-4 text-center">
-					<p class="text-2xl font-bold text-ayu-gold">👑 {data.sessionWins}</p>
-					<p class="text-xs text-ayu-muted">Wins</p>
-				</div>
-				<div class="rounded-xl border border-ayu-border bg-ayu-surface p-4 text-center">
-					<p class="text-2xl font-bold text-ayu-gold">
-						{data.bestWinStreak > 0 ? `🔥 ${data.bestWinStreak}` : '—'}
-					</p>
-					<p class="text-xs text-ayu-muted">Longest 1st place streak</p>
-				</div>
-				<div class="rounded-xl border border-ayu-border bg-ayu-surface p-4 text-center">
-					<p class="text-2xl font-bold text-white">
-						{data.bestPodiumStreak > 0 ? data.bestPodiumStreak : '—'}
-					</p>
-					<p class="text-xs text-ayu-muted">Longest podium streak</p>
-				</div>
-			</div>
-		{/if}
-
-		<!-- Game badges (best performances) -->
-		{#if data.gameBadges.length > 0}
-			<div class="rounded-xl border border-ayu-border bg-ayu-surface p-5">
-				<h2 class="mb-3 text-xs font-semibold uppercase tracking-wider text-ayu-muted">Game Badges</h2>
-				<div class="flex flex-wrap gap-2">
-					{#each data.gameBadges as badge (badge.id)}
-						<div class="group relative flex items-center gap-2 rounded-lg border border-ayu-border bg-ayu-surface2 px-3 py-2" title={badge.description}>
-							<span class="text-xl">{badge.emoji}</span>
-							<div>
-								<p class="text-sm font-medium text-white leading-tight">{badge.name}</p>
-								{#if badge.gameName}
-									<p class="text-xs text-ayu-muted">{badge.gameEmoji} {badge.gameName}</p>
-								{/if}
-							</div>
-						</div>
-					{/each}
-				</div>
-			</div>
-		{/if}
-
-		<!-- Achievement badges -->
-		{#if data.achievementBadges.length > 0}
-			<div class="rounded-xl border border-ayu-border bg-ayu-surface p-5">
-				<h2 class="mb-3 text-xs font-semibold uppercase tracking-wider text-ayu-muted">Achievements</h2>
-				<div class="flex flex-wrap gap-2">
-					{#each data.achievementBadges as badge}
-						<div class="flex items-center gap-2 rounded-lg border border-ayu-border bg-ayu-surface2 px-3 py-2" title={badge.desc}>
-							<span class="text-xl">{badge.emoji}</span>
-							<span class="text-sm font-medium text-white">{badge.label}</span>
-						</div>
-					{/each}
-				</div>
-			</div>
-		{/if}
-
 		<!-- Per-game breakdown -->
 		{#if data.perGame.length > 0}
-			<div class="rounded-xl border border-ayu-border bg-ayu-surface p-5">
-				<h2 class="mb-3 text-xs font-semibold uppercase tracking-wider text-ayu-muted">Per Game</h2>
-				<div class="space-y-1.5">
-					{#each data.perGame as g}
-						<div class="flex items-center justify-between rounded-lg bg-ayu-surface2 px-3 py-2 text-sm">
-							<span class="text-white">{g.emoji} {g.name}</span>
-							<div class="flex items-center gap-4 text-xs">
-								<span class="text-ayu-gold">🥇 {g.gold}</span>
-								<span class="text-zinc-400">🥈 {g.silver}</span>
-								<span class="text-amber-700">🥉 {g.bronze}</span>
-								<span class="text-ayu-muted">{g.played} played</span>
+			<div class="rounded-xl border border-ayu-border bg-ayu-surface">
+				<button
+					onclick={() => perGameOpen = !perGameOpen}
+					class="flex w-full items-center justify-between px-5 py-4 text-left"
+				>
+					<h2 class="text-xs font-semibold uppercase tracking-wider text-ayu-muted">Per Game</h2>
+					<svg class="w-3.5 h-3.5 text-ayu-muted transition-transform {perGameOpen ? 'rotate-180' : ''}" viewBox="0 0 10 6" fill="none">
+						<path d="M0 0.5L5 5.5L10 0.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+					</svg>
+				</button>
+				{#if perGameOpen}
+					<div class="px-5 pb-4 space-y-1.5">
+						{#each data.perGame as g}
+							<div class="flex items-center justify-between rounded-lg bg-ayu-surface2 px-3 py-2 text-sm">
+								<span class="text-white">{g.emoji} {g.name}</span>
+								<div class="flex items-center gap-4 text-xs">
+									<span class="text-ayu-gold">🥇 {g.gold}</span>
+									<span class="text-zinc-400">🥈 {g.silver}</span>
+									<span class="text-amber-700">🥉 {g.bronze}</span>
+									<span class="text-ayu-muted">{g.played} played</span>
+								</div>
 							</div>
-						</div>
-					{/each}
-				</div>
+						{/each}
+					</div>
+				{/if}
 			</div>
 		{/if}
 
