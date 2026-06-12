@@ -21,6 +21,10 @@
 		created_at: string;
 	}
 
+	type DisplayGroup =
+		| { kind: 'msg'; msg: Message }
+		| { kind: 'log'; key: string; player: string; msgs: Message[] };
+
 	let messages = $state<Message[]>([]);
 	let draft = $state('');
 	let open = $state(false);
@@ -29,6 +33,54 @@
 	let unread = $state(0);
 	let listEl = $state<HTMLElement | null>(null);
 	let subscription: ReturnType<typeof supabase.channel> | null = null;
+	let expandedKeys = $state(new Set<string>());
+
+	function isLogMsg(m: Message): boolean {
+		return m.player_id === null;
+	}
+
+	function logPlayer(content: string): string | null {
+		const match = content.match(/^(.+?) (?:scored|DNF'd) /);
+		return match ? match[1] : null;
+	}
+
+	const groups = $derived.by((): DisplayGroup[] => {
+		const result: DisplayGroup[] = [];
+		let i = 0;
+		while (i < messages.length) {
+			const m = messages[i];
+			if (isLogMsg(m)) {
+				const player = logPlayer(m.content);
+				if (player) {
+					const run: Message[] = [m];
+					let j = i + 1;
+					while (
+						j < messages.length &&
+						isLogMsg(messages[j]) &&
+						logPlayer(messages[j].content) === player
+					) {
+						run.push(messages[j]);
+						j++;
+					}
+					if (run.length >= 2) {
+						result.push({ kind: 'log', key: run[0].id, player, msgs: run });
+						i = j;
+						continue;
+					}
+				}
+			}
+			result.push({ kind: 'msg', msg: m });
+			i++;
+		}
+		return result;
+	});
+
+	function toggleGroup(key: string) {
+		const next = new Set(expandedKeys);
+		if (next.has(key)) next.delete(key);
+		else next.add(key);
+		expandedKeys = next;
+	}
 
 	function formatTime(ts: string): string {
 		return new Date(ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
@@ -116,27 +168,67 @@
 				{#if messages.length === 0}
 					<p class="text-center text-xs text-ayu-muted pt-8">No messages yet. Say something!</p>
 				{:else}
-					{#each messages as msg (msg.id)}
-						{#if msg.player_id === null}
-							<div class="flex items-center gap-2 py-0.5">
-								<div class="flex-1 h-px bg-ayu-border"></div>
-								<span class="text-xs text-ayu-blue/80 px-1 text-center">{msg.content}</span>
-								<div class="flex-1 h-px bg-ayu-border"></div>
-							</div>
+					{#each groups as group (group.kind === 'msg' ? group.msg.id : group.key)}
+						{#if group.kind === 'msg'}
+							{#if group.msg.player_id === null}
+								<!-- Single system/log message -->
+								<div class="flex items-center gap-2 py-0.5">
+									<div class="flex-1 h-px bg-ayu-border"></div>
+									<span class="text-xs text-ayu-blue/80 px-1 text-center">{group.msg.content}</span>
+									<div class="flex-1 h-px bg-ayu-border"></div>
+								</div>
+							{:else}
+								<!-- Regular chat message -->
+								<div class="flex flex-col {group.msg.player_id === playerId ? 'items-end' : 'items-start'}">
+									<div class="flex items-baseline gap-1.5 mb-0.5">
+										<span class="text-xs font-semibold {group.msg.player_id === playerId ? 'text-zinc-400' : 'text-ayu-gold'}">
+											{group.msg.player_id === playerId ? 'You' : group.msg.player_name}
+										</span>
+										<span class="text-xs text-zinc-600">{formatTime(group.msg.created_at)}</span>
+									</div>
+									<div class="max-w-[85%] wrap-break-word rounded-2xl px-3 py-2 text-sm {group.msg.player_id === playerId
+										? 'bg-ayu-gold text-ayu-bg rounded-br-sm'
+										: 'bg-ayu-surface2 text-white rounded-bl-sm'}">
+										{group.msg.content}
+									</div>
+								</div>
+							{/if}
 						{:else}
-							<div class="flex flex-col {msg.player_id === playerId ? 'items-end' : 'items-start'}">
-								<div class="flex items-baseline gap-1.5 mb-0.5">
-									<span class="text-xs font-semibold {msg.player_id === playerId ? 'text-zinc-400' : 'text-ayu-gold'}">
-										{msg.player_id === playerId ? 'You' : msg.player_name}
+							<!-- Grouped log messages -->
+							{#if expandedKeys.has(group.key)}
+								<!-- Expanded: all messages -->
+								{#each group.msgs as msg (msg.id)}
+									<div class="flex items-center gap-2 py-0.5">
+										<div class="flex-1 h-px bg-ayu-border"></div>
+										<span class="text-xs text-ayu-blue/80 px-1 text-center">{msg.content}</span>
+										<div class="flex-1 h-px bg-ayu-border"></div>
+									</div>
+								{/each}
+								<button
+									onclick={() => toggleGroup(group.key)}
+									class="flex w-full items-center gap-2 py-0.5 transition-opacity hover:opacity-70"
+								>
+									<div class="flex-1 h-px bg-ayu-border"></div>
+									<span class="shrink-0 rounded-full bg-ayu-surface2 px-2 py-0.5 text-xs font-semibold text-ayu-blue">▲ collapse</span>
+									<div class="flex-1 h-px bg-ayu-border"></div>
+								</button>
+							{:else}
+								<!-- Collapsed: last message + count badge on right -->
+								<button
+									onclick={() => toggleGroup(group.key)}
+									class="flex w-full items-center gap-2 py-0.5 text-left transition-opacity hover:opacity-70"
+								>
+									<div class="flex-1 h-px bg-ayu-border"></div>
+									<span class="text-xs text-ayu-blue/80 text-center">{group.msgs[group.msgs.length - 1].content}</span>
+									<span class="shrink-0 inline-flex items-center gap-0.5 rounded-full bg-ayu-surface2 px-1.5 py-px text-[10px] font-semibold text-ayu-blue">
+										+{group.msgs.length - 1}
+										<svg class="w-2 h-2" viewBox="0 0 10 6" fill="currentColor">
+											<path d="M0 0.5L5 5.5L10 0.5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+										</svg>
 									</span>
-									<span class="text-xs text-zinc-600">{formatTime(msg.created_at)}</span>
-								</div>
-								<div class="max-w-[85%] wrap-break-word rounded-2xl px-3 py-2 text-sm {msg.player_id === playerId
-									? 'bg-ayu-gold text-ayu-bg rounded-br-sm'
-									: 'bg-ayu-surface2 text-white rounded-bl-sm'}">
-									{msg.content}
-								</div>
-							</div>
+									<div class="flex-1 h-px bg-ayu-border"></div>
+								</button>
+							{/if}
 						{/if}
 					{/each}
 				{/if}
