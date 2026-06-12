@@ -146,7 +146,6 @@ export const load: PageServerLoad = async ({ params }) => {
 		const myTally = sessionTally.find(t => t.player_id === params.id);
 		if (!myTally) continue;
 
-		const topGolds = sessionTally[0]?.gold ?? 0;
 		const myRank = sessionTally.findIndex(t => t.gold === myTally.gold && t.silver === myTally.silver && t.bronze === myTally.bronze) + 1;
 
 		sessionRankMap.set(sessionId, { rank: myRank, outOf: sessionTally.length });
@@ -156,7 +155,7 @@ export const load: PageServerLoad = async ({ params }) => {
 		if (myRank === 1) sessionWins++;
 
 		playerHistory.push({
-			won: myTally.gold > 0 && myTally.gold === topGolds,
+			won: myRank === 1,
 			podium: myRank <= 3 && myTally.total > 0
 		});
 
