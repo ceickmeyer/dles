@@ -6,6 +6,7 @@ import { rankScores, computeSessionTally, sortTally } from '$lib/scoring';
 import { displayName, formatScore } from '$lib/utils';
 import { computeBadges, computeStreaks } from '$lib/badges';
 import { computeSessionBadges } from '$lib/gameBadges';
+import { computeElo } from '$lib/elo';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params }) => {
@@ -208,6 +209,21 @@ export const load: PageServerLoad = async ({ params }) => {
 		outOf: sessionRankMap.get(s.id)?.outOf ?? null,
 	}));
 
+	// ELO — computed from all scores across all sessions
+	const eloMap = computeElo(
+		sessions.map(s => s.id), // sessions are already in ascending date order
+		allScores.map(s => ({
+			session_id: s.session_id,
+			game_id: s.game_id,
+			player_id: s.player_id,
+			raw_score: s.raw_score,
+			scoring_direction: (s.game as any).scoring_direction,
+			allow_dnf: (s.game as any).allow_dnf,
+			max_score: (s.game as any).max_score,
+		}))
+	);
+	const playerElo = eloMap.get(params.id) ?? null;
+
 	return {
 		player,
 		displayName: displayName(player),
@@ -225,5 +241,6 @@ export const load: PageServerLoad = async ({ params }) => {
 		perGame,
 		recentSessions: recentSessions.slice(-10).reverse(),
 		rankHistory,
+		playerElo,
 	};
 };

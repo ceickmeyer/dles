@@ -27,15 +27,15 @@
 		</p>
 	</div>
 
-	{#if data.powerRankings.length > 0}
+	{#if data.eloRankings.length > 0}
 		<div class="rounded-xl border border-ayu-border bg-ayu-surface p-5">
 			<div class="mb-4 border-b border-ayu-border pb-4">
-				<p class="font-semibold text-white">⚡ Power Rankings</p>
-				<p class="text-xs text-ayu-muted mt-0.5">Average percentile finish across every individual game entered — skipping a game doesn't count against you. Min. 10 days played to appear.</p>
+				<p class="font-semibold text-white">⚡ ELO Rankings</p>
+				<p class="text-xs text-ayu-muted mt-0.5">Head-to-head ELO across every individual game — skipping a game doesn't count against you. Min. {data.eloRankings.length > 0 ? '10' : '0'} nights played to appear.</p>
 			</div>
 			<div class="space-y-0.5">
-				{#each data.powerRankings as row, i}
-					<div class="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-ayu-surface2 transition-colors">
+				{#each data.eloRankings as row, i}
+					<div class="group relative flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-ayu-surface2 transition-colors">
 						<span class="w-5 shrink-0 text-center text-xs font-bold
 							{i === 0 ? 'text-ayu-gold' : i === 1 ? 'text-zinc-400' : i === 2 ? 'text-amber-700' : 'text-zinc-600'}">
 							{i + 1}
@@ -59,11 +59,33 @@
 							{row.name}
 						</a>
 						<span class="font-mono text-sm font-bold {i === 0 ? 'text-ayu-gold' : 'text-white'}">
-							{row.percentile.toFixed(1)}%
+							{row.elo.toLocaleString()}
 						</span>
-						<span class="w-16 text-right text-xs text-ayu-muted">
-							{row.gamesEntered} games
-						</span>
+						{#if row.delta !== null && row.delta !== 0}
+							<span class="w-14 text-right text-xs font-semibold {row.delta > 0 ? 'text-ayu-green' : 'text-ayu-red'}">
+								{row.delta > 0 ? '+' : ''}{row.delta}
+							</span>
+						{:else}
+							<span class="w-14 text-right text-xs text-ayu-muted">—</span>
+						{/if}
+
+						<!-- Hover tooltip: last 5 sessions -->
+						{#if row.recentHistory.length > 0}
+							<div class="pointer-events-none absolute right-0 top-full z-10 mt-1 w-52 rounded-lg border border-ayu-border bg-zinc-900 p-3 text-xs opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+								<p class="mb-2 font-semibold text-ayu-muted uppercase tracking-wider">Recent sessions</p>
+								<div class="space-y-1.5">
+									{#each row.recentHistory as h}
+										{@const d = new Date(h.date + 'T12:00:00')}
+										<div class="flex items-center justify-between">
+											<span class="text-zinc-300">{d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+											<span class="ml-3 font-semibold {h.delta > 0 ? 'text-ayu-green' : h.delta < 0 ? 'text-ayu-red' : 'text-ayu-muted'}">
+												{h.delta > 0 ? '+' : ''}{h.delta}
+											</span>
+										</div>
+									{/each}
+								</div>
+							</div>
+						{/if}
 					</div>
 				{/each}
 			</div>

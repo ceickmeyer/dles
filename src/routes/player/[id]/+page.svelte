@@ -32,7 +32,18 @@
 					Joined {new Date(data.player.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
 				</p>
 			</div>
-			{#if data.nights === 0}
+			{#if data.playerElo}
+				{@const delta = data.playerElo.prevElo !== null ? data.playerElo.elo - data.playerElo.prevElo : null}
+				<div class="shrink-0 text-right">
+					<p class="text-xs font-semibold uppercase tracking-wider text-ayu-muted">ELO</p>
+					<p class="text-2xl font-bold text-white">{data.playerElo.elo.toLocaleString()}</p>
+					{#if delta !== null && delta !== 0}
+						<p class="text-sm font-semibold {delta > 0 ? 'text-ayu-green' : 'text-ayu-red'}">
+							{delta > 0 ? '+' : ''}{delta}
+						</p>
+					{/if}
+				</div>
+			{:else if data.nights === 0}
 				<span class="mt-1 rounded-full border border-ayu-border px-3 py-1 text-xs text-ayu-muted">No finished sessions</span>
 			{/if}
 		</div>
