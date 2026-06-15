@@ -3,7 +3,23 @@
 
 	let { data } = $props();
 	const game = $derived(data.game);
-	const rows = $derived(data.rows);
+
+	type SortKey = 'avg' | 'best' | 'worst';
+	let sortBy = $state<SortKey>('avg');
+
+	const asc = $derived(game.scoring_direction === 'lower_is_better');
+
+	const sorted = $derived.by(() => {
+		const rows = [...data.rows];
+		return rows.sort((a, b) => {
+			if (sortBy === 'avg') return asc ? a.avg - b.avg : b.avg - a.avg;
+			const av = a[sortBy], bv = b[sortBy];
+			if (av === null && bv === null) return 0;
+			if (av === null) return 1;
+			if (bv === null) return -1;
+			return asc ? av - bv : bv - av;
+		});
+	});
 
 	function fmt(score: number): string {
 		if (isDnf(score, game)) return 'DNF';
@@ -36,7 +52,7 @@
 		</div>
 	</div>
 
-	{#if rows.length === 0}
+	{#if sorted.length === 0}
 		<div class="py-16 text-center">
 			<p class="text-ayu-muted">No scores recorded yet for this game.</p>
 		</div>
@@ -47,14 +63,30 @@
 					<tr class="border-b border-ayu-border bg-ayu-surface2 text-left text-xs font-semibold uppercase tracking-wider text-ayu-muted">
 						<th class="px-4 py-3">#</th>
 						<th class="px-4 py-3">Player</th>
-						<th class="px-3 py-3 text-center">Avg</th>
-						<th class="px-3 py-3 text-center">Best</th>
-						<th class="px-3 py-3 text-center">Worst</th>
+						{#each [
+							{ key: 'avg', label: 'Avg' },
+							{ key: 'best', label: 'Best' },
+							{ key: 'worst', label: 'Worst' },
+						] as col (col.key)}
+							<th class="px-3 py-3 text-center">
+								<button
+									onclick={() => sortBy = col.key as SortKey}
+									class="inline-flex items-center gap-1 transition-colors {sortBy === col.key ? 'text-ayu-gold' : 'hover:text-white'}"
+								>
+									{col.label}
+									{#if sortBy === col.key}
+										<svg class="w-2.5 h-2.5" viewBox="0 0 10 6" fill="none">
+											<path d="M0 5.5L5 0.5L10 5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+										</svg>
+									{/if}
+								</button>
+							</th>
+						{/each}
 						<th class="px-3 py-3 text-center">Played</th>
 					</tr>
 				</thead>
 				<tbody>
-					{#each rows as row, i}
+					{#each sorted as row, i}
 						<tr class="border-b border-ayu-border bg-ayu-surface last:border-0 hover:bg-ayu-surface2 transition-colors">
 							<td class="px-4 py-3 text-ayu-muted">{i + 1}</td>
 							<td class="px-4 py-3">
@@ -62,11 +94,15 @@
 									{row.name}
 								</a>
 							</td>
-							<td class="px-3 py-3 text-center font-bold {i === 0 ? 'text-ayu-gold' : 'text-white'}">
+							<td class="px-3 py-3 text-center font-bold {sortBy === 'avg' && i === 0 ? 'text-ayu-gold' : 'text-white'}">
 								{fmtAvg(row.avg)}
 							</td>
-							<td class="px-3 py-3 text-center text-ayu-green">{row.best !== null ? fmt(row.best) : '—'}</td>
-							<td class="px-3 py-3 text-center text-ayu-muted">{row.worst !== null ? fmt(row.worst) : '—'}</td>
+							<td class="px-3 py-3 text-center {sortBy === 'best' && i === 0 ? 'text-ayu-gold' : 'text-ayu-green'}">
+								{row.best !== null ? fmt(row.best) : '—'}
+							</td>
+							<td class="px-3 py-3 text-center {sortBy === 'worst' && i === 0 ? 'text-ayu-gold' : 'text-ayu-muted'}">
+								{row.worst !== null ? fmt(row.worst) : '—'}
+							</td>
 							<td class="px-3 py-3 text-center text-ayu-muted">{row.played}</td>
 						</tr>
 					{/each}
