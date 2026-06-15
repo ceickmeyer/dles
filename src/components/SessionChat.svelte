@@ -172,10 +172,11 @@
 						{#if group.kind === 'msg'}
 							{#if group.msg.player_id === null}
 								<!-- Single system/log message -->
+								{@const pn = group.msg.player_name}
 								<div class="flex items-center gap-2 py-0.5">
-									<div class="flex-1 h-px bg-ayu-border"></div>
-									<span class="text-xs text-ayu-blue/80 px-1 text-center">{group.msg.content}</span>
-									<div class="flex-1 h-px bg-ayu-border"></div>
+									<div class="flex-1 h-px {pn === '__sr__' ? 'bg-ayu-gold/40' : pn === '__pb__' ? 'bg-ayu-green/40' : 'bg-ayu-border'}"></div>
+									<span class="px-1 text-center text-xs {pn === '__sr__' ? 'font-semibold text-ayu-gold' : pn === '__pb__' ? 'text-ayu-green' : 'text-ayu-blue/80'}">{group.msg.content}</span>
+									<div class="flex-1 h-px {pn === '__sr__' ? 'bg-ayu-gold/40' : pn === '__pb__' ? 'bg-ayu-green/40' : 'bg-ayu-border'}"></div>
 								</div>
 							{:else}
 								<!-- Regular chat message -->

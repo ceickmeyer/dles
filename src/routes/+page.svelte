@@ -347,6 +347,29 @@
 				: `${name} scored ${formatScore(rawScore, game)} on ${game.icon_emoji ?? '🎮'} ${game.name}${rankSuffix}`;
 			const { error: logErr } = await supabase.from('messages').insert({ session_id: session!.id, player_id: null, player_name: '__log__', content: logMsg });
 			if (logErr) console.error('log insert failed:', logErr);
+
+			// Check for personal best / server record (non-DNF only, compared against finished sessions)
+			if (!dnf && player.id) {
+				const lower = game.scoring_direction === 'lower_is_better';
+				const dnfVal = game.allow_dnf && game.max_score !== null ? game.max_score + 1 : null;
+				const [pbRes, srRes] = await Promise.all([
+					supabase.from('scores').select('raw_score').eq('game_id', game.id).eq('player_id', player.id!).neq('session_id', session!.id),
+					supabase.from('scores').select('raw_score').eq('game_id', game.id).neq('session_id', session!.id),
+				]);
+				const filterDnf = (vals: number[]) => dnfVal !== null ? vals.filter(v => v !== dnfVal) : vals;
+				const pbVals = filterDnf((pbRes.data ?? []).map(s => s.raw_score));
+				const srVals = filterDnf((srRes.data ?? []).map(s => s.raw_score));
+				const prevPB = pbVals.length > 0 ? (lower ? Math.min(...pbVals) : Math.max(...pbVals)) : null;
+				const prevSR = srVals.length > 0 ? (lower ? Math.min(...srVals) : Math.max(...srVals)) : null;
+				const beats = (v: number, ref: number) => lower ? v < ref : v > ref;
+				const fmtd = formatScore(rawScore, game);
+				const emoji = game.icon_emoji ?? '🎮';
+				if (prevSR !== null && beats(rawScore, prevSR)) {
+					await supabase.from('messages').insert({ session_id: session!.id, player_id: null, player_name: '__sr__', content: `${name} set a new server record for ${emoji} ${game.name} — ${fmtd}` });
+				} else if (prevPB !== null && beats(rawScore, prevPB)) {
+					await supabase.from('messages').insert({ session_id: session!.id, player_id: null, player_name: '__pb__', content: `${name} achieved a new personal best in ${emoji} ${game.name} — ${fmtd}` });
+				}
+			}
 		};
 	}
 
