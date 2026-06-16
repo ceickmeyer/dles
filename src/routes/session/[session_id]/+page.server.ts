@@ -1,14 +1,10 @@
-import { createClient } from '@supabase/supabase-js';
-import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
+import { supabase } from '$lib/supabase';
 import { error } from '@sveltejs/kit';
-import type { Database } from '$lib/database.types';
 import { rankScores, computeSessionTally, sortTally, MEDAL_EMOJI } from '$lib/scoring';
 import { displayName, sortSessionGames } from '$lib/utils';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params }) => {
-	const supabase = createClient<Database>(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY);
-
 	const { data: session } = await supabase
 		.from('sessions')
 		.select('*, session_games(sort_order, is_special, game:games(*))')
@@ -36,7 +32,8 @@ export const load: PageServerLoad = async ({ params }) => {
 					player_name: displayName(s.player as { name: string; alias?: string | null }),
 					raw_score: s.raw_score
 				})),
-			game.scoring_direction
+			game.scoring_direction,
+			game.allow_dnf && game.max_score !== null ? game.max_score + 1 : null
 		)
 	}));
 

@@ -1,13 +1,9 @@
-import { createClient } from '@supabase/supabase-js';
-import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
+import { supabase } from '$lib/supabase';
 import { error } from '@sveltejs/kit';
-import type { Database } from '$lib/database.types';
 import { displayName } from '$lib/utils';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params }) => {
-	const supabase = createClient<Database>(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY);
-
 	const { data: session } = await supabase
 		.from('sessions')
 		.select('id, name, date, status')

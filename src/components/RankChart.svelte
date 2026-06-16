@@ -126,6 +126,7 @@
 			stroke-width={hoveredPt === pt ? 2 : 1.5}
 		/>
 		<!-- Transparent larger hit area -->
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<circle
 			cx={pt.x}
 			cy={pt.y}

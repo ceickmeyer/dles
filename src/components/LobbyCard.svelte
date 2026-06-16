@@ -37,6 +37,7 @@
 		colorIndex = 0,
 		featured = false,
 		prevWinnerId = null,
+		prevFullRanking = [],
 	}: {
 		game: Game;
 		sessionId?: string;
@@ -51,6 +52,7 @@
 		colorIndex?: number;
 		featured?: boolean;
 		prevWinnerId?: string | null;
+		prevFullRanking?: { player_id: string; player_name: string; rank: number; total: number }[];
 	} = $props();
 
 	const accent = $derived(featured ? FEATURED_ACCENT : CARD_ACCENTS[colorIndex % CARD_ACCENTS.length]);
@@ -135,6 +137,18 @@
 		shareTipText = text;
 	}
 	function hideShareTip() { shareTipText = null; }
+
+	let crownTipVisible = $state(false);
+	let crownTipX = $state(0);
+	let crownTipY = $state(0);
+
+	function showCrownTip(e: MouseEvent) {
+		const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+		crownTipX = rect.left;
+		crownTipY = rect.top - 8;
+		crownTipVisible = true;
+	}
+	function hideCrownTip() { crownTipVisible = false; }
 
 	function toggle() {
 		expanded = !expanded;
@@ -477,7 +491,7 @@
 						onmouseleave={s.share_text ? hideShareTip : undefined}
 					>
 						<span class="w-5 shrink-0 text-center leading-none">{s.medal ? MEDAL_EMOJI[s.medal] : ''}</span>
-						<span class="shrink-0 {s.player_id === currentPlayerId ? 'font-semibold text-white' : 'text-zinc-300'}">{s.player_name}{#if s.player_id === prevWinnerId}<span class="ml-0.5 text-xs" title="Yesterday's winner">👑</span>{/if}</span>
+						<span class="shrink-0 {s.player_id === currentPlayerId ? 'font-semibold text-white' : 'text-zinc-300'}">{s.player_name}{#if s.player_id === prevWinnerId}<!-- svelte-ignore a11y_no_static_element_interactions --><span class="ml-0.5 text-xs cursor-default" onmouseenter={showCrownTip} onmouseleave={hideCrownTip}>👑</span>{/if}</span>
 						<span class="flex-1 border-b border-dashed border-zinc-600 mb-1"></span>
 						<span class="shrink-0 tabular-nums font-semibold {isDnf(s.raw_score, game) ? 'text-ayu-red' : s.player_id === currentPlayerId ? 'text-ayu-gold' : 'text-zinc-400'}">{formatScore(s.raw_score, game)}</span>
 					</div>
@@ -502,5 +516,22 @@
 		style="left:{shareTipX}px;top:{shareTipY}px;transform:translateY(-100%) translateX(-50%)"
 	>
 		<pre class="text-sm leading-snug">{shareTipText}</pre>
+	</div>
+{/if}
+
+{#if crownTipVisible && prevFullRanking.length > 0}
+	<div
+		class="pointer-events-none fixed z-50 w-52 rounded-lg border border-ayu-border bg-zinc-900 px-3 py-2 text-xs shadow-xl"
+		style="left:{crownTipX}px;top:{crownTipY}px;transform:translateY(-100%)"
+	>
+		<p class="mb-1.5 font-semibold text-white">Yesterday's Rankings</p>
+		<div class="space-y-1">
+			{#each prevFullRanking as r}
+				<div class="flex items-center justify-between gap-3">
+					<span class="{r.rank === 1 ? 'text-ayu-gold' : 'text-zinc-300'}">#{r.rank} {r.player_name}</span>
+					<span class="font-mono text-ayu-muted">{r.total}</span>
+				</div>
+			{/each}
+		</div>
 	</div>
 {/if}

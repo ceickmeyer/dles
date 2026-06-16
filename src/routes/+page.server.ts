@@ -1,6 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
-import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
-import type { Database } from '$lib/database.types';
+import { supabase } from '$lib/supabase';
 import { sortSessionGames, displayName } from '$lib/utils';
 import { rankScores, computeSessionTally, sortTally } from '$lib/scoring';
 import type { PageServerLoad } from './$types';
@@ -63,7 +61,7 @@ function tallyFromScores(scores: ScoreRow[]): ReturnType<typeof sortTally> {
 	return sortTally([...computeSessionTally(gameResults).values()]);
 }
 
-async function loadPrevWinners(supabase: ReturnType<typeof createClient<Database>>, excludeSessionId: string | null) {
+async function loadPrevWinners(excludeSessionId: string | null) {
 	let sessionsQuery = supabase
 		.from('sessions')
 		.select('id')
@@ -96,6 +94,13 @@ async function loadPrevWinners(supabase: ReturnType<typeof createClient<Database
 		return { player_id: row.player_id, rank: first + 1, outOf };
 	});
 
+	const fullRanking = tally.map((row, idx) => ({
+		player_id: row.player_id,
+		player_name: row.player_name,
+		rank: ranks[idx].rank,
+		total: row.total,
+	}));
+
 	const goldWinnerId = tally[0].player_id;
 	let goldStreak = 1;
 	for (let i = 1; i < sessions.length; i++) {
@@ -119,12 +124,11 @@ async function loadPrevWinners(supabase: ReturnType<typeof createClient<Database
 				goldStreak: t.rank === 1 && goldStreak >= 2 ? goldStreak : null,
 			})),
 		ranks,
+		fullRanking,
 	};
 }
 
 export const load: PageServerLoad = async () => {
-	const supabase = createClient<Database>(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY);
-
 	const { data: session } = await supabase
 		.from('sessions')
 		.select('*, session_games(sort_order, is_special, game:games(*))')
@@ -137,17 +141,17 @@ export const load: PageServerLoad = async () => {
 	if (!session) {
 		const [{ data: schedules }, prevData] = await Promise.all([
 			supabase.from('schedules').select('name, days_of_week, session_name_template').eq('active', true),
-			loadPrevWinners(supabase, null),
+			loadPrevWinners(null),
 		]);
 		const nextSession = schedules ? computeNextSession(schedules) : null;
-		return { session: null, scores: [], nextSession, prevWinners: prevData?.winners ?? null, prevRanks: prevData?.ranks ?? [] };
+		return { session: null, scores: [], nextSession, prevWinners: prevData?.winners ?? null, prevRanks: prevData?.ranks ?? [], prevFullRanking: prevData?.fullRanking ?? [] };
 	}
 
 	const sessionGames = sortSessionGames(session.session_games ?? []);
 
 	const [{ data: scores }, prevData] = await Promise.all([
 		supabase.from('scores').select('*, player:players(name, alias)').eq('session_id', session.id),
-		loadPrevWinners(supabase, session.id),
+		loadPrevWinners(session.id),
 	]);
 
 	return {
@@ -156,5 +160,6 @@ export const load: PageServerLoad = async () => {
 		nextSession: null,
 		prevWinners: prevData?.winners ?? null,
 		prevRanks: prevData?.ranks ?? [],
+		prevFullRanking: prevData?.fullRanking ?? [],
 	};
 };

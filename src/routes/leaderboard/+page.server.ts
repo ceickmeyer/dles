@@ -1,8 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
-import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
-import type { Database } from '$lib/database.types';
+import { supabase } from '$lib/supabase';
 import { displayName } from '$lib/utils';
-import { computeElo } from '$lib/elo';
 import type { PageServerLoad } from './$types';
 
 const MIN_PLAYS = 3;
@@ -10,8 +7,6 @@ const ROLLING_WINDOW = 10;
 const MIN_DAYS = 10;
 
 export const load: PageServerLoad = async () => {
-	const supabase = createClient<Database>(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY);
-
 	const { data: sessions } = await supabase
 		.from('sessions')
 		.select('id, name, date')
@@ -101,35 +96,27 @@ export const load: PageServerLoad = async () => {
 		return [{ ...meta, rows }];
 	}).sort((a, b) => a.name.localeCompare(b.name));
 
-	// --- ELO rankings ---
-	const sessionIdsChron = [...sessions].reverse().map(s => s.id);
-
+	// --- ELO rankings (read from cache — refreshed by the scheduler / admin edits, not per request) ---
 	const playerNames = new Map<string, string>();
 	for (const s of allScores) {
 		if (!playerNames.has(s.player_id))
 			playerNames.set(s.player_id, displayName(s.player as { name: string; alias?: string | null }));
 	}
 
-	const eloMap = computeElo(sessionIdsChron, allScores.map(s => ({
-		session_id: s.session_id,
-		game_id: s.game_id,
-		player_id: s.player_id,
-		raw_score: s.raw_score,
-		scoring_direction: s.game.scoring_direction,
-		allow_dnf: s.game.allow_dnf,
-		max_score: s.game.max_score,
-	})));
+	const { data: eloRows } = await supabase
+		.from('player_elo')
+		.select('player_id, elo, prev_elo, sessions, history');
 
-	const qualified = [...eloMap.entries()]
-		.filter(([, r]) => r.sessions >= MIN_DAYS)
-		.map(([player_id, r]) => ({ player_id, ...r, name: playerNames.get(player_id) ?? '?' }))
+	const qualified = (eloRows ?? [])
+		.filter(r => r.sessions >= MIN_DAYS)
+		.map(r => ({ player_id: r.player_id, elo: r.elo, prevElo: r.prev_elo, sessions: r.sessions, history: r.history, name: playerNames.get(r.player_id) ?? '?' }))
 		.sort((a, b) => b.elo - a.elo);
 
 	// Rank movement: compare current ranking vs ranking by prevElo
-	const prevRanked = [...eloMap.entries()]
-		.filter(([, r]) => r.sessions >= MIN_DAYS && r.prevElo !== null)
-		.sort((a, b) => b[1].prevElo! - a[1].prevElo!)
-		.map(([player_id], i) => [player_id, i + 1] as const);
+	const prevRanked = (eloRows ?? [])
+		.filter(r => r.sessions >= MIN_DAYS && r.prev_elo !== null)
+		.sort((a, b) => b.prev_elo! - a.prev_elo!)
+		.map((r, i) => [r.player_id, i + 1] as const);
 	const prevRankMap = new Map(prevRanked);
 
 	const sessionMeta = new Map(sessions.map(s => [s.id, { name: s.name, date: s.date }]));

@@ -1,17 +1,11 @@
-import { createClient } from '@supabase/supabase-js';
-import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
+import { supabase } from '$lib/supabase';
 import { error } from '@sveltejs/kit';
-import type { Database } from '$lib/database.types';
 import { rankScores, computeSessionTally, sortTally } from '$lib/scoring';
-import { displayName, formatScore } from '$lib/utils';
-import { computeBadges, computeStreaks } from '$lib/badges';
-import { computeSessionBadges } from '$lib/gameBadges';
-import { computeElo } from '$lib/elo';
+import { displayName } from '$lib/utils';
+import { computeStreaks } from '$lib/badges';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params }) => {
-	const supabase = createClient<Database>(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY);
-
 	const { data: player } = await supabase
 		.from('players')
 		.select('*')
@@ -31,18 +25,14 @@ export const load: PageServerLoad = async ({ params }) => {
 		return {
 			player,
 			displayName: displayName(player),
-			medals: { gold: 0, silver: 0, bronze: 0, total: 0 },
-			nights: 0, winRate: 0, winStreak: 0, podiumStreak: 0, bestWinStreak: 0,
-			badges: [],
-			favGame: null,
+			nights: 0, bestWinStreak: 0, bestPodiumStreak: 0, sessionWins: 0,
 			perGame: [],
-			recentSessions: [],
 			rankHistory: [],
+			playerElo: null,
 		};
 	}
 
 	const sessionIds = sessions.map(s => s.id);
-	const sessionMeta = new Map(sessions.map(s => [s.id, { name: s.name, date: s.date }]));
 
 	// Fetch all scores — paginated to avoid Supabase's 1000-row default limit
 	const allScores: any[] = [];
@@ -62,13 +52,10 @@ export const load: PageServerLoad = async ({ params }) => {
 		return {
 			player,
 			displayName: displayName(player),
-			medals: { gold: 0, silver: 0, bronze: 0, total: 0 },
-			nights: 0, winRate: 0, winStreak: 0, podiumStreak: 0, bestWinStreak: 0,
-			badges: [],
-			favGame: null,
+			nights: 0, bestWinStreak: 0, bestPodiumStreak: 0, sessionWins: 0,
 			perGame: [],
-			recentSessions: [],
 			rankHistory: [],
+			playerElo: null,
 		};
 	}
 
@@ -82,12 +69,11 @@ export const load: PageServerLoad = async ({ params }) => {
 	// Per-game stats for this player
 	const perGameMap = new Map<string, { name: string; emoji: string; scoring_direction: string; gold: number; silver: number; bronze: number; total: number; played: number }>();
 
-	// Session history for streaks and recent-sessions display
+	// Session history for streaks
 	const playerHistory: { won: boolean; podium: boolean }[] = [];
-	const recentSessions: { name: string; date: string; gold: number; silver: number; bronze: number; total: number; rank: number; outOf: number }[] = [];
 	const sessionRankMap = new Map<string, { rank: number; outOf: number }>();
 
-	let overallGold = 0, overallSilver = 0, overallBronze = 0, sessionWins = 0;
+	let sessionWins = 0;
 
 	for (const sessionId of sessionIds) {
 		const sessionScores = bySession.get(sessionId);
@@ -149,56 +135,16 @@ export const load: PageServerLoad = async ({ params }) => {
 		const myRank = sessionTally.findIndex(t => t.gold === myTally.gold && t.silver === myTally.silver && t.bronze === myTally.bronze) + 1;
 
 		sessionRankMap.set(sessionId, { rank: myRank, outOf: sessionTally.length });
-		overallGold += myTally.gold;
-		overallSilver += myTally.silver;
-		overallBronze += myTally.bronze;
 		if (myRank === 1) sessionWins++;
 
 		playerHistory.push({
 			won: myRank === 1,
 			podium: myRank <= 3 && myTally.total > 0
 		});
-
-		recentSessions.push({
-			name: sessionMeta.get(sessionId)?.name ?? '',
-			date: sessionMeta.get(sessionId)?.date ?? '',
-			gold: myTally.gold,
-			silver: myTally.silver,
-			bronze: myTally.bronze,
-			total: myTally.total,
-			rank: myRank,
-			outOf: sessionTally.length
-		});
 	}
 
-	const nights = recentSessions.length;
-	const totalMedals = overallGold + overallSilver + overallBronze;
-	const winRate = totalMedals > 0 ? Math.round((overallGold / totalMedals) * 100) : 0;
-	const { winStreak, podiumStreak, bestWinStreak, bestPodiumStreak } = computeStreaks(playerHistory);
-
-	const golds = new Map([...perGameMap.entries()].filter(([, v]) => v.gold > 0));
-	const favGame = golds.size > 0
-		? [...golds.values()].sort((a, b) => b.gold - a.gold)[0]
-		: null;
-
-	const medals = { gold: overallGold, silver: overallSilver, bronze: overallBronze, total: totalMedals };
-	const badgeStats = { ...medals, nights, winStreak, podiumStreak, bestWinStreak };
-	const achievementBadges = computeBadges(badgeStats);
-
-	// Game-specific badges: compute best score per game, award badges for best performances
-	const bestScorePerGame = new Map<string, number>();
-	const gameInfoMap = new Map<string, { id: string; name: string; icon_emoji: string | null; share_parser: string | null; max_score: number | null; allow_dnf: boolean; scoring_direction: 'higher_is_better' | 'lower_is_better' }>();
-	for (const score of allScores) {
-		if (score.player_id !== params.id) continue;
-		const g = score.game as { id: string; name: string; icon_emoji: string | null; share_parser: string | null; scoring_direction: 'higher_is_better' | 'lower_is_better'; max_score: number | null; allow_dnf: boolean };
-		gameInfoMap.set(g.id, g);
-		const prev = bestScorePerGame.get(g.id);
-		const better = g.scoring_direction === 'lower_is_better'
-			? (prev === undefined || score.raw_score < prev)
-			: (prev === undefined || score.raw_score > prev);
-		if (better) bestScorePerGame.set(g.id, score.raw_score);
-	}
-	const gameBadges = computeSessionBadges(bestScorePerGame, [...gameInfoMap.values()]);
+	const nights = sessionRankMap.size;
+	const { bestWinStreak, bestPodiumStreak } = computeStreaks(playerHistory);
 
 	const perGame = [...perGameMap.values()].sort((a, b) => b.gold - a.gold || b.total - a.total);
 
@@ -209,37 +155,22 @@ export const load: PageServerLoad = async ({ params }) => {
 		outOf: sessionRankMap.get(s.id)?.outOf ?? null,
 	}));
 
-	// ELO — computed from all scores across all sessions
-	const eloMap = computeElo(
-		sessions.map(s => s.id), // sessions are already in ascending date order
-		allScores.map(s => ({
-			session_id: s.session_id,
-			game_id: s.game_id,
-			player_id: s.player_id,
-			raw_score: s.raw_score,
-			scoring_direction: (s.game as any).scoring_direction,
-			allow_dnf: (s.game as any).allow_dnf,
-			max_score: (s.game as any).max_score,
-		}))
-	);
-	const playerElo = eloMap.get(params.id) ?? null;
+	// ELO — read from cache (refreshed by the scheduler / admin edits, not recomputed per request)
+	const { data: eloRow } = await supabase
+		.from('player_elo')
+		.select('elo, prev_elo')
+		.eq('player_id', params.id)
+		.maybeSingle();
+	const playerElo = eloRow ? { elo: eloRow.elo, prevElo: eloRow.prev_elo } : null;
 
 	return {
 		player,
 		displayName: displayName(player),
-		medals,
 		nights,
-		winRate,
-		winStreak,
-		podiumStreak,
 		bestWinStreak,
 		bestPodiumStreak,
 		sessionWins,
-		achievementBadges,
-		gameBadges,
-		favGame,
 		perGame,
-		recentSessions: recentSessions.slice(-10).reverse(),
 		rankHistory,
 		playerElo,
 	};

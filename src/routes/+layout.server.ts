@@ -1,11 +1,7 @@
-import { createClient } from '@supabase/supabase-js';
-import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
-import type { Database } from '$lib/database.types';
+import { supabase } from '$lib/supabase';
 import type { LayoutServerLoad } from './$types';
 
 export const load: LayoutServerLoad = async () => {
-	const supabase = createClient<Database>(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY);
-
 	const { data: session } = await supabase
 		.from('sessions')
 		.select('name, date, status, expires_at, session_games(game:games(name, icon_emoji))')

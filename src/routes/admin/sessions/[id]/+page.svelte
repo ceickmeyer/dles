@@ -16,6 +16,12 @@
 	let removingGame = $state(false);
 	let globalError = $state('');
 
+	// Manual score edits bypass the scheduler's finish-session hook, so the
+	// cached ELO table can drift — recalculate it whenever a finished session's scores change.
+	function recalculateEloIfFinished() {
+		if (session.status === 'finished') fetch('/api/recalculate-elo', { method: 'POST' });
+	}
+
 	async function removeGame(gameId: string) {
 		removingGame = true;
 		globalError = '';
@@ -29,6 +35,7 @@
 		removingGame = false;
 		if (e2) { globalError = e2.message; return; }
 		confirmRemoveGameId = null;
+		recalculateEloIfFinished();
 		await invalidateAll();
 	}
 
@@ -53,6 +60,7 @@
 		deleting = false;
 		if (e) { globalError = e.message; return; }
 		confirmDeleteId = null;
+		recalculateEloIfFinished();
 		await invalidateAll();
 	}
 

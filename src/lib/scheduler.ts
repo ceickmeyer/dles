@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from './database.types';
+import { refreshEloCache } from './eloCache';
 
 export interface SchedulerResult {
 	created: boolean;
@@ -32,6 +33,7 @@ export async function runScheduler(supabase: SupabaseClient<Database>): Promise<
 			.in('id', stale.map(s => s.id));
 	}
 	const finished = stale?.length ?? 0;
+	if (finished > 0) await refreshEloCache(supabase);
 
 	// If any session exists for today, don't create another one
 	const { data: existing } = await supabase

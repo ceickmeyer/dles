@@ -173,6 +173,38 @@ export interface Database {
 					{ foreignKeyName: 'scores_player_id_fkey'; columns: ['player_id']; referencedRelation: 'players'; referencedColumns: ['id'] }
 				];
 			};
+			player_elo: {
+				Row: {
+					player_id: string;
+					elo: number;
+					prev_elo: number | null;
+					sessions: number;
+					matchups: number;
+					history: { session_id: string; delta: number }[];
+					updated_at: string;
+				};
+				Insert: {
+					player_id: string;
+					elo: number;
+					prev_elo?: number | null;
+					sessions?: number;
+					matchups?: number;
+					history?: { session_id: string; delta: number }[];
+					updated_at?: string;
+				};
+				Update: {
+					player_id?: string;
+					elo?: number;
+					prev_elo?: number | null;
+					sessions?: number;
+					matchups?: number;
+					history?: { session_id: string; delta: number }[];
+					updated_at?: string;
+				};
+				Relationships: [
+					{ foreignKeyName: 'player_elo_player_id_fkey'; columns: ['player_id']; referencedRelation: 'players'; referencedColumns: ['id'] }
+				];
+			};
 		};
 		Views: Record<string, never>;
 		Functions: Record<string, never>;
@@ -187,6 +219,7 @@ export type Session = Database['public']['Tables']['sessions']['Row'];
 export type SessionGame = Database['public']['Tables']['session_games']['Row'];
 export type Score = Database['public']['Tables']['scores']['Row'];
 
+export type PlayerElo = Database['public']['Tables']['player_elo']['Row'];
 export type Schedule = Database['public']['Tables']['schedules']['Row'];
 export type WeeklyScheduleRow = Database['public']['Tables']['weekly_schedule']['Row'];
 export type GameWithDetails = Game & { session_games?: SessionGame[] };

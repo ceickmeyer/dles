@@ -2,13 +2,14 @@
 	import type { MedalTally, PlayerDayStat } from '$lib/scoring';
 	import { MEDAL_EMOJI } from '$lib/scoring';
 
-	let { tally, currentPlayerId = null, playerStats = new Map(), prevRankMap = new Map(), completedPlayerIds = new Set(), prevWinnerId = null }: {
+	let { tally, currentPlayerId = null, playerStats = new Map(), prevRankMap = new Map(), completedPlayerIds = new Set(), prevWinnerId = null, prevFullRanking = [] }: {
 		tally: MedalTally[];
 		currentPlayerId?: string | null;
 		playerStats?: Map<string, PlayerDayStat[]>;
 		prevRankMap?: Map<string, { rank: number; outOf: number }>;
 		completedPlayerIds?: Set<string>;
 		prevWinnerId?: string | null;
+		prevFullRanking?: { player_id: string; player_name: string; rank: number; total: number }[];
 	} = $props();
 
 	const ranks = $derived(tally.map(row => {
@@ -46,6 +47,23 @@
 		tipName = row.player_name;
 		tipPlayerId = row.player_id;
 		playerTipVisible = true;
+	}
+
+	let crownTipVisible = $state(false);
+	let crownTipX = $state(0);
+	let crownTipY = $state(0);
+
+	function showCrownTip(e: MouseEvent) {
+		e.stopPropagation();
+		const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+		crownTipX = rect.left;
+		crownTipY = rect.top - 8;
+		crownTipVisible = true;
+		playerTipVisible = false;
+	}
+	function hideCrownTip(e: MouseEvent) {
+		e.stopPropagation();
+		crownTipVisible = false;
 	}
 
 	const SINGLE_PATH = "M508.788,371.087L263.455,125.753c-4.16-4.16-10.88-4.16-15.04,0L2.975,371.087c-4.053,4.267-3.947,10.987,0.213,15.04c4.16,3.947,10.667,3.947,14.827,0l237.867-237.76l237.76,237.76c4.267,4.053,10.987,3.947,15.04-0.213C512.734,381.753,512.734,375.247,508.788,371.087z";
@@ -125,7 +143,8 @@
 						<span class="flex items-center gap-1 flex-wrap">
 							<a href="/player/{row.player_id}" class="hover:text-ayu-gold transition-colors">{row.player_name}</a>
 							{#if row.player_id === prevWinnerId}
-								<span title="Yesterday's winner">👑</span>
+								<!-- svelte-ignore a11y_no_static_element_interactions -->
+								<span class="cursor-default" onmouseenter={showCrownTip} onmouseleave={hideCrownTip}>👑</span>
 							{/if}
 							{#if completedPlayerIds.has(row.player_id)}
 								<svg class="inline w-3.5 h-3.5 shrink-0" style="color: var(--color-ayu-green)" viewBox="0 0 24 24" fill="none">
@@ -185,5 +204,22 @@
 				{/each}
 			</div>
 		{/if}
+	</div>
+{/if}
+
+{#if crownTipVisible && prevFullRanking.length > 0}
+	<div
+		class="pointer-events-none fixed z-50 w-52 rounded-lg border border-ayu-border bg-zinc-900 px-3 py-2 text-xs shadow-xl"
+		style="left:{crownTipX}px;top:{crownTipY}px;transform:translateY(-100%)"
+	>
+		<p class="mb-1.5 font-semibold text-white">Yesterday's Rankings</p>
+		<div class="space-y-1">
+			{#each prevFullRanking as r}
+				<div class="flex items-center justify-between gap-3">
+					<span class="{r.rank === 1 ? 'text-ayu-gold' : 'text-zinc-300'}">#{r.rank} {r.player_name}</span>
+					<span class="font-mono text-ayu-muted">{r.total}</span>
+				</div>
+			{/each}
+		</div>
 	</div>
 {/if}

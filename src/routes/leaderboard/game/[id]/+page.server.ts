@@ -1,7 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
-import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
+import { supabase } from '$lib/supabase';
 import { error } from '@sveltejs/kit';
-import type { Database } from '$lib/database.types';
 import { displayName } from '$lib/utils';
 import type { PageServerLoad } from './$types';
 
@@ -9,8 +7,6 @@ const MIN_PLAYS = 3;
 const ROLLING_WINDOW = 10;
 
 export const load: PageServerLoad = async ({ params }) => {
-	const supabase = createClient<Database>(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY);
-
 	const { data: game } = await supabase
 		.from('games')
 		.select('*')
@@ -28,14 +24,24 @@ export const load: PageServerLoad = async ({ params }) => {
 		return { game, rows: [], sessionCount: 0 };
 	}
 
-	const { data: scores } = await supabase
-		.from('scores')
-		.select('player_id, raw_score, submitted_at, player:players(name, alias)')
-		.eq('game_id', params.id)
-		.in('session_id', sessions.map(s => s.id))
-		.order('submitted_at', { ascending: true });
+	type ScoreRow = { player_id: string; raw_score: number; submitted_at: string; player: { name: string; alias?: string | null } };
 
-	if (!scores || scores.length === 0) {
+	const sessionIds = sessions.map(s => s.id);
+	const scores: ScoreRow[] = [];
+	for (let from = 0; ; from += 1000) {
+		const { data: page } = await supabase
+			.from('scores')
+			.select('player_id, raw_score, submitted_at, player:players(name, alias)')
+			.eq('game_id', params.id)
+			.in('session_id', sessionIds)
+			.order('submitted_at', { ascending: true })
+			.range(from, from + 999);
+		if (!page?.length) break;
+		scores.push(...(page as ScoreRow[]));
+		if (page.length < 1000) break;
+	}
+
+	if (scores.length === 0) {
 		return { game, rows: [], sessionCount: sessions.length };
 	}
 

@@ -66,6 +66,7 @@
 		!!session && session.session_games.length > 0 && myScores.size === session.session_games.length
 	);
 	const prevWinnerId = $derived(data.prevWinners?.[0]?.player_id ?? null);
+	const prevFullRanking = $derived(data.prevFullRanking ?? []);
 
 	const prevRankMap = $derived(
 		new Map((data.prevRanks ?? []).map((r: { player_id: string; rank: number; outOf: number }) => [r.player_id, r]))
@@ -111,6 +112,18 @@
 	let shareCopied = $state(false);
 	let copiedGameId = $state<string | null>(null);
 	let standingsCopied = $state(false);
+
+	let prevRankingTipVisible = $state(false);
+	let prevRankingTipX = $state(0);
+	let prevRankingTipY = $state(0);
+
+	function showPrevRankingTip(e: MouseEvent) {
+		const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+		prevRankingTipX = rect.left;
+		prevRankingTipY = rect.bottom + 8;
+		prevRankingTipVisible = true;
+	}
+	function hidePrevRankingTip() { prevRankingTipVisible = false; }
 
 	function buildStandingsShare(): string {
 		if (!session) return '';
@@ -380,7 +393,17 @@
 			if (!data) playerStore.clear();
 		}
 
-		if (!session) return;
+		if (!session) {
+			// No active session yet (e.g. sitting on the countdown screen) — watch for one
+			// appearing so the page flips over to it without a manual refresh.
+			subscriptions.push(
+				supabase
+					.channel('sessions:upcoming')
+					.on('postgres_changes', { event: '*', schema: 'public', table: 'sessions' }, () => invalidateAll())
+					.subscribe()
+			);
+			return;
+		}
 
 		// Watch scores for live updates
 		subscriptions.push(
@@ -449,7 +472,12 @@
 		<!-- Yesterday's winners -->
 		{#if data.prevWinners?.length}
 			<div>
-				<p class="mb-2 text-xs font-semibold uppercase tracking-widest text-ayu-muted">Yesterday's Winners</p>
+				<!-- svelte-ignore a11y_no_static_element_interactions -->
+				<p
+					class="mb-2 inline-block cursor-default border-b border-dotted border-ayu-gold/50 text-xs font-semibold uppercase tracking-widest text-ayu-gold transition-colors hover:border-ayu-gold hover:text-white"
+					onmouseenter={showPrevRankingTip}
+					onmouseleave={hidePrevRankingTip}
+				>Yesterday's Winners</p>
 				<div class="grid gap-2" style="grid-template-columns: repeat({data.prevWinners.length}, minmax(0, 1fr))">
 					{#each data.prevWinners as w}
 						<div class="rounded-xl border px-3 py-3 text-center
@@ -488,6 +516,7 @@
 							resultsCopied={copiedGameId === specialGame.game.id}
 							featured
 							{prevWinnerId}
+							{prevFullRanking}
 						/>
 					</div>
 				{:else}
@@ -519,6 +548,7 @@
 								resultsCopied={copiedGameId === sg.game.id}
 								colorIndex={i}
 								{prevWinnerId}
+								{prevFullRanking}
 							/>
 						{/each}
 					{:else}
@@ -582,7 +612,7 @@
 						</button>
 					</div>
 					<div class="rounded-xl border border-ayu-border bg-ayu-surface p-4">
-						<MedalTally {tally} currentPlayerId={player.id} playerStats={playerDayStats} {prevRankMap} {completedPlayerIds} {prevWinnerId} />
+						<MedalTally {tally} currentPlayerId={player.id} playerStats={playerDayStats} {prevRankMap} {completedPlayerIds} {prevWinnerId} {prevFullRanking} />
 					</div>
 				</div>
 			{/if}
@@ -615,5 +645,21 @@
 				</div>
 			{/if}
 		{/if}
+	</div>
+{/if}
+
+{#if prevRankingTipVisible && prevFullRanking.length > 0}
+	<div
+		class="pointer-events-none fixed z-50 w-52 rounded-lg border border-ayu-border bg-zinc-900 px-3 py-2 text-xs shadow-xl"
+		style="left:{prevRankingTipX}px;top:{prevRankingTipY}px"
+	>
+		<div class="space-y-1">
+			{#each prevFullRanking as r}
+				<div class="flex items-center justify-between gap-3">
+					<span class="{r.rank === 1 ? 'text-ayu-gold' : 'text-zinc-300'}">#{r.rank} {r.player_name}</span>
+					<span class="font-mono text-ayu-muted">{r.total}</span>
+				</div>
+			{/each}
+		</div>
 	</div>
 {/if}
