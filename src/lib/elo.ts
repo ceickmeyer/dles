@@ -62,6 +62,7 @@ export function computeElo(
 				scoring_direction
 			);
 
+			const kNorm = K / (valid.length - 1);
 			for (let i = 0; i < ranked.length; i++) {
 				for (let j = i + 1; j < ranked.length; j++) {
 					const a = ranked[i], b = ranked[j];
@@ -69,7 +70,7 @@ export function computeElo(
 					const rB = ratings.get(b.player_id) ?? ELO_INITIAL;
 					const eA = 1 / (1 + Math.pow(10, (rB - rA) / 400));
 					const sA = a.rank < b.rank ? 1 : a.rank === b.rank ? 0.5 : 0;
-					const delta = K * (sA - eA);
+					const delta = kNorm * (sA - eA);
 					deltas.set(a.player_id, (deltas.get(a.player_id) ?? 0) + delta);
 					deltas.set(b.player_id, (deltas.get(b.player_id) ?? 0) - delta);
 					sessionMatchups.set(a.player_id, (sessionMatchups.get(a.player_id) ?? 0) + 1);
