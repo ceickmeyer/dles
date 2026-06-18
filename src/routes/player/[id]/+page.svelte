@@ -1,5 +1,6 @@
 <script lang="ts">
 	import RankChart from '$components/RankChart.svelte';
+	import EloChart from '$components/EloChart.svelte';
 	let { data } = $props();
 
 	type PerGame = typeof data.perGame[number];
@@ -55,6 +56,14 @@
 			<div class="rounded-xl border border-ayu-border bg-ayu-surface px-4 py-3">
 				<p class="mb-2 text-xs font-semibold uppercase tracking-widest text-ayu-muted">Rank History</p>
 				<RankChart sessions={data.rankHistory} />
+			</div>
+		{/if}
+
+		<!-- ELO history chart -->
+		{#if data.playerElo && data.playerElo.eloHistory.length >= 2}
+			<div class="rounded-xl border border-ayu-border bg-ayu-surface px-4 py-3">
+				<p class="mb-2 text-xs font-semibold uppercase tracking-widest text-ayu-muted">ELO History</p>
+				<EloChart history={data.playerElo.eloHistory} />
 			</div>
 		{/if}
 

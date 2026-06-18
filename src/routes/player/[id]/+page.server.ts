@@ -158,10 +158,23 @@ export const load: PageServerLoad = async ({ params }) => {
 	// ELO — read from cache (refreshed by the scheduler / admin edits, not recomputed per request)
 	const { data: eloRow } = await supabase
 		.from('player_elo')
-		.select('elo, prev_elo')
+		.select('elo, prev_elo, history')
 		.eq('player_id', params.id)
 		.maybeSingle();
-	const playerElo = eloRow ? { elo: eloRow.elo, prevElo: eloRow.prev_elo } : null;
+
+	let playerElo: { elo: number; prevElo: number | null; eloHistory: { date: string; elo: number; delta: number }[] } | null = null;
+	if (eloRow) {
+		const sessionDateMap = new Map(sessions.map(s => [s.id, s.date]));
+		let running = 1000;
+		const eloHistory = eloRow.history
+			.map(h => {
+				running += h.delta;
+				return { date: sessionDateMap.get(h.session_id) ?? '', elo: Math.round(running), delta: h.delta };
+			})
+			.filter(h => h.date)
+			.slice(-10);
+		playerElo = { elo: eloRow.elo, prevElo: eloRow.prev_elo, eloHistory };
+	}
 
 	return {
 		player,

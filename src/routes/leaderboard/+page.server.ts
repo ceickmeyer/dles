@@ -13,7 +13,7 @@ export const load: PageServerLoad = async () => {
 		.eq('status', 'finished')
 		.order('date', { ascending: false });
 
-	if (!sessions || sessions.length === 0) return { perGame: [], eloRankings: [], sessionCount: 0 };
+	if (!sessions || sessions.length === 0) return { perGame: [], eloRankings: [], eloChartDates: [], eloChartPlayers: [], sessionCount: 0 };
 
 	type ScoreRow = {
 		session_id: string;
@@ -46,7 +46,7 @@ export const load: PageServerLoad = async () => {
 		if (page.length < 1000) break;
 	}
 
-	if (allScores.length === 0) return { perGame: [], eloRankings: [], sessionCount: sessions.length };
+	if (allScores.length === 0) return { perGame: [], eloRankings: [], eloChartDates: [], eloChartPlayers: [], sessionCount: sessions.length };
 
 	// --- Per-game stats ---
 	type GameMeta = {
@@ -121,6 +121,24 @@ export const load: PageServerLoad = async () => {
 
 	const sessionMeta = new Map(sessions.map(s => [s.id, { name: s.name, date: s.date }]));
 
+	// ELO chart — last 10 sessions, running ELO per qualified player
+	const displaySessions = sessions.slice(0, 10).reverse(); // most-recent-10, chronological
+	const eloChartDates = displaySessions.map(s => s.date);
+	const eloChartPlayers = qualified.map(r => {
+		const eloAtSession = new Map<string, number>();
+		let running = 1000;
+		for (const h of r.history as { session_id: string; delta: number }[]) {
+			running += h.delta;
+			eloAtSession.set(h.session_id, Math.round(running));
+		}
+		let lastKnown: number | null = null;
+		const points = displaySessions.map(s => {
+			if (eloAtSession.has(s.id)) lastKnown = eloAtSession.get(s.id)!;
+			return lastKnown;
+		});
+		return { player_id: r.player_id, name: r.name, points };
+	});
+
 	const eloRankings = qualified.map((r, i) => {
 		const prevRank = prevRankMap.get(r.player_id) ?? null;
 		const movement = prevRank !== null ? prevRank - (i + 1) : null;
@@ -132,5 +150,5 @@ export const load: PageServerLoad = async () => {
 		return { player_id: r.player_id, name: r.name, elo: r.elo, delta, movement, sessions: r.sessions, recentHistory };
 	});
 
-	return { perGame, eloRankings, sessionCount: sessions.length };
+	return { perGame, eloRankings, eloChartDates, eloChartPlayers, sessionCount: sessions.length };
 };

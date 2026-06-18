@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { fmtSeconds } from '$lib/utils';
+	import EloMultiChart from '$components/EloMultiChart.svelte';
 
 	let { data } = $props();
 
@@ -90,6 +91,12 @@
 				{/each}
 			</div>
 		</div>
+		{#if data.eloChartPlayers.length >= 2 && data.eloChartDates.length >= 2}
+			<div class="mt-5 rounded-xl border border-ayu-border bg-ayu-surface px-4 py-4">
+				<p class="mb-3 text-xs font-semibold uppercase tracking-widest text-ayu-muted">ELO Over Time</p>
+				<EloMultiChart players={data.eloChartPlayers} dates={data.eloChartDates} />
+			</div>
+		{/if}
 	{/if}
 
 	{#if data.perGame.length === 0}

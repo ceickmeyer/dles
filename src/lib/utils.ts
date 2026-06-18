@@ -21,10 +21,13 @@ export function fmtSeconds(totalSeconds: number): string {
 	return `${m} min ${sec} sec`;
 }
 
-export function sortSessionGames<T extends { sort_order: number; is_special?: boolean }>(games: T[]): T[] {
-	return [...games].sort(
-		(a, b) => (b.is_special ? 1 : 0) - (a.is_special ? 1 : 0) || a.sort_order - b.sort_order
-	);
+export function sortSessionGames<T extends { sort_order: number; is_special?: boolean; game?: { name: string } | null }>(games: T[]): T[] {
+	return [...games].sort((a, b) => {
+		const aSpecial = a.is_special ? 1 : 0;
+		const bSpecial = b.is_special ? 1 : 0;
+		if (bSpecial !== aSpecial) return bSpecial - aSpecial;
+		return (a.game?.name ?? '').localeCompare(b.game?.name ?? '');
+	});
 }
 
 export function formatScore(score: number, game: { max_score: number | null; allow_dnf: boolean; share_parser?: string | null }): string {
