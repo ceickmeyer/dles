@@ -35,7 +35,17 @@
 					onclick={copyShareText}
 					class="rounded-lg border border-ayu-border px-3 py-1.5 text-xs font-medium text-zinc-300 transition hover:text-white"
 				>
-					{copied ? '✓ Copied!' : '📋 Share results'}
+					{#if copied}
+						✓ Copied!
+					{:else}
+						<span class="flex items-center gap-1.5">
+							<svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+								<path fill-rule="evenodd" clip-rule="evenodd" d="M19.6495 0.799565C18.4834 -0.72981 16.0093 0.081426 16.0093 1.99313V3.91272C12.2371 3.86807 9.65665 5.16473 7.9378 6.97554C6.10034 8.9113 5.34458 11.3314 5.02788 12.9862C4.86954 13.8135 5.41223 14.4138 5.98257 14.6211C6.52743 14.8191 7.25549 14.7343 7.74136 14.1789C9.12036 12.6027 11.7995 10.4028 16.0093 10.5464V13.0069C16.0093 14.9186 18.4834 15.7298 19.6495 14.2004L23.3933 9.29034C24.2022 8.2294 24.2022 6.7706 23.3933 5.70966L19.6495 0.799565Z" fill="currentColor"/>
+								<path d="M7 1.00391H4C2.34315 1.00391 1 2.34705 1 4.00391V20.0039C1 21.6608 2.34315 23.0039 4 23.0039H20C21.6569 23.0039 23 21.6608 23 20.0039V17.0039C23 16.4516 22.5523 16.0039 22 16.0039C21.4477 16.0039 21 16.4516 21 17.0039V20.0039C21 20.5562 20.5523 21.0039 20 21.0039H4C3.44772 21.0039 3 20.5562 3 20.0039V4.00391C3 3.45162 3.44772 3.00391 4 3.00391H7C7.55228 3.00391 8 2.55619 8 2.00391C8 1.45162 7.55228 1.00391 7 1.00391Z" fill="currentColor"/>
+							</svg>
+							Share results
+						</span>
+					{/if}
 				</button>
 				<span class="rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider
 					{session.status === 'active' ? 'bg-ayu-green text-ayu-bg' :

@@ -247,7 +247,18 @@
 >
 	<!-- Always-visible header -->
 	<div class="flex items-center gap-3 px-4 py-3" style="background-color:{accent.header}">
-		<span role="img" aria-label={game.name} class="text-3xl shrink-0">{game.icon_emoji ?? '🎮'}</span>
+		{#if game.url}
+			<a
+				href={game.url}
+				target="_blank"
+				rel="noopener noreferrer"
+				onclick={(e) => e.stopPropagation()}
+				aria-label="Play {game.name}"
+				class="shrink-0 text-3xl transition-transform hover:scale-110 active:scale-95"
+			>{game.icon_emoji ?? '🎮'}</a>
+		{:else}
+			<span role="img" aria-label={game.name} class="text-3xl shrink-0">{game.icon_emoji ?? '🎮'}</span>
+		{/if}
 		<div class="flex-1 min-w-0">
 			<div class="flex items-center gap-1.5 leading-tight">
 				<p class="font-semibold text-white">{game.name}</p>
