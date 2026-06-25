@@ -67,7 +67,7 @@ export const load: PageServerLoad = async ({ params }) => {
 	}
 
 	// Per-game stats for this player
-	const perGameMap = new Map<string, { name: string; emoji: string; scoring_direction: string; gold: number; silver: number; bronze: number; total: number; played: number }>();
+	const perGameMap = new Map<string, { name: string; emoji: string; scoring_direction: string; gold: number; silver: number; bronze: number; total: number; played: number; rankSum: number; rankCount: number }>();
 
 	// Session history for streaks
 	const playerHistory: { won: boolean; podium: boolean }[] = [];
@@ -119,11 +119,17 @@ export const load: PageServerLoad = async ({ params }) => {
 			const mine = ranked.find(r => r.player_id === params.id);
 			if (!mine) continue;
 
-			const existing = perGameMap.get(game.id) ?? { name: game.name, emoji: game.icon_emoji ?? '🎮', scoring_direction: game.scoring_direction, gold: 0, silver: 0, bronze: 0, total: 0, played: 0 };
+			const existing = perGameMap.get(game.id) ?? { name: game.name, emoji: game.icon_emoji ?? '🎮', scoring_direction: game.scoring_direction, gold: 0, silver: 0, bronze: 0, total: 0, played: 0, rankSum: 0, rankCount: 0 };
 			if (mine.medal === 'gold') { existing.gold++; existing.total += 4; }
 			else if (mine.medal === 'silver') { existing.silver++; existing.total += 2; }
 			else if (mine.medal === 'bronze') { existing.bronze++; existing.total += 1; }
 			existing.played++;
+			// Track average percentile placement (0 = best, 1 = worst), normalized for player count
+			const outOf = ranked.length;
+			if (outOf > 1) {
+				existing.rankSum += (mine.rank - 1) / (outOf - 1);
+				existing.rankCount++;
+			}
 			perGameMap.set(game.id, existing);
 		}
 

@@ -10,10 +10,10 @@
 		(data.perGame as PerGame[]).filter(g => g.played >= 3)
 	);
 
-	const medalRate = (g: PerGame) => g.played > 0 ? g.total / g.played : 0;
+	const avgPercentile = (g: PerGame) => g.rankCount > 0 ? g.rankSum / g.rankCount : 0.5;
 
-	const bestAt  = $derived([...qualified].sort((a, b) => medalRate(b) - medalRate(a)).slice(0, 5));
-	const worstAt = $derived([...qualified].sort((a, b) => medalRate(a) - medalRate(b)).slice(0, 5));
+	const bestAt  = $derived([...qualified].sort((a, b) => avgPercentile(a) - avgPercentile(b)).slice(0, 5));
+	const worstAt = $derived([...qualified].sort((a, b) => avgPercentile(b) - avgPercentile(a)).slice(0, 5));
 
 	let perGameOpen = $state(false);
 </script>
