@@ -72,17 +72,19 @@
 		new Map((data.prevRanks ?? []).map((r: { player_id: string; rank: number; outOf: number }) => [r.player_id, r]))
 	);
 
+	const totalGames = $derived(session?.session_games.length ?? 0);
+
+	const playerGameCounts = $derived((() => {
+		const counts = new Map<string, number>();
+		for (const s of scores) counts.set(s.player_id, (counts.get(s.player_id) ?? 0) + 1);
+		return counts;
+	})());
+
 	const completedPlayerIds = $derived((() => {
-		const totalGames = session?.session_games.length ?? 0;
 		if (totalGames === 0) return new Set<string>();
-		const gamesByPlayer = new Map<string, Set<string>>();
-		for (const s of scores) {
-			if (!gamesByPlayer.has(s.player_id)) gamesByPlayer.set(s.player_id, new Set());
-			gamesByPlayer.get(s.player_id)!.add(s.game_id);
-		}
 		const done = new Set<string>();
-		for (const [pid, games] of gamesByPlayer) {
-			if (games.size >= totalGames) done.add(pid);
+		for (const [pid, count] of playerGameCounts) {
+			if (count >= totalGames) done.add(pid);
 		}
 		return done;
 	})());
@@ -625,7 +627,7 @@
 						</button>
 					</div>
 					<div class="rounded-xl border border-ayu-border bg-ayu-surface p-4">
-						<MedalTally {tally} currentPlayerId={player.id} playerStats={playerDayStats} {prevRankMap} {completedPlayerIds} {prevWinnerId} {prevFullRanking} />
+						<MedalTally {tally} currentPlayerId={player.id} playerStats={playerDayStats} {prevRankMap} {completedPlayerIds} {prevWinnerId} {prevFullRanking} {totalGames} {playerGameCounts} />
 					</div>
 				</div>
 			{/if}

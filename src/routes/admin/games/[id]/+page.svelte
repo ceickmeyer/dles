@@ -48,16 +48,15 @@
 
 	async function deleteGame() {
 		deleting = true;
-		const { error: e } = await supabase.from('games').delete().eq('id', data.game.id);
-		if (e) {
-			error = e.code === '23503'
-				? 'This game has scores or session history — remove those first.'
-				: e.message;
-			deleting = false;
-			confirmDelete = false;
-		} else {
-			goto('/admin/games');
-		}
+		error = '';
+		// Cascade: remove scores and session lineup entries before deleting the game
+		const { error: e1 } = await supabase.from('scores').delete().eq('game_id', data.game.id);
+		if (e1) { error = e1.message; deleting = false; confirmDelete = false; return; }
+		const { error: e2 } = await supabase.from('session_games').delete().eq('game_id', data.game.id);
+		if (e2) { error = e2.message; deleting = false; confirmDelete = false; return; }
+		const { error: e3 } = await supabase.from('games').delete().eq('id', data.game.id);
+		if (e3) { error = e3.message; deleting = false; confirmDelete = false; return; }
+		goto('/admin/games');
 	}
 </script>
 
@@ -224,7 +223,7 @@
 				Delete game
 			</button>
 		{:else}
-			<p class="mb-3 text-sm text-zinc-300">This cannot be undone. The game will be removed from all sessions.</p>
+			<p class="mb-3 text-sm text-zinc-300">This cannot be undone. All historical scores and session history for this game will be permanently deleted.</p>
 			<div class="flex gap-2">
 				<button
 					onclick={deleteGame}

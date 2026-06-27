@@ -2,7 +2,7 @@
 	import type { MedalTally, PlayerDayStat } from '$lib/scoring';
 	import { MEDAL_EMOJI } from '$lib/scoring';
 
-	let { tally, currentPlayerId = null, playerStats = new Map(), prevRankMap = new Map(), completedPlayerIds = new Set(), prevWinnerId = null, prevFullRanking = [] }: {
+	let { tally, currentPlayerId = null, playerStats = new Map(), prevRankMap = new Map(), completedPlayerIds = new Set(), prevWinnerId = null, prevFullRanking = [], totalGames = 0, playerGameCounts = new Map() }: {
 		tally: MedalTally[];
 		currentPlayerId?: string | null;
 		playerStats?: Map<string, PlayerDayStat[]>;
@@ -10,6 +10,8 @@
 		completedPlayerIds?: Set<string>;
 		prevWinnerId?: string | null;
 		prevFullRanking?: { player_id: string; player_name: string; rank: number; total: number }[];
+		totalGames?: number;
+		playerGameCounts?: Map<string, number>;
 	} = $props();
 
 	const ranks = $derived(tally.map(row => {
@@ -102,7 +104,7 @@
 		</thead>
 		<tbody>
 			{#each tally as row, i}
-				<tr class="border-b border-zinc-800 transition-colors
+				<tr class="transition-colors
 					{ranks[i] === 1 ? 'bg-yellow-400/10' : ranks[i] === 2 ? 'bg-slate-400/8' : ranks[i] === 3 ? 'bg-amber-700/10' : row.player_id === currentPlayerId ? 'bg-amber-900/20' : ''}">
 
 					<td class="py-2.5 pl-3 pr-2
@@ -162,6 +164,21 @@
 					<td class="py-2.5 w-10 text-center text-amber-700">{row.bronze || '—'}</td>
 					<td class="py-2.5 pl-2 pr-3 w-16 text-center font-semibold text-white">{row.total}</td>
 				</tr>
+				{#if totalGames > 0}
+					{@const count = playerGameCounts.get(row.player_id) ?? 0}
+					{@const done = completedPlayerIds.has(row.player_id)}
+					{@const pct = Math.round((count / totalGames) * 100)}
+					<tr>
+						<td colspan="7" class="p-0 h-0">
+							<div
+								class="h-0.5 transition-all duration-500"
+								style="width:{pct}%;background:{done ? 'var(--color-ayu-green)' : 'var(--color-ayu-gold)'};opacity:{count === 0 ? 0 : 0.7}"
+							></div>
+						</td>
+					</tr>
+				{:else}
+					<tr><td colspan="7" class="p-0 border-b border-zinc-800"></td></tr>
+				{/if}
 			{/each}
 		</tbody>
 	</table>

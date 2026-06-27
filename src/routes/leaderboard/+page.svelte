@@ -4,6 +4,16 @@
 
 	let { data } = $props();
 
+	// Same palette as EloMultiChart — keeps player colors consistent across the page
+	const CATPPUCCIN = [
+		'#f38ba8', '#89b4fa', '#a6e3a1', '#cba6f7', '#fab387',
+		'#89dceb', '#f9e2af', '#74c7ec', '#f5c2e7', '#94e2d5',
+		'#eba0ac', '#b4befe',
+	];
+	const playerColors = $derived(
+		new Map((data.eloChartPlayers ?? []).map((p, i) => [p.player_id, CATPPUCCIN[i % CATPPUCCIN.length]]))
+	);
+
 	type GameEntry = typeof data.perGame[number];
 
 	function fmtAvg(avg: number, game: GameEntry): string {
@@ -124,9 +134,11 @@
 						{#each game.rows.slice(0, 6) as row, i (row.player_id)}
 							<div class="group relative flex items-center gap-3 rounded-lg px-1 py-1 hover:bg-ayu-surface2 transition-colors">
 								<span class="w-4 shrink-0 text-center text-xs {i === 0 ? 'text-ayu-gold font-bold' : 'text-ayu-muted'}">{i + 1}</span>
-								<a href="/player/{row.player_id}" class="flex-1 truncate text-sm text-white hover:text-ayu-gold transition-colors">
-									{row.name}
-								</a>
+								<a
+									href="/player/{row.player_id}"
+									class="flex-1 truncate text-sm transition-opacity hover:opacity-75"
+									style="color: {playerColors.get(row.player_id) ?? 'white'}"
+								>{row.name}</a>
 								<span class="font-mono text-sm font-bold {i === 0 ? 'text-ayu-gold' : 'text-white'}">
 									{row.avg !== null ? fmtAvg(row.avg, game) : '—'}
 								</span>
