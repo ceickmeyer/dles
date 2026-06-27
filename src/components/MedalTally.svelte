@@ -104,7 +104,7 @@
 		</thead>
 		<tbody>
 			{#each tally as row, i}
-				<tr class="transition-colors
+				<tr class="border-b border-zinc-800 transition-colors
 					{ranks[i] === 1 ? 'bg-yellow-400/10' : ranks[i] === 2 ? 'bg-slate-400/8' : ranks[i] === 3 ? 'bg-amber-700/10' : row.player_id === currentPlayerId ? 'bg-amber-900/20' : ''}">
 
 					<td class="py-2.5 pl-3 pr-2
@@ -148,10 +148,16 @@
 								<!-- svelte-ignore a11y_no_static_element_interactions -->
 								<span class="cursor-default" onmouseenter={showCrownTip} onmouseleave={hideCrownTip}>👑</span>
 							{/if}
-							{#if completedPlayerIds.has(row.player_id)}
-								<svg class="inline w-3.5 h-3.5 shrink-0" style="color: var(--color-ayu-green)" viewBox="0 0 24 24" fill="none">
-									<path d="M12,21h0a9,9,0,0,1-9-9H3a9,9,0,0,1,9-9h0a9,9,0,0,1,9,9h0A9,9,0,0,1,12,21ZM8,11.5l3,3,5-5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"/>
-								</svg>
+							{#if totalGames > 0}
+								{@const count = playerGameCounts.get(row.player_id) ?? 0}
+								{#if completedPlayerIds.has(row.player_id)}
+									<svg class="inline w-4.5 h-4.5 shrink-0" style="color: var(--color-ayu-green)" viewBox="0 0 24 24" fill="none">
+										<title>All games completed</title>
+										<path d="M12,21h0a9,9,0,0,1-9-9H3a9,9,0,0,1,9-9h0a9,9,0,0,1,9,9h0A9,9,0,0,1,12,21ZM8,11.5l3,3,5-5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+									</svg>
+								{:else if count > 0}
+									<span class="font-mono text-xs" style="color: var(--color-ayu-muted)">{count}/{totalGames}</span>
+								{/if}
 							{/if}
 							{#if row.player_id === currentPlayerId}
 								<span class="text-xs text-amber-400">(you)</span>
@@ -164,21 +170,6 @@
 					<td class="py-2.5 w-10 text-center text-amber-700">{row.bronze || '—'}</td>
 					<td class="py-2.5 pl-2 pr-3 w-16 text-center font-semibold text-white">{row.total}</td>
 				</tr>
-				{#if totalGames > 0}
-					{@const count = playerGameCounts.get(row.player_id) ?? 0}
-					{@const done = completedPlayerIds.has(row.player_id)}
-					{@const pct = Math.round((count / totalGames) * 100)}
-					<tr>
-						<td colspan="7" class="p-0 h-0">
-							<div
-								class="h-0.5 transition-all duration-500"
-								style="width:{pct}%;background:{done ? 'var(--color-ayu-green)' : 'var(--color-ayu-gold)'};opacity:{count === 0 ? 0 : 0.7}"
-							></div>
-						</td>
-					</tr>
-				{:else}
-					<tr><td colspan="7" class="p-0 border-b border-zinc-800"></td></tr>
-				{/if}
 			{/each}
 		</tbody>
 	</table>
