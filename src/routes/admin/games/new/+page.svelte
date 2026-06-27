@@ -14,6 +14,7 @@
 	let shareParser = $state('');
 	let shareRegex = $state('');
 	let regexSample = $state('');
+	let description = $state('');
 	let allowDnf = $state(false);
 	let inputMode = $state<InputMode>('auto');
 	let saving = $state(false);
@@ -35,6 +36,7 @@
 		name: name || 'Game Name',
 		url: url || null,
 		icon_emoji: iconEmoji || '🎮',
+		description: description.trim() || null,
 		scoring_direction: scoringDirection,
 		max_score: maxScoreNum,
 		share_parser: shareParser || null,
@@ -55,6 +57,7 @@
 			name: name.trim(),
 			url: url.trim() || null,
 			icon_emoji: iconEmoji.trim() || null,
+			description: description.trim() || null,
 			scoring_direction: scoringDirection,
 			max_score: maxScoreNum,
 			share_parser: shareParser || null,
@@ -99,6 +102,15 @@
 					<label class="mb-1.5 block text-sm font-medium text-zinc-300" for="url">Game URL</label>
 					<input id="url" type="url" bind:value={url} placeholder="https://…"
 						class="w-full rounded-lg border border-ayu-border bg-ayu-bg px-3 py-2 text-white placeholder-ayu-muted focus:border-ayu-gold focus:outline-none" />
+				</div>
+
+				<div>
+					<label class="mb-1.5 block text-sm font-medium text-zinc-300" for="description">
+						Info tooltip <span class="text-ayu-muted font-normal">(optional — shown on hover of ℹ icon)</span>
+					</label>
+					<textarea id="description" bind:value={description} rows={2}
+						placeholder="e.g. Connect the Wiki pages with the fewest clicks possible."
+						class="w-full resize-none rounded-lg border border-ayu-border bg-ayu-bg px-3 py-2 text-sm text-white placeholder-ayu-muted focus:border-ayu-gold focus:outline-none"></textarea>
 				</div>
 
 				<div>

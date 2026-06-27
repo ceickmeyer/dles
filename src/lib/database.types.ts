@@ -18,6 +18,7 @@ export interface Database {
 					name: string;
 					url: string | null;
 					icon_emoji: string | null;
+					description: string | null;
 					scoring_direction: ScoringDirection;
 					max_score: number | null;
 					share_parser: string | null;
@@ -31,6 +32,7 @@ export interface Database {
 					name: string;
 					url?: string | null;
 					icon_emoji?: string | null;
+					description?: string | null;
 					scoring_direction: ScoringDirection;
 					max_score?: number | null;
 					share_parser?: string | null;
@@ -44,6 +46,7 @@ export interface Database {
 					name?: string;
 					url?: string | null;
 					icon_emoji?: string | null;
+					description?: string | null;
 					scoring_direction?: ScoringDirection;
 					max_score?: number | null;
 					share_parser?: string | null;

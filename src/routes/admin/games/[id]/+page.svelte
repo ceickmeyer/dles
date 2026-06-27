@@ -7,6 +7,7 @@
 
 	let name = $state(data.game.name);
 	let url = $state(data.game.url ?? '');
+	let description = $state(data.game.description ?? '');
 	let iconEmoji = $state(data.game.icon_emoji ?? '');
 	let scoringDirection = $state<'higher_is_better' | 'lower_is_better'>(data.game.scoring_direction);
 	let maxScore = $state(data.game.max_score?.toString() ?? '');
@@ -34,6 +35,7 @@
 			name: name.trim(),
 			url: url.trim() || null,
 			icon_emoji: iconEmoji.trim() || null,
+			description: description.trim() || null,
 			scoring_direction: scoringDirection,
 			max_score: maxScore ? parseInt(maxScore, 10) : null,
 			share_parser: shareParser || null,
@@ -95,6 +97,19 @@
 				bind:value={url}
 				class="w-full rounded-lg border border-ayu-border bg-ayu-bg px-3 py-2 text-white placeholder-ayu-muted focus:border-ayu-gold focus:outline-none"
 			/>
+		</div>
+
+		<div>
+			<label class="mb-1.5 block text-sm font-medium text-zinc-300" for="description">
+				Info tooltip <span class="text-ayu-muted font-normal">(optional — shown on hover of ℹ icon)</span>
+			</label>
+			<textarea
+				id="description"
+				bind:value={description}
+				rows={2}
+				placeholder="e.g. Lower guesses is better. Ties broken by time."
+				class="w-full resize-none rounded-lg border border-ayu-border bg-ayu-bg px-3 py-2 text-sm text-white placeholder-ayu-muted focus:border-ayu-gold focus:outline-none"
+			></textarea>
 		</div>
 
 		<div>

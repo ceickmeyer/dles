@@ -113,7 +113,7 @@
 		quordle:     'Each word scores 10 minus your guess count (1 guess = 9 pts, DNF = 0). Max score across all 4 words is 36.',
 		wikigame:    'Connect the Wiki pages with the fewest clicks possible. Ties broken by faster speed.',
 	};
-	const tip = $derived(game.share_parser ? (GAME_TIPS[game.share_parser] ?? null) : null);
+	const tip = $derived((game as any).description || (game.share_parser ? (GAME_TIPS[game.share_parser] ?? null) : null));
 
 	let tipVisible = $state(false);
 	let tipX = $state(0);
