@@ -111,6 +111,7 @@
 		connections: 'More points for solving hardest-first — 🟪🟦🟩🟨. Points off for mistakes. Perfect score is 200.',
 		decipher:    '10 minute time limit. Each hint used adds 1 minute penalty.',
 		quordle:     'Each word scores 10 minus your guess count (1 guess = 9 pts, DNF = 0). Max score across all 4 words is 36.',
+		wikigame:    'Connect the Wiki pages with the fewest clicks possible. Ties broken by faster speed.',
 	};
 	const tip = $derived(game.share_parser ? (GAME_TIPS[game.share_parser] ?? null) : null);
 
@@ -266,13 +267,13 @@
 					<button
 						onmouseenter={showTip}
 						onmouseleave={hideTip}
-						class="shrink-0 text-ayu-muted transition-colors hover:text-zinc-300"
+						class="shrink-0 text-ayu-blue transition-colors hover:text-white"
 						aria-label="Game info"
 					>
 						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-							<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5"/>
-							<path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-							<circle cx="1" cy="1" r="1" transform="matrix(1 0 0 -1 11 9)" fill="currentColor"/>
+							<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+							<path d="M12 17V11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+							<circle cx="1" cy="1" r="1.25" transform="matrix(1 0 0 -1 11 9)" fill="currentColor"/>
 						</svg>
 					</button>
 				{/if}

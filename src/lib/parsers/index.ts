@@ -12,6 +12,7 @@ import { coindleParser } from './coindle';
 import { quordleParser } from './quordle';
 import { estimadleParser } from './estimadle';
 import { genericParser } from './generic';
+import { wikigameParser } from './wikigame';
 
 export interface Parser {
 	name: string;
@@ -32,7 +33,8 @@ export const PARSERS: Record<string, Parser> = {
 	coindle: coindleParser,
 	quordle: quordleParser,
 	estimadle: estimadleParser,
-	generic: genericParser
+	generic: genericParser,
+	wikigame: wikigameParser
 };
 
 export const PARSER_OPTIONS = [
@@ -51,6 +53,7 @@ export const PARSER_OPTIONS = [
 	{ value: 'quordle', label: 'Quordle (0–36, higher is better)' },
 	{ value: 'estimadle', label: 'Estimadle (0–100%)' },
 	{ value: 'generic', label: 'Generic (first number)' },
+	{ value: 'wikigame', label: 'WikiGame (steps + time tiebreaker)' },
 	{ value: 'custom', label: 'Custom regex…' }
 ];
 

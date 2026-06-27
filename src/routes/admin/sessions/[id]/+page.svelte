@@ -10,7 +10,27 @@
 		scores: { id: string; raw_score: number; share_text: string | null; submitted_at: string; player: { id: string; name: string; alias: string | null } }[];
 	}[]);
 
+	const availableGames = $derived(data.availableGames as { id: string; name: string; icon_emoji: string | null }[]);
+
 	let confirmDeleteId = $state<string | null>(null);
+	let addGameId = $state('');
+	let addingGame = $state(false);
+
+	async function addGame() {
+		if (!addGameId) return;
+		addingGame = true;
+		globalError = '';
+		const { error: e } = await supabase.from('session_games').insert({
+			session_id: session.id,
+			game_id: addGameId,
+			sort_order: data.nextSortOrder,
+			is_special: false,
+		});
+		addingGame = false;
+		if (e) { globalError = e.message; return; }
+		addGameId = '';
+		await invalidateAll();
+	}
 	let deleting = $state(false);
 	let confirmRemoveGameId = $state<string | null>(null);
 	let removingGame = $state(false);
@@ -89,6 +109,27 @@
 
 	{#if globalError}
 		<p class="text-sm text-ayu-red">{globalError}</p>
+	{/if}
+
+	{#if availableGames.length > 0}
+		<div class="flex items-center gap-2">
+			<select
+				bind:value={addGameId}
+				class="flex-1 rounded-lg border border-ayu-border bg-ayu-surface px-3 py-2 text-sm text-white focus:border-ayu-gold focus:outline-none"
+			>
+				<option value="">Add a game to this session…</option>
+				{#each availableGames as g}
+					<option value={g.id}>{g.icon_emoji ?? '🎮'} {g.name}</option>
+				{/each}
+			</select>
+			<button
+				onclick={addGame}
+				disabled={!addGameId || addingGame}
+				class="rounded-lg bg-ayu-gold px-4 py-2 text-sm font-bold text-ayu-bg transition hover:brightness-110 disabled:opacity-50"
+			>
+				{addingGame ? '…' : 'Add'}
+			</button>
+		</div>
 	{/if}
 
 	{#if gameGroups.length === 0}

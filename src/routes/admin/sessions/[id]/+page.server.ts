@@ -56,5 +56,15 @@ export const load: PageServerLoad = async ({ params }) => {
 		if (!gameOrder.includes(id)) gameGroups.push(entry);
 	}
 
-	return { session, gameGroups };
+	const { data: allGames } = await supabase
+		.from('games')
+		.select('id, name, icon_emoji')
+		.order('name');
+
+	const inSession = new Set(gameOrder);
+	const availableGames = (allGames ?? []).filter(g => !inSession.has(g.id));
+
+	const nextSortOrder = Math.max(0, ...(sessionGames ?? []).map(sg => sg.sort_order)) + 1;
+
+	return { session, gameGroups, availableGames, nextSortOrder };
 };
