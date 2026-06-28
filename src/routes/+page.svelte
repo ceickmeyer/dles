@@ -369,11 +369,15 @@
 				const dnfVal = game.allow_dnf && game.max_score !== null ? game.max_score + 1 : null;
 				const [pbRes, srRes] = await Promise.all([
 					supabase.from('scores').select('raw_score').eq('game_id', game.id).eq('player_id', player.id!).neq('session_id', session!.id),
-					supabase.from('scores').select('raw_score').eq('game_id', game.id).neq('session_id', session!.id),
+					supabase.from('scores').select('raw_score,session_id,player_id').eq('game_id', game.id),
 				]);
 				const filterDnf = (vals: number[]) => dnfVal !== null ? vals.filter(v => v !== dnfVal) : vals;
 				const pbVals = filterDnf((pbRes.data ?? []).map(s => s.raw_score));
-				const srVals = filterDnf((srRes.data ?? []).map(s => s.raw_score));
+				const srVals = filterDnf(
+					(srRes.data ?? [])
+						.filter(s => !(s.session_id === session!.id && s.player_id === player.id))
+						.map(s => s.raw_score)
+				);
 				const prevPB = pbVals.length > 0 ? (lower ? Math.min(...pbVals) : Math.max(...pbVals)) : null;
 				const prevSR = srVals.length > 0 ? (lower ? Math.min(...srVals) : Math.max(...srVals)) : null;
 				const beats = (v: number, ref: number) => lower ? v < ref : v > ref;
