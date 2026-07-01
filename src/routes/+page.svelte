@@ -30,7 +30,7 @@
 		session
 			? session.session_games.map(({ game, is_special }) => ({
 					game,
-					is_special: is_special ?? false,
+					isSpecial: is_special ?? false,
 					scores: rankScores(
 						scores
 							.filter((s) => s.game_id === game.id)
@@ -73,6 +73,10 @@
 	);
 
 	const totalGames = $derived(session?.session_games.length ?? 0);
+
+	const featuredWinnerId = $derived(
+		gameResults.find(r => r.isSpecial)?.scores.find(s => s.medal === 'gold')?.player_id ?? null
+	);
 
 	const playerGameCounts = $derived((() => {
 		const counts = new Map<string, number>();
@@ -507,7 +511,17 @@
 		<!-- Featured game (if any) -->
 		{#if specialGame}
 			<div>
-				<h2 class="mb-3 text-xs font-semibold uppercase tracking-widest text-ayu-gold">⭐ Featured Game</h2>
+				<h2 class="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-ayu-gold">
+					⭐ Featured Game
+					<span class="group relative inline-flex">
+						<svg class="w-3.5 h-3.5 cursor-default" style="color: var(--color-ayu-blue)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="8"/><path d="M12 12v4"/>
+						</svg>
+						<span class="pointer-events-none absolute bottom-full left-1/2 mb-2 w-48 -translate-x-1/2 rounded-lg border border-ayu-border bg-zinc-900 px-2.5 py-1.5 text-xs font-normal normal-case tracking-normal text-zinc-300 opacity-0 shadow-xl transition-opacity group-hover:opacity-100">
+							Winning this game is worth +1 more point than regular games
+						</span>
+					</span>
+				</h2>
 				{#if player.id}
 					<div class="rounded-xl" style="box-shadow:0px 0px 12px 7px rgba(249,226,175,0.35)">
 						<LobbyCard
@@ -631,7 +645,7 @@
 						</button>
 					</div>
 					<div class="rounded-xl border border-ayu-border bg-ayu-surface p-4">
-						<MedalTally {tally} currentPlayerId={player.id} playerStats={playerDayStats} {prevRankMap} {completedPlayerIds} {prevWinnerId} {prevFullRanking} {totalGames} {playerGameCounts} />
+						<MedalTally {tally} currentPlayerId={player.id} playerStats={playerDayStats} {prevRankMap} {completedPlayerIds} {prevWinnerId} {prevFullRanking} {totalGames} {playerGameCounts} {featuredWinnerId} />
 					</div>
 				</div>
 			{/if}

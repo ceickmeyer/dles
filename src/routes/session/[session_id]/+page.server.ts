@@ -22,8 +22,9 @@ export const load: PageServerLoad = async ({ params }) => {
 
 	const allScores = scores ?? [];
 
-	const gameResults = sessionGames.map(({ game }) => ({
+	const gameResults = sessionGames.map(({ game, is_special }) => ({
 		game,
+		isSpecial: is_special ?? false,
 		scores: rankScores(
 			allScores
 				.filter((s) => s.game_id === game.id)

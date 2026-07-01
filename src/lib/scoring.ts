@@ -67,11 +67,11 @@ export const MEDAL_EMOJI: Record<NonNullable<Medal>, string> = {
 };
 
 export function computeSessionTally(
-	gameResults: { scores: RankedScore[] }[]
+	gameResults: { scores: RankedScore[]; isSpecial?: boolean }[]
 ): Map<string, MedalTally> {
 	const tally = new Map<string, MedalTally>();
 
-	for (const { scores } of gameResults) {
+	for (const { scores, isSpecial } of gameResults) {
 		for (const score of scores) {
 			if (!tally.has(score.player_id)) {
 				tally.set(score.player_id, {
@@ -84,10 +84,9 @@ export function computeSessionTally(
 				});
 			}
 			const t = tally.get(score.player_id)!;
-			if (score.medal === 'gold') t.gold++;
-			else if (score.medal === 'silver') t.silver++;
-			else if (score.medal === 'bronze') t.bronze++;
-			t.total = t.gold * 4 + t.silver * 2 + t.bronze * 1;
+			if (score.medal === 'gold') { t.gold++; t.total += isSpecial ? 5 : 4; }
+			else if (score.medal === 'silver') { t.silver++; t.total += 2; }
+			else if (score.medal === 'bronze') { t.bronze++; t.total += 1; }
 		}
 	}
 

@@ -2,7 +2,7 @@
 	import type { MedalTally, PlayerDayStat } from '$lib/scoring';
 	import { MEDAL_EMOJI } from '$lib/scoring';
 
-	let { tally, currentPlayerId = null, playerStats = new Map(), prevRankMap = new Map(), completedPlayerIds = new Set(), prevWinnerId = null, prevFullRanking = [], totalGames = 0, playerGameCounts = new Map() }: {
+	let { tally, currentPlayerId = null, playerStats = new Map(), prevRankMap = new Map(), completedPlayerIds = new Set(), prevWinnerId = null, prevFullRanking = [], totalGames = 0, playerGameCounts = new Map(), featuredWinnerId = null }: {
 		tally: MedalTally[];
 		currentPlayerId?: string | null;
 		playerStats?: Map<string, PlayerDayStat[]>;
@@ -12,6 +12,7 @@
 		prevFullRanking?: { player_id: string; player_name: string; rank: number; total: number }[];
 		totalGames?: number;
 		playerGameCounts?: Map<string, number>;
+		featuredWinnerId?: string | null;
 	} = $props();
 
 	const ranks = $derived(tally.map(row => {
@@ -68,6 +69,29 @@
 		crownTipVisible = false;
 	}
 
+	let arrowTipVisible = $state(false);
+	let arrowTipX = $state(0);
+	let arrowTipY = $state(0);
+	let arrowTipPrev = $state(0);
+	let arrowTipOutOf = $state(0);
+	let arrowTipDelta = $state(0);
+
+	function ordinal(n: number) {
+		const s = ['th','st','nd','rd'];
+		const v = n % 100;
+		return n + (s[(v - 20) % 10] ?? s[v] ?? s[0]);
+	}
+
+	function showArrowTip(e: MouseEvent, prevRank: number, currRank: number, outOf: number) {
+		const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+		arrowTipX = rect.left;
+		arrowTipY = rect.top - 8;
+		arrowTipPrev = prevRank;
+		arrowTipOutOf = outOf;
+		arrowTipDelta = prevRank - currRank;
+		arrowTipVisible = true;
+	}
+
 	const SINGLE_PATH = "M508.788,371.087L263.455,125.753c-4.16-4.16-10.88-4.16-15.04,0L2.975,371.087c-4.053,4.267-3.947,10.987,0.213,15.04c4.16,3.947,10.667,3.947,14.827,0l237.867-237.76l237.76,237.76c4.267,4.053,10.987,3.947,15.04-0.213C512.734,381.753,512.734,375.247,508.788,371.087z";
 	const DBL_PATH_1  = "M263.535,248.453c-4.16-4.16-10.88-4.16-15.04,0L3.054,493.787c-4.053,4.267-3.947,10.987,0.213,15.04c4.16,3.947,10.667,3.947,14.827,0l237.867-237.76l237.76,237.76c4.267,4.053,10.987,3.947,15.04-0.213c3.947-4.16,3.947-10.667,0-14.827L263.535,248.453z";
 	const DBL_PATH_2  = "M18.201,263.493l237.76-237.76l237.76,237.76c4.267,4.053,10.987,3.947,15.04-0.213c3.947-4.16,3.947-10.667,0-14.827L263.535,3.12c-4.16-4.16-10.88-4.16-15.04,0L3.054,248.453c-4.053,4.267-3.947,10.987,0.213,15.04C7.534,267.547,14.041,267.547,18.201,263.493z";
@@ -77,22 +101,27 @@
 	<table class="w-full text-sm">
 		<thead>
 			<tr class="border-b border-zinc-700 text-zinc-400">
-				<th class="py-2 pl-3 pr-2 text-left font-medium">#</th>
-				<th class="py-2 w-5"></th>
+				<th class="py-2 pl-3 pr-1 text-left font-medium">#</th>
+				<th class="py-2 w-4 hidden sm:table-cell"></th>
 				<th class="py-2 text-left font-medium">Player</th>
-				<th class="py-2 w-10 text-center font-medium">🥇</th>
-				<th class="py-2 w-10 text-center font-medium">🥈</th>
-				<th class="py-2 w-10 text-center font-medium">🥉</th>
-				<th class="py-2 pl-2 pr-3 w-16 text-center font-medium">
+				{#if totalGames > 0}
+					<th class="py-2 w-14 text-center font-medium">Played</th>
+				{/if}
+				<th class="py-2 w-10 text-center font-medium hidden sm:table-cell">🥇</th>
+				<th class="py-2 w-10 text-center font-medium hidden sm:table-cell">🥈</th>
+				<th class="py-2 w-10 text-center font-medium hidden sm:table-cell">🥉</th>
+				<th class="py-2 pl-2 pr-3 w-14 text-center font-medium">
 					<span class="inline-flex items-center justify-center gap-1">
-						Total
+						<span class="hidden sm:inline">Total</span>
+						<span class="sm:hidden">Pts</span>
 						<button
 							onmouseenter={showScoreTip}
 							onmouseleave={() => scoreTipVisible = false}
-							class="text-zinc-600 hover:text-zinc-400 transition-colors"
+							class="transition-colors"
+							style="color: var(--color-ayu-blue)"
 							aria-label="Scoring info"
 						>
-							<svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+							<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none">
 								<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
 								<path d="M12 17V11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
 								<circle cx="1" cy="1" r="1.25" transform="matrix(1 0 0 -1 11 9)" fill="currentColor"/>
@@ -107,10 +136,13 @@
 				<tr class="border-b border-zinc-800 transition-colors
 					{ranks[i] === 1 ? 'bg-yellow-400/10' : ranks[i] === 2 ? 'bg-slate-400/8' : ranks[i] === 3 ? 'bg-amber-700/10' : row.player_id === currentPlayerId ? 'bg-amber-900/20' : ''}">
 
-					<td class="py-2.5 pl-3 pr-2
+					<td class="py-2.5 pl-3 pr-1
 						{ranks[i] === 1 ? 'text-ayu-gold font-bold' : ranks[i] === 2 ? 'text-zinc-400 font-bold' : ranks[i] === 3 ? 'text-amber-700 font-bold' : 'text-zinc-600'}">{ranks[i]}</td>
 
-					<td class="py-2.5 w-5">
+					<td class="py-2.5 w-4 hidden sm:table-cell cursor-default"
+						onmouseenter={(e) => { if (prevRankMap.has(row.player_id)) { const p = prevRankMap.get(row.player_id)!; showArrowTip(e, p.rank, ranks[i], p.outOf); } }}
+						onmouseleave={() => arrowTipVisible = false}
+					>
 						{#if prevRankMap.has(row.player_id)}
 							{@const prev = prevRankMap.get(row.player_id)!}
 							{@const delta = prev.rank - ranks[i]}
@@ -138,26 +170,27 @@
 						{/if}
 					</td>
 
-					<td class="py-2.5 pr-4 font-medium text-white"
+					<td class="py-2.5 pl-2 pr-2 font-medium text-white"
 						onmouseenter={(e) => showPlayerTip(e, row)}
 						onmouseleave={() => playerTipVisible = false}
 					>
 						<span class="flex items-center gap-1 flex-wrap">
 							<a href="/player/{row.player_id}" class="hover:text-ayu-gold transition-colors">{row.player_name}</a>
+							{#if row.player_id === featuredWinnerId}
+								<!-- svelte-ignore a11y_no_static_element_interactions -->
+								<span class="group relative inline-flex cursor-default z-10"
+									onmouseenter={(e) => { e.stopPropagation(); playerTipVisible = false; }}
+									onmouseleave={() => playerTipVisible = false}
+								>
+									⭐
+									<span class="pointer-events-none absolute bottom-full left-1/2 mb-1.5 w-36 -translate-x-1/2 rounded-lg border border-ayu-border bg-zinc-900 px-2 py-1 text-xs font-normal normal-case tracking-normal text-zinc-300 opacity-0 shadow-xl transition-opacity group-hover:opacity-100 whitespace-nowrap">
+										Won featured game
+									</span>
+								</span>
+							{/if}
 							{#if row.player_id === prevWinnerId}
 								<!-- svelte-ignore a11y_no_static_element_interactions -->
 								<span class="cursor-default" onmouseenter={showCrownTip} onmouseleave={hideCrownTip}>👑</span>
-							{/if}
-							{#if totalGames > 0}
-								{@const count = playerGameCounts.get(row.player_id) ?? 0}
-								{#if completedPlayerIds.has(row.player_id)}
-									<svg class="inline w-4.5 h-4.5 shrink-0" style="color: var(--color-ayu-green)" viewBox="0 0 24 24" fill="none">
-										<title>All games completed</title>
-										<path d="M12,21h0a9,9,0,0,1-9-9H3a9,9,0,0,1,9-9h0a9,9,0,0,1,9,9h0A9,9,0,0,1,12,21ZM8,11.5l3,3,5-5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
-									</svg>
-								{:else if count > 0}
-									<span class="font-mono text-xs" style="color: var(--color-ayu-muted)">{count}/{totalGames}</span>
-								{/if}
 							{/if}
 							{#if row.player_id === currentPlayerId}
 								<span class="text-xs text-amber-400">(you)</span>
@@ -165,10 +198,26 @@
 						</span>
 					</td>
 
-					<td class="py-2.5 w-10 text-center text-amber-400">{row.gold || '—'}</td>
-					<td class="py-2.5 w-10 text-center text-zinc-400">{row.silver || '—'}</td>
-					<td class="py-2.5 w-10 text-center text-amber-700">{row.bronze || '—'}</td>
-					<td class="py-2.5 pl-2 pr-3 w-16 text-center font-semibold text-white">{row.total}</td>
+					{#if totalGames > 0}
+						{@const count = playerGameCounts.get(row.player_id) ?? 0}
+						<td class="py-2.5 w-14 text-center">
+							{#if completedPlayerIds.has(row.player_id)}
+								<svg class="inline w-4.5 h-4.5 shrink-0" style="color: var(--color-ayu-green)" viewBox="0 0 24 24" fill="none">
+									<title>All games completed</title>
+									<path d="M12,21h0a9,9,0,0,1-9-9H3a9,9,0,0,1,9-9h0a9,9,0,0,1,9,9h0A9,9,0,0,1,12,21ZM8,11.5l3,3,5-5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+								</svg>
+							{:else if count > 0}
+								<span class="font-mono text-xs" style="color: var(--color-ayu-muted)">{count}/{totalGames}</span>
+							{:else}
+								<span class="text-zinc-700">—</span>
+							{/if}
+						</td>
+					{/if}
+
+					<td class="py-2.5 w-10 text-center text-amber-400 hidden sm:table-cell">{row.gold || '—'}</td>
+					<td class="py-2.5 w-10 text-center text-zinc-400 hidden sm:table-cell">{row.silver || '—'}</td>
+					<td class="py-2.5 w-10 text-center text-amber-700 hidden sm:table-cell">{row.bronze || '—'}</td>
+					<td class="py-2.5 pl-2 pr-3 w-14 text-center font-semibold text-white">{row.total}</td>
 				</tr>
 			{/each}
 		</tbody>
@@ -180,54 +229,53 @@
 		class="pointer-events-none fixed z-50 w-44 rounded-lg border border-ayu-border bg-zinc-900 px-3 py-2 text-xs text-zinc-300 shadow-xl"
 		style="left:{scoreTipX}px;top:{scoreTipY}px;transform:translateY(-100%)"
 	>
-		<div>🥇 Gold = 4 pts</div>
+		<div>🥇 Gold = 4 pts (5 on featured)</div>
 		<div>🥈 Silver = 2 pts</div>
 		<div>🥉 Bronze = 1 pt</div>
 	</div>
 {/if}
 
-{#if playerTipVisible && (tipStats.length > 0 || prevRankMap.has(tipPlayerId) || completedPlayerIds.has(tipPlayerId))}
+{#if playerTipVisible && tipStats.length > 0}
 	<div
 		class="pointer-events-none fixed z-50 min-w-44 rounded-lg border border-ayu-border bg-zinc-900 px-3 py-2 text-xs shadow-xl"
 		style="left:{playerTipX}px;top:{playerTipY}px;transform:translateY(-100%)"
 	>
 		<p class="font-semibold text-white">{tipName}</p>
-		{#if completedPlayerIds.has(tipPlayerId)}
-			<p class="mt-0.5" style="color: var(--color-ayu-green)">All games completed!</p>
-		{/if}
-		{#if prevRankMap.has(tipPlayerId)}
-			{@const pr = prevRankMap.get(tipPlayerId)!}
-			<p class="mt-0.5 text-ayu-muted" class:mb-1.5={tipStats.length > 0}>Yesterday: #{pr.rank} of {pr.outOf}</p>
-		{/if}
-		{#if tipStats.length > 0}
-			<div class="space-y-1 mt-1.5">
-				{#each tipStats as stat}
-					<div class="flex items-center justify-between gap-6">
-						<span class="flex items-center gap-1.5">
-							<span>{stat.gameEmoji ?? '🎮'}</span>
-							<span class="text-zinc-300">{stat.gameName}</span>
-						</span>
-						<span>{MEDAL_EMOJI[stat.medal!]}</span>
-					</div>
-				{/each}
-			</div>
+		<div class="space-y-1 mt-1.5">
+			{#each tipStats as stat}
+				<div class="flex items-center justify-between gap-6">
+					<span class="flex items-center gap-1.5">
+						<span>{stat.gameEmoji ?? '🎮'}</span>
+						<span class="text-zinc-300">{stat.gameName}</span>
+					</span>
+					<span>{MEDAL_EMOJI[stat.medal!]}</span>
+				</div>
+			{/each}
+		</div>
+	</div>
+{/if}
+
+{#if arrowTipVisible}
+	<div
+		class="pointer-events-none fixed z-50 rounded-lg border border-ayu-border bg-zinc-900 px-3 py-2 text-xs text-zinc-300 shadow-xl"
+		style="left:{arrowTipX}px;top:{arrowTipY}px;transform:translateY(-100%)"
+	>
+		<p class="text-zinc-400">Yesterday: {ordinal(arrowTipPrev)} of {arrowTipOutOf}</p>
+		{#if arrowTipDelta > 0}
+			<p class="font-semibold" style="color: var(--color-ayu-green)">↑ {arrowTipDelta} place{arrowTipDelta > 1 ? 's' : ''} gained</p>
+		{:else if arrowTipDelta < 0}
+			<p class="font-semibold" style="color: var(--color-ayu-red)">↓ {Math.abs(arrowTipDelta)} place{Math.abs(arrowTipDelta) > 1 ? 's' : ''} dropped</p>
+		{:else}
+			<p class="text-zinc-500">Holding position</p>
 		{/if}
 	</div>
 {/if}
 
-{#if crownTipVisible && prevFullRanking.length > 0}
+{#if crownTipVisible}
 	<div
-		class="pointer-events-none fixed z-50 w-52 rounded-lg border border-ayu-border bg-zinc-900 px-3 py-2 text-xs shadow-xl"
+		class="pointer-events-none fixed z-50 rounded-lg border border-ayu-border bg-zinc-900 px-3 py-2 text-xs text-zinc-300 shadow-xl whitespace-nowrap"
 		style="left:{crownTipX}px;top:{crownTipY}px;transform:translateY(-100%)"
 	>
-		<p class="mb-1.5 font-semibold text-white">Yesterday's Rankings</p>
-		<div class="space-y-1">
-			{#each prevFullRanking as r}
-				<div class="flex items-center justify-between gap-3">
-					<span class="{r.rank === 1 ? 'text-ayu-gold' : 'text-zinc-300'}">#{r.rank} {r.player_name}</span>
-					<span class="font-mono text-ayu-muted">{r.total}</span>
-				</div>
-			{/each}
-		</div>
+		Yesterday's winner
 	</div>
 {/if}

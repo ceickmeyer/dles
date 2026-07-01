@@ -48,6 +48,13 @@ export const load: PageServerLoad = async ({ params }) => {
 		if (page.length < 1000) break;
 	}
 
+	const { data: specialGameRows } = await supabase
+		.from('session_games')
+		.select('session_id, game_id')
+		.eq('is_special', true)
+		.in('session_id', sessionIds);
+	const specialGameMap = new Map((specialGameRows ?? []).map(sg => [sg.session_id, sg.game_id]));
+
 	if (allScores.length === 0) {
 		return {
 			player,
@@ -89,9 +96,11 @@ export const load: PageServerLoad = async ({ params }) => {
 			byGame.get(s.game_id)!.push(s);
 		}
 
-		const sessionGameResults = [...byGame.values()].map(group => {
+		const specialGameId = specialGameMap.get(sessionId);
+		const sessionGameResults = [...byGame.entries()].map(([gameId, group]) => {
 			const g = group[0].game as { scoring_direction: 'higher_is_better' | 'lower_is_better'; max_score: number | null; allow_dnf: boolean };
 			return {
+				isSpecial: gameId === specialGameId,
 				scores: rankScores(
 					group.map(s => ({
 						player_id: s.player_id,
