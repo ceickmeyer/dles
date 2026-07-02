@@ -95,6 +95,9 @@
 	const SINGLE_PATH = "M508.788,371.087L263.455,125.753c-4.16-4.16-10.88-4.16-15.04,0L2.975,371.087c-4.053,4.267-3.947,10.987,0.213,15.04c4.16,3.947,10.667,3.947,14.827,0l237.867-237.76l237.76,237.76c4.267,4.053,10.987,3.947,15.04-0.213C512.734,381.753,512.734,375.247,508.788,371.087z";
 	const DBL_PATH_1  = "M263.535,248.453c-4.16-4.16-10.88-4.16-15.04,0L3.054,493.787c-4.053,4.267-3.947,10.987,0.213,15.04c4.16,3.947,10.667,3.947,14.827,0l237.867-237.76l237.76,237.76c4.267,4.053,10.987,3.947,15.04-0.213c3.947-4.16,3.947-10.667,0-14.827L263.535,248.453z";
 	const DBL_PATH_2  = "M18.201,263.493l237.76-237.76l237.76,237.76c4.267,4.053,10.987,3.947,15.04-0.213c3.947-4.16,3.947-10.667,0-14.827L263.535,3.12c-4.16-4.16-10.88-4.16-15.04,0L3.054,248.453c-4.053,4.267-3.947,10.987,0.213,15.04C7.534,267.547,14.041,267.547,18.201,263.493z";
+	const TRI_PATH_1  = "M263.535,248.453c-4.16-4.16-10.88-4.16-15.04,0L3.054,493.787c-4.053,4.267-3.947,10.987,0.213,15.04c4.16,3.947,10.667,3.947,14.827,0l237.867-237.76l237.76,237.76c4.267,4.053,10.987,3.947,15.04-0.213c3.947-4.16,3.947-10.667,0-14.827L263.535,248.453z";
+	const TRI_PATH_2  = "M18.201,385.993l237.76-237.76l237.76,237.76c4.267,4.053,10.987,3.947,15.04-0.213c3.947-4.16,3.947-10.667,0-14.827L263.535,125.62c-4.16-4.16-10.88-4.16-15.04,0L3.054,370.953c-4.053,4.267-3.947,10.987,0.213,15.04C7.534,390.047,14.041,390.047,18.201,385.993z";
+	const TRI_PATH_3  = "M18.201,263.493l237.76-237.76l237.76,237.76c4.267,4.053,10.987,3.947,15.04-0.213c3.947-4.16,3.947-10.667,0-14.827L263.535,3.12c-4.16-4.16-10.88-4.16-15.04,0L3.054,248.453c-4.053,4.267-3.947,10.987,0.213,15.04C7.534,267.547,14.041,267.547,18.201,263.493z";
 </script>
 
 <div class="overflow-x-auto">
@@ -146,25 +149,23 @@
 						{#if prevRankMap.has(row.player_id)}
 							{@const prev = prevRankMap.get(row.player_id)!}
 							{@const delta = prev.rank - ranks[i]}
-							{#if delta > 1}
-								<svg class="w-3.5 h-3.5" style="color: var(--color-ayu-green)" fill="currentColor" stroke="currentColor" stroke-width="32" viewBox="0 0 511.801 511.801">
-									<path d={DBL_PATH_1}/><path d={DBL_PATH_2}/>
-								</svg>
-							{:else if delta === 1}
-								<svg class="w-3.5 h-3.5" style="color: var(--color-ayu-green)" fill="currentColor" stroke="currentColor" stroke-width="32" viewBox="0 0 511.735 511.735">
-									<path d={SINGLE_PATH}/>
-								</svg>
-							{:else if delta === 0}
+							{@const abs = Math.abs(delta)}
+							{@const up = delta > 0}
+							{#if abs === 0}
 								<svg class="w-3.5 h-3.5" style="color: var(--color-ayu-muted)" fill="currentColor" viewBox="0 0 52 52">
 									<path d="M50,27.5c0,0.8-0.7,1.5-1.5,1.5h-45C2.7,29,2,28.3,2,27.5v-3C2,23.7,2.7,23,3.5,23h45c0.8,0,1.5,0.7,1.5,1.5V27.5z"/>
 								</svg>
-							{:else if delta === -1}
-								<svg class="w-3.5 h-3.5 rotate-180" style="color: var(--color-ayu-red)" fill="currentColor" stroke="currentColor" stroke-width="32" viewBox="0 0 511.735 511.735">
+							{:else if abs === 1}
+								<svg class="w-3.5 h-3.5 {up ? '' : 'rotate-180'}" style="color: var(--color-ayu-{up ? 'green' : 'red'})" fill="currentColor" stroke="currentColor" stroke-width="32" viewBox="0 0 511.735 511.735">
 									<path d={SINGLE_PATH}/>
 								</svg>
-							{:else}
-								<svg class="w-3.5 h-3.5 rotate-180" style="color: var(--color-ayu-red)" fill="currentColor" stroke="currentColor" stroke-width="32" viewBox="0 0 511.801 511.801">
+							{:else if abs <= 3}
+								<svg class="w-3.5 h-3.5 {up ? '' : 'rotate-180'}" style="color: var(--color-ayu-{up ? 'green' : 'red'})" fill="currentColor" stroke="currentColor" stroke-width="32" viewBox="0 0 511.801 511.801">
 									<path d={DBL_PATH_1}/><path d={DBL_PATH_2}/>
+								</svg>
+							{:else}
+								<svg class="w-3.5 h-3.5 {up ? '' : 'rotate-180'}" style="color: var(--color-ayu-{up ? 'green' : 'red'})" fill="currentColor" stroke="currentColor" stroke-width="32" viewBox="0 0 511.801 511.801">
+									<path d={TRI_PATH_1}/><path d={TRI_PATH_2}/><path d={TRI_PATH_3}/>
 								</svg>
 							{/if}
 						{/if}
