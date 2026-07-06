@@ -62,7 +62,7 @@ export function testCustomRegex(regex: string, text: string): number | null {
 		const re = new RegExp(regex, 'i');
 		const m = re.exec(text);
 		if (!m) return null;
-		const raw = m[1] ?? m[0];
+		const raw = (m[1] ?? m[0]).replace(/,/g, '');
 		const n = parseFloat(raw);
 		return isNaN(n) ? null : n;
 	} catch {
