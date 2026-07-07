@@ -74,8 +74,8 @@
 
 	const totalGames = $derived(session?.session_games.length ?? 0);
 
-	const featuredWinnerId = $derived(
-		gameResults.find(r => r.isSpecial)?.scores.find(s => s.medal === 'gold')?.player_id ?? null
+	const featuredWinnerIds = $derived(
+		new Set(gameResults.find(r => r.isSpecial)?.scores.filter(s => s.medal === 'gold').map(s => s.player_id) ?? [])
 	);
 
 	const playerGameCounts = $derived((() => {
@@ -645,7 +645,7 @@
 						</button>
 					</div>
 					<div class="rounded-xl border border-ayu-border bg-ayu-surface p-4">
-						<MedalTally {tally} currentPlayerId={player.id} playerStats={playerDayStats} {prevRankMap} {completedPlayerIds} {prevWinnerId} {prevFullRanking} {totalGames} {playerGameCounts} {featuredWinnerId} />
+						<MedalTally {tally} currentPlayerId={player.id} playerStats={playerDayStats} {prevRankMap} {completedPlayerIds} {prevWinnerId} {prevFullRanking} {totalGames} {playerGameCounts} {featuredWinnerIds} />
 					</div>
 				</div>
 			{/if}

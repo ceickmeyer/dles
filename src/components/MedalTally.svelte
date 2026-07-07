@@ -2,7 +2,7 @@
 	import type { MedalTally, PlayerDayStat } from '$lib/scoring';
 	import { MEDAL_EMOJI } from '$lib/scoring';
 
-	let { tally, currentPlayerId = null, playerStats = new Map(), prevRankMap = new Map(), completedPlayerIds = new Set(), prevWinnerId = null, prevFullRanking = [], totalGames = 0, playerGameCounts = new Map(), featuredWinnerId = null }: {
+	let { tally, currentPlayerId = null, playerStats = new Map(), prevRankMap = new Map(), completedPlayerIds = new Set(), prevWinnerId = null, prevFullRanking = [], totalGames = 0, playerGameCounts = new Map(), featuredWinnerIds = new Set() }: {
 		tally: MedalTally[];
 		currentPlayerId?: string | null;
 		playerStats?: Map<string, PlayerDayStat[]>;
@@ -12,7 +12,7 @@
 		prevFullRanking?: { player_id: string; player_name: string; rank: number; total: number }[];
 		totalGames?: number;
 		playerGameCounts?: Map<string, number>;
-		featuredWinnerId?: string | null;
+		featuredWinnerIds?: Set<string>;
 	} = $props();
 
 	const ranks = $derived(tally.map(row => {
@@ -177,7 +177,7 @@
 					>
 						<span class="flex items-center gap-1 flex-wrap">
 							<a href="/player/{row.player_id}" class="hover:text-ayu-gold transition-colors">{row.player_name}</a>
-							{#if row.player_id === featuredWinnerId}
+							{#if featuredWinnerIds.has(row.player_id)}
 								<!-- svelte-ignore a11y_no_static_element_interactions -->
 								<span class="group relative inline-flex cursor-default z-10"
 									onmouseenter={(e) => { e.stopPropagation(); playerTipVisible = false; }}
