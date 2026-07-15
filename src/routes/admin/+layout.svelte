@@ -12,7 +12,9 @@
 			status = 'ready';
 			return;
 		}
-		const { data: { session } } = await supabase.auth.getSession();
+		const {
+			data: { session }
+		} = await supabase.auth.getSession();
 		if (!session) {
 			status = 'redirecting';
 			goto('/admin/login');
@@ -23,23 +25,26 @@
 </script>
 
 {#if status === 'loading' || status === 'redirecting'}
-	<div class="flex h-40 items-center justify-center text-ayu-muted text-sm">
+	<div class="flex h-40 items-center justify-center text-sm text-ayu-muted">
 		{status === 'redirecting' ? 'Redirecting to login…' : 'Checking auth…'}
 	</div>
 {:else}
 	{#if !(typeof window !== 'undefined' && window.location.pathname === '/admin/login')}
 		<div class="mb-6 flex items-center justify-between border-b border-ayu-border pb-4">
 			<nav class="flex gap-4 text-sm">
-				<a href="/admin" class="text-zinc-300 hover:text-ayu-gold transition">Dashboard</a>
-				<a href="/admin/schedule" class="text-zinc-300 hover:text-ayu-gold transition">Schedule</a>
-				<a href="/admin/games" class="text-zinc-300 hover:text-ayu-gold transition">Games</a>
-				<a href="/admin/players" class="text-zinc-300 hover:text-ayu-gold transition">Players</a>
-				<a href="/admin/backup" class="text-zinc-300 hover:text-ayu-gold transition">Backup</a>
-				<a href="/admin/scores" class="text-zinc-300 hover:text-ayu-gold transition">Scores</a>
+				<a href="/admin" class="text-zinc-300 transition hover:text-ayu-gold">Dashboard</a>
+				<a href="/admin/schedule" class="text-zinc-300 transition hover:text-ayu-gold">Schedule</a>
+				<a href="/admin/games" class="text-zinc-300 transition hover:text-ayu-gold">Games</a>
+				<a href="/admin/players" class="text-zinc-300 transition hover:text-ayu-gold">Players</a>
+				<a href="/admin/backup" class="text-zinc-300 transition hover:text-ayu-gold">Backup</a>
+				<a href="/admin/scores" class="text-zinc-300 transition hover:text-ayu-gold">Scores</a>
 			</nav>
 			<button
-				onclick={async () => { await supabase.auth.signOut(); goto('/admin/login'); }}
-				class="text-xs text-ayu-muted hover:text-zinc-300 transition"
+				onclick={async () => {
+					await supabase.auth.signOut();
+					goto('/admin/login');
+				}}
+				class="text-xs text-ayu-muted transition hover:text-zinc-300"
 			>
 				Sign out
 			</button>

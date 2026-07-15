@@ -6,7 +6,7 @@
 	let {
 		sessionId,
 		playerId = null,
-		playerName = null,
+		playerName = null
 	}: {
 		sessionId: string;
 		playerId?: string | null;
@@ -84,7 +84,11 @@
 	}
 
 	function formatTime(ts: string): string {
-		return new Date(ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+		return new Date(ts).toLocaleTimeString('en-US', {
+			hour: 'numeric',
+			minute: '2-digit',
+			hour12: true
+		});
 	}
 
 	async function scrollToBottom() {
@@ -115,8 +119,10 @@
 			player_name: playerName,
 			content
 		});
-		if (error) { sendError = 'Failed to send.'; draft = content; }
-		else sounds.positive();
+		if (error) {
+			sendError = 'Failed to send.';
+			draft = content;
+		} else sounds.positive();
 		sending = false;
 	}
 
@@ -133,41 +139,58 @@
 		await load();
 		subscription = supabase
 			.channel(`chat:${sessionId}`)
-			.on('postgres_changes', {
-				event: 'INSERT',
-				schema: 'public',
-				table: 'messages',
-				filter: `session_id=eq.${sessionId}`
-			}, (payload) => {
-				const msg = payload.new as Message;
-				messages = [...messages, msg];
-				if (msg.player_id !== playerId && msg.player_id !== null) {
-					sounds.positive();
-					if (!open) unread++;
+			.on(
+				'postgres_changes',
+				{
+					event: 'INSERT',
+					schema: 'public',
+					table: 'messages',
+					filter: `session_id=eq.${sessionId}`
+				},
+				(payload) => {
+					const msg = payload.new as Message;
+					messages = [...messages, msg];
+					if (msg.player_id !== playerId && msg.player_id !== null) {
+						sounds.positive();
+						if (!open) unread++;
+					}
+					scrollToBottom();
 				}
-				scrollToBottom();
-			})
+			)
 			.subscribe();
 	});
 
-	onDestroy(() => { subscription?.unsubscribe(); });
+	onDestroy(() => {
+		subscription?.unsubscribe();
+	});
 </script>
 
 <!-- Floating chat button -->
-<div class="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-2">
+<div class="fixed right-4 bottom-4 z-50 flex flex-col items-end gap-2">
 	{#if open}
-		<div class="flex flex-col w-72 sm:w-80 rounded-xl border border-ayu-border bg-zinc-950 shadow-2xl overflow-hidden"
-			style="max-height: min(420px, calc(100vh - 5rem))">
+		<div
+			class="flex w-72 flex-col overflow-hidden rounded-xl border border-ayu-border bg-zinc-950 shadow-2xl sm:w-80"
+			style="max-height: min(420px, calc(100vh - 5rem))"
+		>
 			<!-- Header -->
-			<div class="flex items-center justify-between border-b border-ayu-border bg-ayu-surface px-4 py-3">
+			<div
+				class="flex items-center justify-between border-b border-ayu-border bg-ayu-surface px-4 py-3"
+			>
 				<p class="text-sm font-semibold text-white">💬 Chat</p>
-				<button onclick={toggle} class="text-ayu-muted hover:text-white transition text-lg leading-none">×</button>
+				<button
+					onclick={toggle}
+					class="text-lg leading-none text-ayu-muted transition hover:text-white">×</button
+				>
 			</div>
 
 			<!-- Messages -->
-			<div bind:this={listEl} class="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-0" style="min-height:140px;max-height:260px">
+			<div
+				bind:this={listEl}
+				class="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3"
+				style="min-height:140px;max-height:260px"
+			>
 				{#if messages.length === 0}
-					<p class="text-center text-xs text-ayu-muted pt-8">No messages yet. Say something!</p>
+					<p class="pt-8 text-center text-xs text-ayu-muted">No messages yet. Say something!</p>
 				{:else}
 					{#each groups as group (group.kind === 'msg' ? group.msg.id : group.key)}
 						{#if group.kind === 'msg'}
@@ -175,22 +198,60 @@
 								<!-- Single system/log message -->
 								{@const pn = group.msg.player_name}
 								<div class="flex items-center gap-2 py-0.5">
-									<div class="flex-1 h-px {pn === '__sr__' ? 'bg-ayu-gold/40' : pn === '__pb__' ? 'bg-ayu-green/40' : pn === '__perfect__' ? 'bg-ayu-purple/40' : 'bg-ayu-border'}"></div>
-									<span class="px-1 text-center text-xs {pn === '__sr__' || pn === '__perfect__' ? 'font-semibold' : ''}" style="{pn === '__sr__' ? 'color:var(--color-ayu-gold)' : pn === '__pb__' ? 'color:var(--color-ayu-green)' : pn === '__perfect__' ? 'color:var(--color-ayu-purple)' : 'color:var(--color-ayu-blue);opacity:0.8'}">{group.msg.content}</span>
-									<div class="flex-1 h-px {pn === '__sr__' ? 'bg-ayu-gold/40' : pn === '__pb__' ? 'bg-ayu-green/40' : pn === '__perfect__' ? 'bg-ayu-purple/40' : 'bg-ayu-border'}"></div>
+									<div
+										class="h-px flex-1 {pn === '__sr__'
+											? 'bg-ayu-gold/40'
+											: pn === '__pb__'
+												? 'bg-ayu-green/40'
+												: pn === '__perfect__'
+													? 'bg-ayu-purple/40'
+													: 'bg-ayu-border'}"
+									></div>
+									<span
+										class="px-1 text-center text-xs {pn === '__sr__' || pn === '__perfect__'
+											? 'font-semibold'
+											: ''}"
+										style={pn === '__sr__'
+											? 'color:var(--color-ayu-gold)'
+											: pn === '__pb__'
+												? 'color:var(--color-ayu-green)'
+												: pn === '__perfect__'
+													? 'color:var(--color-ayu-purple)'
+													: 'color:var(--color-ayu-blue);opacity:0.8'}>{group.msg.content}</span
+									>
+									<div
+										class="h-px flex-1 {pn === '__sr__'
+											? 'bg-ayu-gold/40'
+											: pn === '__pb__'
+												? 'bg-ayu-green/40'
+												: pn === '__perfect__'
+													? 'bg-ayu-purple/40'
+													: 'bg-ayu-border'}"
+									></div>
 								</div>
 							{:else}
 								<!-- Regular chat message -->
-								<div class="flex flex-col {group.msg.player_id === playerId ? 'items-end' : 'items-start'}">
-									<div class="flex items-baseline gap-1.5 mb-0.5">
-										<span class="text-xs font-semibold {group.msg.player_id === playerId ? 'text-zinc-400' : 'text-ayu-gold'}">
+								<div
+									class="flex flex-col {group.msg.player_id === playerId
+										? 'items-end'
+										: 'items-start'}"
+								>
+									<div class="mb-0.5 flex items-baseline gap-1.5">
+										<span
+											class="text-xs font-semibold {group.msg.player_id === playerId
+												? 'text-zinc-400'
+												: 'text-ayu-gold'}"
+										>
 											{group.msg.player_id === playerId ? 'You' : group.msg.player_name}
 										</span>
 										<span class="text-xs text-zinc-600">{formatTime(group.msg.created_at)}</span>
 									</div>
-									<div class="max-w-[85%] wrap-break-word rounded-2xl px-3 py-2 text-sm {group.msg.player_id === playerId
-										? 'bg-ayu-gold text-ayu-bg rounded-br-sm'
-										: 'bg-ayu-surface2 text-white rounded-bl-sm'}">
+									<div
+										class="max-w-[85%] rounded-2xl px-3 py-2 text-sm wrap-break-word {group.msg
+											.player_id === playerId
+											? 'rounded-br-sm bg-ayu-gold text-ayu-bg'
+											: 'rounded-bl-sm bg-ayu-surface2 text-white'}"
+									>
 										{group.msg.content}
 									</div>
 								</div>
@@ -201,18 +262,21 @@
 								<!-- Expanded: all messages -->
 								{#each group.msgs as msg (msg.id)}
 									<div class="flex items-center gap-2 py-0.5">
-										<div class="flex-1 h-px bg-ayu-border"></div>
-										<span class="text-xs text-ayu-blue/80 px-1 text-center">{msg.content}</span>
-										<div class="flex-1 h-px bg-ayu-border"></div>
+										<div class="h-px flex-1 bg-ayu-border"></div>
+										<span class="px-1 text-center text-xs text-ayu-blue/80">{msg.content}</span>
+										<div class="h-px flex-1 bg-ayu-border"></div>
 									</div>
 								{/each}
 								<button
 									onclick={() => toggleGroup(group.key)}
 									class="flex w-full items-center gap-2 py-0.5 transition-opacity hover:opacity-70"
 								>
-									<div class="flex-1 h-px bg-ayu-border"></div>
-									<span class="shrink-0 rounded-full bg-ayu-surface2 px-2 py-0.5 text-xs font-semibold text-ayu-blue">▲ collapse</span>
-									<div class="flex-1 h-px bg-ayu-border"></div>
+									<div class="h-px flex-1 bg-ayu-border"></div>
+									<span
+										class="shrink-0 rounded-full bg-ayu-surface2 px-2 py-0.5 text-xs font-semibold text-ayu-blue"
+										>▲ collapse</span
+									>
+									<div class="h-px flex-1 bg-ayu-border"></div>
 								</button>
 							{:else}
 								<!-- Collapsed: last message + count badge on right -->
@@ -220,15 +284,26 @@
 									onclick={() => toggleGroup(group.key)}
 									class="flex w-full items-center gap-2 py-0.5 text-left transition-opacity hover:opacity-70"
 								>
-									<div class="flex-1 h-px bg-ayu-border"></div>
-									<span class="text-xs text-ayu-blue/80 text-center">{group.msgs[group.msgs.length - 1].content}</span>
-									<span class="shrink-0 inline-flex items-center gap-0.5 rounded-full bg-ayu-surface2 px-1.5 py-px text-[10px] font-semibold text-ayu-blue">
+									<div class="h-px flex-1 bg-ayu-border"></div>
+									<span class="text-center text-xs text-ayu-blue/80"
+										>{group.msgs[group.msgs.length - 1].content}</span
+									>
+									<span
+										class="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-ayu-surface2 px-1.5 py-px text-[10px] font-semibold text-ayu-blue"
+									>
 										+{group.msgs.length - 1}
-										<svg class="w-2 h-2" viewBox="0 0 10 6" fill="currentColor">
-											<path d="M0 0.5L5 5.5L10 0.5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+										<svg class="h-2 w-2" viewBox="0 0 10 6" fill="currentColor">
+											<path
+												d="M0 0.5L5 5.5L10 0.5"
+												stroke="currentColor"
+												stroke-width="1.5"
+												fill="none"
+												stroke-linecap="round"
+												stroke-linejoin="round"
+											/>
 										</svg>
 									</span>
-									<div class="flex-1 h-px bg-ayu-border"></div>
+									<div class="h-px flex-1 bg-ayu-border"></div>
 								</button>
 							{/if}
 						{/if}
@@ -242,7 +317,13 @@
 					<p class="mb-1 text-xs text-ayu-red">{sendError}</p>
 				{/if}
 				{#if playerId && playerName}
-					<form onsubmit={(e) => { e.preventDefault(); send(); }} class="flex gap-2">
+					<form
+						onsubmit={(e) => {
+							e.preventDefault();
+							send();
+						}}
+						class="flex gap-2"
+					>
 						<input
 							bind:value={draft}
 							placeholder="Say something…"
@@ -260,7 +341,7 @@
 						</button>
 					</form>
 				{:else}
-					<p class="text-center text-xs text-ayu-muted py-1">Sign in to chat</p>
+					<p class="py-1 text-center text-xs text-ayu-muted">Sign in to chat</p>
 				{/if}
 			</div>
 		</div>
@@ -269,12 +350,14 @@
 	<!-- Toggle button -->
 	<button
 		onclick={toggle}
-		class="flex h-12 w-12 items-center justify-center rounded-full bg-ayu-gold text-ayu-bg shadow-lg transition hover:brightness-110 relative"
+		class="relative flex h-12 w-12 items-center justify-center rounded-full bg-ayu-gold text-ayu-bg shadow-lg transition hover:brightness-110"
 		aria-label="Toggle chat"
 	>
 		<span class="text-xl">{open ? '×' : '💬'}</span>
 		{#if !open && unread > 0}
-			<span class="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-ayu-red text-xs font-bold text-white">
+			<span
+				class="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-ayu-red text-xs font-bold text-white"
+			>
 				{unread > 9 ? '9+' : unread}
 			</span>
 		{/if}

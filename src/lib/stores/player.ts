@@ -33,7 +33,3 @@ function createPlayerStore() {
 }
 
 export const playerStore = createPlayerStore();
-
-export function generatePin(): string {
-	return String(Math.floor(1000 + Math.random() * 9000));
-}

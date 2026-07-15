@@ -26,7 +26,12 @@
 <div class="flex min-h-[60vh] items-center justify-center">
 	<div class="w-full max-w-sm">
 		<h1 class="mb-6 text-2xl font-bold text-white">Admin Login</h1>
-		<form onsubmit={(e) => { e.preventDefault(); signIn(); }}>
+		<form
+			onsubmit={(e) => {
+				e.preventDefault();
+				signIn();
+			}}
+		>
 			<label class="mb-1.5 block text-sm text-zinc-400" for="email">Email</label>
 			<input
 				id="email"

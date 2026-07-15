@@ -3,24 +3,29 @@
 	import EloChart from '$components/EloChart.svelte';
 	let { data } = $props();
 
-	type PerGame = typeof data.perGame[number];
+	type PerGame = (typeof data.perGame)[number];
 
 	// Medal rate for ranking best/worst — only games played 3+ times
-	const qualified = $derived(
-		(data.perGame as PerGame[]).filter(g => g.played >= 3)
+	const qualified = $derived((data.perGame as PerGame[]).filter((g) => g.played >= 3));
+
+	const avgPercentile = (g: PerGame) => (g.rankCount > 0 ? g.rankSum / g.rankCount : 0.5);
+
+	const bestAt = $derived(
+		[...qualified].sort((a, b) => avgPercentile(a) - avgPercentile(b)).slice(0, 5)
 	);
-
-	const avgPercentile = (g: PerGame) => g.rankCount > 0 ? g.rankSum / g.rankCount : 0.5;
-
-	const bestAt  = $derived([...qualified].sort((a, b) => avgPercentile(a) - avgPercentile(b)).slice(0, 5));
-	const worstAt = $derived([...qualified].sort((a, b) => avgPercentile(b) - avgPercentile(a)).slice(0, 5));
+	const worstAt = $derived(
+		[...qualified].sort((a, b) => avgPercentile(b) - avgPercentile(a)).slice(0, 5)
+	);
 
 	let perGameOpen = $state(false);
 </script>
 
-<div class="space-y-8 max-w-2xl">
+<div class="max-w-2xl space-y-8">
 	<div>
-		<a href="/leaderboard" class="mb-4 inline-flex items-center gap-1 text-sm text-ayu-muted hover:text-white">
+		<a
+			href="/leaderboard"
+			class="mb-4 inline-flex items-center gap-1 text-sm text-ayu-muted hover:text-white"
+		>
 			← Leaderboard
 		</a>
 		<div class="flex items-start justify-between gap-4">
@@ -30,13 +35,17 @@
 					<p class="text-lg text-ayu-gold">{data.player.alias}</p>
 				{/if}
 				<p class="mt-1 text-sm text-ayu-muted">
-					Joined {new Date(data.player.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+					Joined {new Date(data.player.created_at).toLocaleDateString('en-US', {
+						month: 'long',
+						year: 'numeric'
+					})}
 				</p>
 			</div>
 			{#if data.playerElo}
-				{@const delta = data.playerElo.prevElo !== null ? data.playerElo.elo - data.playerElo.prevElo : null}
+				{@const delta =
+					data.playerElo.prevElo !== null ? data.playerElo.elo - data.playerElo.prevElo : null}
 				<div class="shrink-0 text-right">
-					<p class="text-xs font-semibold uppercase tracking-wider text-ayu-muted">ELO</p>
+					<p class="text-xs font-semibold tracking-wider text-ayu-muted uppercase">ELO</p>
 					<p class="text-2xl font-bold text-white">{data.playerElo.elo.toLocaleString()}</p>
 					{#if delta !== null && delta !== 0}
 						<p class="text-sm font-semibold {delta > 0 ? 'text-ayu-green' : 'text-ayu-red'}">
@@ -45,7 +54,9 @@
 					{/if}
 				</div>
 			{:else if data.nights === 0}
-				<span class="mt-1 rounded-full border border-ayu-border px-3 py-1 text-xs text-ayu-muted">No finished sessions</span>
+				<span class="mt-1 rounded-full border border-ayu-border px-3 py-1 text-xs text-ayu-muted"
+					>No finished sessions</span
+				>
 			{/if}
 		</div>
 	</div>
@@ -54,7 +65,9 @@
 		<!-- Rank history chart -->
 		{#if data.rankHistory.length >= 2}
 			<div class="rounded-xl border border-ayu-border bg-ayu-surface px-4 py-3">
-				<p class="mb-2 text-xs font-semibold uppercase tracking-widest text-ayu-muted">Rank History</p>
+				<p class="mb-2 text-xs font-semibold tracking-widest text-ayu-muted uppercase">
+					Rank History
+				</p>
 				<RankChart sessions={data.rankHistory} />
 			</div>
 		{/if}
@@ -62,7 +75,9 @@
 		<!-- ELO history chart -->
 		{#if data.playerElo && data.playerElo.eloHistory.length >= 2}
 			<div class="rounded-xl border border-ayu-border bg-ayu-surface px-4 py-3">
-				<p class="mb-2 text-xs font-semibold uppercase tracking-widest text-ayu-muted">ELO History</p>
+				<p class="mb-2 text-xs font-semibold tracking-widest text-ayu-muted uppercase">
+					ELO History
+				</p>
 				<EloChart history={data.playerElo.eloHistory} />
 			</div>
 		{/if}
@@ -94,7 +109,7 @@
 		<!-- Best / worst at -->
 		<div class="grid grid-cols-2 gap-3">
 			<div class="rounded-xl border border-ayu-border bg-ayu-surface p-4">
-				<p class="mb-2 text-xs font-semibold uppercase tracking-wider text-ayu-muted">Best at</p>
+				<p class="mb-2 text-xs font-semibold tracking-wider text-ayu-muted uppercase">Best at</p>
 				{#if bestAt.length === 0}
 					<p class="text-xs text-ayu-muted">Not enough data</p>
 				{:else}
@@ -106,7 +121,7 @@
 				{/if}
 			</div>
 			<div class="rounded-xl border border-ayu-border bg-ayu-surface p-4">
-				<p class="mb-2 text-xs font-semibold uppercase tracking-wider text-ayu-muted">Worst at</p>
+				<p class="mb-2 text-xs font-semibold tracking-wider text-ayu-muted uppercase">Worst at</p>
 				{#if worstAt.length === 0}
 					<p class="text-xs text-ayu-muted">Not enough data</p>
 				{:else}
@@ -123,18 +138,32 @@
 		{#if data.perGame.length > 0}
 			<div class="rounded-xl border border-ayu-border bg-ayu-surface">
 				<button
-					onclick={() => perGameOpen = !perGameOpen}
+					onclick={() => (perGameOpen = !perGameOpen)}
 					class="flex w-full items-center justify-between px-5 py-4 text-left"
 				>
-					<h2 class="text-xs font-semibold uppercase tracking-wider text-ayu-muted">Per Game</h2>
-					<svg class="w-3.5 h-3.5 text-ayu-muted transition-transform {perGameOpen ? 'rotate-180' : ''}" viewBox="0 0 10 6" fill="none">
-						<path d="M0 0.5L5 5.5L10 0.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+					<h2 class="text-xs font-semibold tracking-wider text-ayu-muted uppercase">Per Game</h2>
+					<svg
+						class="h-3.5 w-3.5 text-ayu-muted transition-transform {perGameOpen
+							? 'rotate-180'
+							: ''}"
+						viewBox="0 0 10 6"
+						fill="none"
+					>
+						<path
+							d="M0 0.5L5 5.5L10 0.5"
+							stroke="currentColor"
+							stroke-width="1.5"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						/>
 					</svg>
 				</button>
 				{#if perGameOpen}
-					<div class="px-5 pb-4 space-y-1.5">
+					<div class="space-y-1.5 px-5 pb-4">
 						{#each data.perGame as g}
-							<div class="flex items-center justify-between rounded-lg bg-ayu-surface2 px-3 py-2 text-sm">
+							<div
+								class="flex items-center justify-between rounded-lg bg-ayu-surface2 px-3 py-2 text-sm"
+							>
 								<span class="text-white">{g.emoji} {g.name}</span>
 								<div class="flex items-center gap-4 text-xs">
 									<span class="text-ayu-gold">🥇 {g.gold}</span>
@@ -148,6 +177,5 @@
 				{/if}
 			</div>
 		{/if}
-
 	{/if}
 </div>

@@ -1,32 +1,31 @@
 import { supabase } from '$lib/supabase';
 import { error } from '@sveltejs/kit';
 import { displayName } from '$lib/utils';
+import {
+	LEADERBOARD_MIN_PLAYS as MIN_PLAYS,
+	LEADERBOARD_ROLLING_WINDOW as ROLLING_WINDOW
+} from '$lib/scoring';
 import type { PageServerLoad } from './$types';
 
-const MIN_PLAYS = 3;
-const ROLLING_WINDOW = 10;
-
 export const load: PageServerLoad = async ({ params }) => {
-	const { data: game } = await supabase
-		.from('games')
-		.select('*')
-		.eq('id', params.id)
-		.maybeSingle();
+	const { data: game } = await supabase.from('games').select('*').eq('id', params.id).maybeSingle();
 
 	if (!game) error(404, 'Game not found');
 
-	const { data: sessions } = await supabase
-		.from('sessions')
-		.select('id')
-		.eq('status', 'finished');
+	const { data: sessions } = await supabase.from('sessions').select('id').eq('status', 'finished');
 
 	if (!sessions || sessions.length === 0) {
 		return { game, rows: [], sessionCount: 0 };
 	}
 
-	type ScoreRow = { player_id: string; raw_score: number; submitted_at: string; player: { name: string; alias?: string | null } };
+	type ScoreRow = {
+		player_id: string;
+		raw_score: number;
+		submitted_at: string;
+		player: { name: string; alias?: string | null };
+	};
 
-	const sessionIds = sessions.map(s => s.id);
+	const sessionIds = sessions.map((s) => s.id);
 	const scores: ScoreRow[] = [];
 	for (let from = 0; ; from += 1000) {
 		const { data: page } = await supabase
@@ -60,12 +59,12 @@ export const load: PageServerLoad = async ({ params }) => {
 		.map(([player_id, { name, vals }]) => {
 			const rolling = vals.slice(-ROLLING_WINDOW);
 			const avg = rolling.reduce((a, b) => a + b, 0) / rolling.length;
-			const nonDnf = dnfValue !== null ? vals.filter(v => v !== dnfValue) : vals;
+			const nonDnf = dnfValue !== null ? vals.filter((v) => v !== dnfValue) : vals;
 			const best = nonDnf.length > 0 ? (asc ? Math.min(...nonDnf) : Math.max(...nonDnf)) : null;
 			const worst = nonDnf.length > 0 ? (asc ? Math.max(...nonDnf) : Math.min(...nonDnf)) : null;
 			return { player_id, name, avg, best, worst, played: vals.length };
 		})
-		.sort((a, b) => asc ? a.avg - b.avg : b.avg - a.avg);
+		.sort((a, b) => (asc ? a.avg - b.avg : b.avg - a.avg));
 
 	return { game, rows, sessionCount: sessions.length };
 };

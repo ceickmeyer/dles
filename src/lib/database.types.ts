@@ -8,8 +8,20 @@ export interface Database {
 		Tables: {
 			players: {
 				Row: { id: string; name: string; pin: string; alias: string | null; created_at: string };
-				Insert: { id?: string; name: string; pin: string; alias?: string | null; created_at?: string };
-				Update: { id?: string; name?: string; pin?: string; alias?: string | null; created_at?: string };
+				Insert: {
+					id?: string;
+					name: string;
+					pin: string;
+					alias?: string | null;
+					created_at?: string;
+				};
+				Update: {
+					id?: string;
+					name?: string;
+					pin?: string;
+					alias?: string | null;
+					created_at?: string;
+				};
 				Relationships: [];
 			};
 			games: {
@@ -58,18 +70,70 @@ export interface Database {
 				Relationships: [];
 			};
 			sessions: {
-				Row: { id: string; name: string; date: string; status: SessionStatus; expires_at: string | null; scores_hidden: boolean; created_at: string };
-				Insert: { id?: string; name: string; date?: string; status?: SessionStatus; expires_at?: string | null; scores_hidden?: boolean; created_at?: string };
-				Update: { id?: string; name?: string; date?: string; status?: SessionStatus; expires_at?: string | null; scores_hidden?: boolean; created_at?: string };
+				Row: {
+					id: string;
+					name: string;
+					date: string;
+					status: SessionStatus;
+					expires_at: string | null;
+					scores_hidden: boolean;
+					created_at: string;
+				};
+				Insert: {
+					id?: string;
+					name: string;
+					date?: string;
+					status?: SessionStatus;
+					expires_at?: string | null;
+					scores_hidden?: boolean;
+					created_at?: string;
+				};
+				Update: {
+					id?: string;
+					name?: string;
+					date?: string;
+					status?: SessionStatus;
+					expires_at?: string | null;
+					scores_hidden?: boolean;
+					created_at?: string;
+				};
 				Relationships: [];
 			};
 			session_games: {
-				Row: { id: string; session_id: string; game_id: string; sort_order: number; is_special: boolean };
-				Insert: { id?: string; session_id: string; game_id: string; sort_order?: number; is_special?: boolean };
-				Update: { id?: string; session_id?: string; game_id?: string; sort_order?: number; is_special?: boolean };
+				Row: {
+					id: string;
+					session_id: string;
+					game_id: string;
+					sort_order: number;
+					is_special: boolean;
+				};
+				Insert: {
+					id?: string;
+					session_id: string;
+					game_id: string;
+					sort_order?: number;
+					is_special?: boolean;
+				};
+				Update: {
+					id?: string;
+					session_id?: string;
+					game_id?: string;
+					sort_order?: number;
+					is_special?: boolean;
+				};
 				Relationships: [
-					{ foreignKeyName: 'session_games_session_id_fkey'; columns: ['session_id']; referencedRelation: 'sessions'; referencedColumns: ['id'] },
-					{ foreignKeyName: 'session_games_game_id_fkey'; columns: ['game_id']; referencedRelation: 'games'; referencedColumns: ['id'] }
+					{
+						foreignKeyName: 'session_games_session_id_fkey';
+						columns: ['session_id'];
+						referencedRelation: 'sessions';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'session_games_game_id_fkey';
+						columns: ['game_id'];
+						referencedRelation: 'games';
+						referencedColumns: ['id'];
+					}
 				];
 			};
 			schedules: {
@@ -125,13 +189,39 @@ export interface Database {
 					special_game_id?: string | null;
 				};
 				Relationships: [
-					{ foreignKeyName: 'weekly_schedule_special_game_id_fkey'; columns: ['special_game_id']; referencedRelation: 'games'; referencedColumns: ['id'] }
+					{
+						foreignKeyName: 'weekly_schedule_special_game_id_fkey';
+						columns: ['special_game_id'];
+						referencedRelation: 'games';
+						referencedColumns: ['id'];
+					}
 				];
 			};
 			messages: {
-				Row: { id: string; session_id: string; player_id: string | null; player_name: string; content: string; created_at: string };
-				Insert: { id?: string; session_id: string; player_id: string | null; player_name: string; content: string; created_at?: string };
-				Update: { id?: string; session_id?: string; player_id?: string | null; player_name?: string; content?: string; created_at?: string };
+				Row: {
+					id: string;
+					session_id: string;
+					player_id: string | null;
+					player_name: string;
+					content: string;
+					created_at: string;
+				};
+				Insert: {
+					id?: string;
+					session_id: string;
+					player_id: string | null;
+					player_name: string;
+					content: string;
+					created_at?: string;
+				};
+				Update: {
+					id?: string;
+					session_id?: string;
+					player_id?: string | null;
+					player_name?: string;
+					content?: string;
+					created_at?: string;
+				};
 				Relationships: [];
 			};
 			session_logs: {
@@ -139,7 +229,12 @@ export interface Database {
 				Insert: { id?: string; session_id: string; message: string; created_at?: string };
 				Update: { id?: string; session_id?: string; message?: string; created_at?: string };
 				Relationships: [
-					{ foreignKeyName: 'session_logs_session_id_fkey'; columns: ['session_id']; referencedRelation: 'sessions'; referencedColumns: ['id'] }
+					{
+						foreignKeyName: 'session_logs_session_id_fkey';
+						columns: ['session_id'];
+						referencedRelation: 'sessions';
+						referencedColumns: ['id'];
+					}
 				];
 			};
 			scores: {
@@ -171,9 +266,24 @@ export interface Database {
 					submitted_at?: string;
 				};
 				Relationships: [
-					{ foreignKeyName: 'scores_session_id_fkey'; columns: ['session_id']; referencedRelation: 'sessions'; referencedColumns: ['id'] },
-					{ foreignKeyName: 'scores_game_id_fkey'; columns: ['game_id']; referencedRelation: 'games'; referencedColumns: ['id'] },
-					{ foreignKeyName: 'scores_player_id_fkey'; columns: ['player_id']; referencedRelation: 'players'; referencedColumns: ['id'] }
+					{
+						foreignKeyName: 'scores_session_id_fkey';
+						columns: ['session_id'];
+						referencedRelation: 'sessions';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'scores_game_id_fkey';
+						columns: ['game_id'];
+						referencedRelation: 'games';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'scores_player_id_fkey';
+						columns: ['player_id'];
+						referencedRelation: 'players';
+						referencedColumns: ['id'];
+					}
 				];
 			};
 			player_elo: {
@@ -205,7 +315,12 @@ export interface Database {
 					updated_at?: string;
 				};
 				Relationships: [
-					{ foreignKeyName: 'player_elo_player_id_fkey'; columns: ['player_id']; referencedRelation: 'players'; referencedColumns: ['id'] }
+					{
+						foreignKeyName: 'player_elo_player_id_fkey';
+						columns: ['player_id'];
+						referencedRelation: 'players';
+						referencedColumns: ['id'];
+					}
 				];
 			};
 		};

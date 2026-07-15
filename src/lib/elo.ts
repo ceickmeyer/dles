@@ -54,18 +54,19 @@ export function computeElo(
 			if (!key.startsWith(`${sessionId}::`)) continue;
 			const { scoring_direction, allow_dnf, max_score } = group[0];
 			const dnfVal = allow_dnf && max_score !== null ? max_score + 1 : null;
-			const valid = group.filter(e => dnfVal === null || e.raw_score !== dnfVal);
+			const valid = group.filter((e) => dnfVal === null || e.raw_score !== dnfVal);
 			if (valid.length < 2) continue;
 
 			const ranked = rankScores(
-				valid.map(e => ({ player_id: e.player_id, player_name: '', raw_score: e.raw_score })),
+				valid.map((e) => ({ player_id: e.player_id, player_name: '', raw_score: e.raw_score })),
 				scoring_direction
 			);
 
 			const kNorm = K / (valid.length - 1);
 			for (let i = 0; i < ranked.length; i++) {
 				for (let j = i + 1; j < ranked.length; j++) {
-					const a = ranked[i], b = ranked[j];
+					const a = ranked[i],
+						b = ranked[j];
 					const rA = ratings.get(a.player_id) ?? ELO_INITIAL;
 					const rB = ratings.get(b.player_id) ?? ELO_INITIAL;
 					const eA = 1 / (1 + Math.pow(10, (rB - rA) / 400));
@@ -100,7 +101,7 @@ export function computeElo(
 			prevElo: prev !== null ? Math.round(prev) : null,
 			sessions: sessions.get(pid) ?? 0,
 			matchups: matchups.get(pid) ?? 0,
-			history: history.get(pid) ?? [],
+			history: history.get(pid) ?? []
 		});
 	}
 	return result;

@@ -18,11 +18,12 @@
 				supabase.from('sessions').select('*').order('created_at'),
 				supabase.from('session_games').select('*'),
 				supabase.from('scores').select('*').order('submitted_at'),
-				supabase.from('schedules').select('*').order('created_at'),
+				supabase.from('schedules').select('*').order('created_at')
 			]);
 
 			const errors = [players, games, sessions, session_games, scores, schedules]
-				.map(r => r.error?.message).filter(Boolean);
+				.map((r) => r.error?.message)
+				.filter(Boolean);
 			if (errors.length) throw new Error(errors.join('; '));
 
 			const backup = {
@@ -33,7 +34,7 @@
 				sessions: sessions.data,
 				session_games: session_games.data,
 				scores: scores.data,
-				schedules: schedules.data,
+				schedules: schedules.data
 			};
 
 			const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
@@ -62,19 +63,22 @@
 			if (backup.version !== 1) throw new Error('Unknown backup version');
 
 			const tables: Array<{ name: string; key: keyof typeof backup; conflict: string }> = [
-				{ name: 'players',      key: 'players',      conflict: 'id' },
-				{ name: 'games',        key: 'games',        conflict: 'id' },
-				{ name: 'sessions',     key: 'sessions',     conflict: 'id' },
-				{ name: 'schedules',    key: 'schedules',    conflict: 'id' },
-				{ name: 'session_games',key: 'session_games',conflict: 'id' },
-				{ name: 'scores',       key: 'scores',       conflict: 'id' },
+				{ name: 'players', key: 'players', conflict: 'id' },
+				{ name: 'games', key: 'games', conflict: 'id' },
+				{ name: 'sessions', key: 'sessions', conflict: 'id' },
+				{ name: 'schedules', key: 'schedules', conflict: 'id' },
+				{ name: 'session_games', key: 'session_games', conflict: 'id' },
+				{ name: 'scores', key: 'scores', conflict: 'id' }
 			];
 
 			const counts: string[] = [];
 			for (const { name, key, conflict } of tables) {
 				const rows = backup[key];
 				if (!Array.isArray(rows) || rows.length === 0) continue;
-				const { error } = await supabase.from(name).upsert(rows, { onConflict: conflict });
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				const { error } = await (supabase.from(name as any) as any).upsert(rows, {
+					onConflict: conflict
+				});
 				if (error) throw new Error(`${name}: ${error.message}`);
 				counts.push(`${rows.length} ${name}`);
 			}
@@ -89,13 +93,15 @@
 	}
 </script>
 
-<div class="space-y-8 max-w-lg">
+<div class="max-w-lg space-y-8">
 	<h1 class="text-2xl font-bold text-white">Backup</h1>
 
 	<!-- Export -->
-	<div class="rounded-xl border border-ayu-border bg-ayu-surface p-6 space-y-3">
-		<h2 class="text-sm font-semibold uppercase tracking-wider text-ayu-muted">Export</h2>
-		<p class="text-sm text-zinc-400">Download all players, games, sessions, scores, and schedules as a JSON file.</p>
+	<div class="space-y-3 rounded-xl border border-ayu-border bg-ayu-surface p-6">
+		<h2 class="text-sm font-semibold tracking-wider text-ayu-muted uppercase">Export</h2>
+		<p class="text-sm text-zinc-400">
+			Download all players, games, sessions, scores, and schedules as a JSON file.
+		</p>
 		{#if exportError}
 			<p class="text-sm text-red-400">{exportError}</p>
 		{/if}
@@ -109,14 +115,16 @@
 	</div>
 
 	<!-- Import -->
-	<div class="rounded-xl border border-ayu-border bg-ayu-surface p-6 space-y-3">
-		<h2 class="text-sm font-semibold uppercase tracking-wider text-ayu-muted">Import</h2>
+	<div class="space-y-3 rounded-xl border border-ayu-border bg-ayu-surface p-6">
+		<h2 class="text-sm font-semibold tracking-wider text-ayu-muted uppercase">Import</h2>
 		<p class="text-sm text-zinc-400">
-			Restore from a backup file. Existing records with matching IDs will be updated; new records will be inserted.
+			Restore from a backup file. Existing records with matching IDs will be updated; new records
+			will be inserted.
 		</p>
 		{#if importResult}
 			<p class="text-sm {importResult.success ? 'text-ayu-green' : 'text-red-400'}">
-				{importResult.success ? '✓' : '✗'} {importResult.message}
+				{importResult.success ? '✓' : '✗'}
+				{importResult.message}
 			</p>
 		{/if}
 		<label class="block">

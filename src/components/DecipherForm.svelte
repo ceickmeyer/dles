@@ -51,10 +51,12 @@
 			<div class="flex items-center justify-between">
 				<div>
 					<p class="font-semibold text-white">{parsed.solved ? '✅ Solved' : '💥 Failed'}</p>
-					<p class="text-xs text-ayu-muted mt-0.5">{parsed.display}</p>
+					<p class="mt-0.5 text-xs text-ayu-muted">{parsed.display}</p>
 				</div>
 				{#if parsed.seconds !== null}
-					<p class="text-2xl font-bold {parsed.solved ? 'text-ayu-gold' : 'text-ayu-red'}">{parsed.seconds}s</p>
+					<p class="text-2xl font-bold {parsed.solved ? 'text-ayu-gold' : 'text-ayu-red'}">
+						{parsed.seconds}s
+					</p>
 				{/if}
 			</div>
 			<div class="mt-3 flex gap-2">
@@ -69,7 +71,10 @@
 					</button>
 				{/if}
 				<button
-					onclick={() => { parsed = null; shareText = ''; }}
+					onclick={() => {
+						parsed = null;
+						shareText = '';
+					}}
 					class="rounded-lg border border-ayu-border px-3 py-2 text-sm text-ayu-muted hover:text-white"
 				>
 					Re-paste
@@ -91,7 +96,8 @@
 
 	{#if myScore !== null}
 		<p class="text-xs text-ayu-muted">
-			Current: <span class="font-semibold text-white">{myScore}s</span> — submitting again will overwrite it.
+			Current: <span class="font-semibold text-white">{myScore}s</span> — submitting again will overwrite
+			it.
 		</p>
 	{/if}
 

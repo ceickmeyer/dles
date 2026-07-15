@@ -12,12 +12,14 @@
 	} = $props();
 
 	let editedScore = $state('');
-	$effect(() => { editedScore = parsedScore.toString(); });
+	$effect(() => {
+		editedScore = parsedScore.toString();
+	});
 </script>
 
 <div class="rounded-xl border border-zinc-700 bg-zinc-800 p-5">
 	<p class="mb-3 text-sm text-zinc-300">
-		We got <span class="font-bold text-amber-400 text-lg">{parsedScore}</span> from your result — does
+		We got <span class="text-lg font-bold text-amber-400">{parsedScore}</span> from your result — does
 		that look right?
 	</p>
 	<div class="mb-4 flex items-center gap-2">

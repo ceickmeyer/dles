@@ -6,19 +6,30 @@
 		outOf: number | null;
 	}
 
-	interface Pt { x: number; y: number; rank: number; outOf: number; name: string; date: string; }
+	interface Pt {
+		x: number;
+		y: number;
+		rank: number;
+		outOf: number;
+		name: string;
+		date: string;
+	}
 
 	let { sessions }: { sessions: Session[] } = $props();
 
-	const W = 560, H = 120;
-	const PL = 30, PR = 12, PT = 12, PB = 26;
+	const W = 560,
+		H = 120;
+	const PL = 30,
+		PR = 12,
+		PT = 12,
+		PB = 26;
 	const pw = W - PL - PR;
 	const ph = H - PT - PB;
 
 	const n = $derived(sessions.length);
 
 	const maxRank = $derived(
-		Math.max(...sessions.filter(s => s.outOf != null).map(s => s.outOf as number), 2)
+		Math.max(...sessions.filter((s) => s.outOf != null).map((s) => s.outOf as number), 2)
 	);
 
 	function xAt(i: number): number {
@@ -35,9 +46,19 @@
 		for (let i = 0; i < n; i++) {
 			const s = sessions[i];
 			if (s.rank != null) {
-				cur.push({ x: xAt(i), y: yAt(s.rank), rank: s.rank, outOf: s.outOf ?? 0, name: s.name, date: s.date });
+				cur.push({
+					x: xAt(i),
+					y: yAt(s.rank),
+					rank: s.rank,
+					outOf: s.outOf ?? 0,
+					name: s.name,
+					date: s.date
+				});
 			} else {
-				if (cur.length) { segs.push(cur); cur = []; }
+				if (cur.length) {
+					segs.push(cur);
+					cur = [];
+				}
 			}
 		}
 		if (cur.length) segs.push(cur);
@@ -69,13 +90,18 @@
 	}
 
 	function fmtDate(d: string): string {
-		return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+		return new Date(d + 'T12:00:00').toLocaleDateString('en-US', {
+			month: 'short',
+			day: 'numeric'
+		});
 	}
 
 	let hoveredPt = $state<Pt | null>(null);
 
 	// Tooltip dimensions
-	const TW = 72, TH = 26, TR = 5;
+	const TW = 72,
+		TH = 26,
+		TR = 5;
 
 	function tipX(pt: Pt): number {
 		// Flip to left side if near right edge
@@ -93,12 +119,13 @@
 	{#each yTicks as r}
 		<line x1={PL} x2={W - PR} y1={yAt(r)} y2={yAt(r)} stroke="#1a2e44" stroke-width="1" />
 		<text
-			x={PL - 5} y={yAt(r) + 3.5}
+			x={PL - 5}
+			y={yAt(r) + 3.5}
 			text-anchor="end"
 			font-size="9"
 			fill="#4a6272"
-			font-family="ui-monospace, monospace"
-		>{ordinal(r)}</text>
+			font-family="ui-monospace, monospace">{ordinal(r)}</text
+		>
 	{/each}
 
 	<!-- Curves -->
@@ -133,8 +160,8 @@
 			r={10}
 			fill="transparent"
 			style="cursor: pointer;"
-			onmouseenter={() => hoveredPt = pt}
-			onmouseleave={() => hoveredPt = null}
+			onmouseenter={() => (hoveredPt = pt)}
+			onmouseleave={() => (hoveredPt = null)}
 		/>
 	{/each}
 
@@ -146,8 +173,8 @@
 			text-anchor="middle"
 			font-size="9"
 			fill={s.rank != null ? '#b3b1ad' : '#4a6272'}
-			font-family="ui-sans-serif, system-ui, sans-serif"
-		>{fmtDate(s.date)}</text>
+			font-family="ui-sans-serif, system-ui, sans-serif">{fmtDate(s.date)}</text
+		>
 	{/each}
 
 	<!-- Tooltip -->
@@ -156,21 +183,25 @@
 		{@const ty = tipY(hoveredPt)}
 		<g style="pointer-events: none;">
 			<rect
-				x={tx} y={ty}
-				width={TW} height={TH}
-				rx={TR} ry={TR}
+				x={tx}
+				y={ty}
+				width={TW}
+				height={TH}
+				rx={TR}
+				ry={TR}
 				fill="#0d1e30"
 				stroke="#2a3f56"
 				stroke-width="1"
 			/>
 			<text
-				x={tx + TW / 2} y={ty + 17}
+				x={tx + TW / 2}
+				y={ty + 17}
 				text-anchor="middle"
 				font-size="11"
 				font-weight="600"
 				fill="#e6b450"
-				font-family="ui-monospace, monospace"
-			>#{hoveredPt.rank} of {hoveredPt.outOf}</text>
+				font-family="ui-monospace, monospace">#{hoveredPt.rank} of {hoveredPt.outOf}</text
+			>
 		</g>
 	{/if}
 </svg>

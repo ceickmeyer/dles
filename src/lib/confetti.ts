@@ -19,7 +19,7 @@ export function fireConfetti() {
 const MEDAL_IMAGES: Record<'gold' | 'silver' | 'bronze', string> = {
 	gold: '/first_place_medal.png',
 	silver: '/second_place_medal.png',
-	bronze: '/third_place_medal.png',
+	bronze: '/third_place_medal.png'
 };
 
 export function fireMedalConfetti(medal: 'gold' | 'silver' | 'bronze') {
@@ -34,7 +34,7 @@ export function fireMedalConfetti(medal: 'gold' | 'silver' | 'bronze') {
 		scalar: 3,
 		shapes: ['image'],
 		shapeOptions: {
-			image: [{ src: MEDAL_IMAGES[medal], width: 32, height: 32 }],
-		},
+			image: [{ src: MEDAL_IMAGES[medal], width: 32, height: 32 }]
+		}
 	});
 }

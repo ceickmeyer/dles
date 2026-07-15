@@ -30,7 +30,10 @@ export async function runScheduler(supabase: SupabaseClient<Database>): Promise<
 		await supabase
 			.from('sessions')
 			.update({ status: 'finished' })
-			.in('id', stale.map(s => s.id));
+			.in(
+				'id',
+				stale.map((s) => s.id)
+			);
 	}
 	const finished = stale?.length ?? 0;
 	if (finished > 0) await refreshEloCache(supabase);
@@ -41,7 +44,8 @@ export async function runScheduler(supabase: SupabaseClient<Database>): Promise<
 		.select('id')
 		.eq('date', todayStr)
 		.limit(1);
-	if (existing && existing.length > 0) return { created: false, skippedReason: 'session_exists', finished };
+	if (existing && existing.length > 0)
+		return { created: false, skippedReason: 'session_exists', finished };
 
 	// Look up today's weekly schedule
 	const { data: schedule } = await supabase

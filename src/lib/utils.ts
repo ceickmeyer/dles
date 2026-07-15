@@ -8,7 +8,10 @@ export function dnfScore(game: { max_score: number | null; allow_dnf: boolean })
 	return game.max_score + 1;
 }
 
-export function isDnf(score: number, game: { max_score: number | null; allow_dnf: boolean }): boolean {
+export function isDnf(
+	score: number,
+	game: { max_score: number | null; allow_dnf: boolean }
+): boolean {
 	return dnfScore(game) === score;
 }
 
@@ -21,7 +24,9 @@ export function fmtSeconds(totalSeconds: number): string {
 	return `${m} min ${sec} sec`;
 }
 
-export function sortSessionGames<T extends { sort_order: number; is_special?: boolean; game?: { name: string } | null }>(games: T[]): T[] {
+export function sortSessionGames<
+	T extends { sort_order: number; is_special?: boolean; game?: { name: string } | null }
+>(games: T[]): T[] {
 	return [...games].sort((a, b) => {
 		const aSpecial = a.is_special ? 1 : 0;
 		const bSpecial = b.is_special ? 1 : 0;
@@ -30,7 +35,10 @@ export function sortSessionGames<T extends { sort_order: number; is_special?: bo
 	});
 }
 
-export function formatScore(score: number, game: { max_score: number | null; allow_dnf: boolean; share_parser?: string | null }): string {
+export function formatScore(
+	score: number,
+	game: { max_score: number | null; allow_dnf: boolean; share_parser?: string | null }
+): string {
 	if (isDnf(score, game)) return 'X';
 	if (game.share_parser === 'decipher') return fmtSeconds(score);
 	return String(score);

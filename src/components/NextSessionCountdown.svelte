@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
 
-	let { next }: {
-		next: { isToday: boolean; daysAhead: number; label: string } | null
+	let {
+		next
+	}: {
+		next: { isToday: boolean; daysAhead: number; label: string } | null;
 	} = $props();
 
 	let timeLeft = $state('');
@@ -10,14 +12,24 @@
 
 	function targetMidnight(): Date {
 		const now = new Date();
-		const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + (next?.daysAhead ?? 1) + 1);
+		const d = new Date(
+			now.getFullYear(),
+			now.getMonth(),
+			now.getDate() + (next?.daysAhead ?? 1) + 1
+		);
 		return d;
 	}
 
 	function tick() {
-		if (!next) { timeLeft = ''; return; }
+		if (!next) {
+			timeLeft = '';
+			return;
+		}
 		const diff = targetMidnight().getTime() - Date.now();
-		if (diff <= 0) { timeLeft = 'any moment now'; return; }
+		if (diff <= 0) {
+			timeLeft = 'any moment now';
+			return;
+		}
 		const h = Math.floor(diff / 3600000);
 		const m = Math.floor((diff % 3600000) / 60000);
 		const s = Math.floor((diff % 60000) / 1000);
@@ -35,10 +47,14 @@
 		if (!next) return;
 		tick();
 		interval = setInterval(tick, 1000);
-		return () => { if (interval) clearInterval(interval); };
+		return () => {
+			if (interval) clearInterval(interval);
+		};
 	});
 
-	onDestroy(() => { if (interval) clearInterval(interval); });
+	onDestroy(() => {
+		if (interval) clearInterval(interval);
+	});
 </script>
 
 <div class="py-20 text-center">

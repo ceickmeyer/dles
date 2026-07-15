@@ -13,7 +13,8 @@
 		const rows = [...data.rows];
 		return rows.sort((a, b) => {
 			if (sortBy === 'avg') return asc ? a.avg - b.avg : b.avg - a.avg;
-			const av = a[sortBy], bv = b[sortBy];
+			const av = a[sortBy],
+				bv = b[sortBy];
 			if (av === null && bv === null) return 0;
 			if (av === null) return 1;
 			if (bv === null) return -1;
@@ -35,9 +36,12 @@
 	}
 </script>
 
-<div class="space-y-8 max-w-2xl">
+<div class="max-w-2xl space-y-8">
 	<div>
-		<a href="/leaderboard" class="mb-4 inline-flex items-center gap-1 text-sm text-ayu-muted hover:text-white">
+		<a
+			href="/leaderboard"
+			class="mb-4 inline-flex items-center gap-1 text-sm text-ayu-muted hover:text-white"
+		>
 			← Leaderboard
 		</a>
 		<div class="flex items-center gap-3">
@@ -60,23 +64,29 @@
 		<div class="overflow-x-auto rounded-xl border border-ayu-border">
 			<table class="w-full text-sm">
 				<thead>
-					<tr class="border-b border-ayu-border bg-ayu-surface2 text-left text-xs font-semibold uppercase tracking-wider text-ayu-muted">
+					<tr
+						class="border-b border-ayu-border bg-ayu-surface2 text-left text-xs font-semibold tracking-wider text-ayu-muted uppercase"
+					>
 						<th class="px-4 py-3">#</th>
 						<th class="px-4 py-3">Player</th>
-						{#each [
-							{ key: 'avg', label: 'Avg' },
-							{ key: 'best', label: 'Best' },
-							{ key: 'worst', label: 'Worst' },
-						] as col (col.key)}
+						{#each [{ key: 'avg', label: 'Avg' }, { key: 'best', label: 'Best' }, { key: 'worst', label: 'Worst' }] as col (col.key)}
 							<th class="px-3 py-3 text-center">
 								<button
-									onclick={() => sortBy = col.key as SortKey}
-									class="inline-flex items-center gap-1 transition-colors {sortBy === col.key ? 'text-ayu-gold' : 'hover:text-white'}"
+									onclick={() => (sortBy = col.key as SortKey)}
+									class="inline-flex items-center gap-1 transition-colors {sortBy === col.key
+										? 'text-ayu-gold'
+										: 'hover:text-white'}"
 								>
 									{col.label}
 									{#if sortBy === col.key}
-										<svg class="w-2.5 h-2.5" viewBox="0 0 10 6" fill="none">
-											<path d="M0 5.5L5 0.5L10 5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+										<svg class="h-2.5 w-2.5" viewBox="0 0 10 6" fill="none">
+											<path
+												d="M0 5.5L5 0.5L10 5.5"
+												stroke="currentColor"
+												stroke-width="1.5"
+												stroke-linecap="round"
+												stroke-linejoin="round"
+											/>
 										</svg>
 									{/if}
 								</button>
@@ -87,20 +97,37 @@
 				</thead>
 				<tbody>
 					{#each sorted as row, i}
-						<tr class="border-b border-ayu-border bg-ayu-surface last:border-0 hover:bg-ayu-surface2 transition-colors">
+						<tr
+							class="border-b border-ayu-border bg-ayu-surface transition-colors last:border-0 hover:bg-ayu-surface2"
+						>
 							<td class="px-4 py-3 text-ayu-muted">{i + 1}</td>
 							<td class="px-4 py-3">
-								<a href="/player/{row.player_id}" class="font-semibold text-white hover:text-ayu-gold transition-colors">
+								<a
+									href="/player/{row.player_id}"
+									class="font-semibold text-white transition-colors hover:text-ayu-gold"
+								>
 									{row.name}
 								</a>
 							</td>
-							<td class="px-3 py-3 text-center font-bold {sortBy === 'avg' && i === 0 ? 'text-ayu-gold' : 'text-white'}">
+							<td
+								class="px-3 py-3 text-center font-bold {sortBy === 'avg' && i === 0
+									? 'text-ayu-gold'
+									: 'text-white'}"
+							>
 								{fmtAvg(row.avg)}
 							</td>
-							<td class="px-3 py-3 text-center {sortBy === 'best' && i === 0 ? 'text-ayu-gold' : 'text-ayu-green'}">
+							<td
+								class="px-3 py-3 text-center {sortBy === 'best' && i === 0
+									? 'text-ayu-gold'
+									: 'text-ayu-green'}"
+							>
 								{row.best !== null ? fmt(row.best) : '—'}
 							</td>
-							<td class="px-3 py-3 text-center {sortBy === 'worst' && i === 0 ? 'text-ayu-gold' : 'text-ayu-muted'}">
+							<td
+								class="px-3 py-3 text-center {sortBy === 'worst' && i === 0
+									? 'text-ayu-gold'
+									: 'text-ayu-muted'}"
+							>
 								{row.worst !== null ? fmt(row.worst) : '—'}
 							</td>
 							<td class="px-3 py-3 text-center text-ayu-muted">{row.played}</td>

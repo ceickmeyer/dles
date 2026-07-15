@@ -17,20 +17,71 @@ export interface BadgeStats {
 }
 
 const BADGE_DEFS: Array<Badge & { check: (s: BadgeStats) => boolean }> = [
-	{ id: 'winner',      emoji: '🥇', label: 'Winner',         desc: 'Won your first gold medal',              check: s => s.gold >= 1 },
-	{ id: 'champion',    emoji: '👑', label: 'Champion',        desc: '10+ gold medals all time',               check: s => s.gold >= 10 },
-	{ id: 'veteran',     emoji: '🎖', label: 'Veteran',         desc: 'Played 5+ game nights',                  check: s => s.nights >= 5 },
-	{ id: 'regular',     emoji: '🏅', label: 'Podium Regular',  desc: '10+ total medals all time',              check: s => s.total >= 10 },
-	{ id: 'on_fire',     emoji: '🔥', label: 'On Fire',         desc: 'Current win streak of 3+ nights',        check: s => s.winStreak >= 3 },
-	{ id: 'unstoppable', emoji: '⚡', label: 'Unstoppable',     desc: 'Win streak of 5+ nights (all time best)', check: s => s.bestWinStreak >= 5 },
-	{ id: 'consistent',  emoji: '🎯', label: 'Consistent',      desc: 'On the podium 3+ nights in a row',       check: s => s.podiumStreak >= 3 },
-	{ id: 'choker',      emoji: '😬', label: 'Choker',          desc: 'More silvers than golds (5+ silvers)',    check: s => s.silver >= 5 && s.silver > s.gold },
+	{
+		id: 'winner',
+		emoji: '🥇',
+		label: 'Winner',
+		desc: 'Won your first gold medal',
+		check: (s) => s.gold >= 1
+	},
+	{
+		id: 'champion',
+		emoji: '👑',
+		label: 'Champion',
+		desc: '10+ gold medals all time',
+		check: (s) => s.gold >= 10
+	},
+	{
+		id: 'veteran',
+		emoji: '🎖',
+		label: 'Veteran',
+		desc: 'Played 5+ game nights',
+		check: (s) => s.nights >= 5
+	},
+	{
+		id: 'regular',
+		emoji: '🏅',
+		label: 'Podium Regular',
+		desc: '10+ total medals all time',
+		check: (s) => s.total >= 10
+	},
+	{
+		id: 'on_fire',
+		emoji: '🔥',
+		label: 'On Fire',
+		desc: 'Current win streak of 3+ nights',
+		check: (s) => s.winStreak >= 3
+	},
+	{
+		id: 'unstoppable',
+		emoji: '⚡',
+		label: 'Unstoppable',
+		desc: 'Win streak of 5+ nights (all time best)',
+		check: (s) => s.bestWinStreak >= 5
+	},
+	{
+		id: 'consistent',
+		emoji: '🎯',
+		label: 'Consistent',
+		desc: 'On the podium 3+ nights in a row',
+		check: (s) => s.podiumStreak >= 3
+	},
+	{
+		id: 'choker',
+		emoji: '😬',
+		label: 'Choker',
+		desc: 'More silvers than golds (5+ silvers)',
+		check: (s) => s.silver >= 5 && s.silver > s.gold
+	}
 ];
 
 export function computeBadges(stats: BadgeStats): Badge[] {
-	return BADGE_DEFS
-		.filter(b => b.check(stats))
-		.map(({ id, emoji, label, desc }) => ({ id, emoji, label, desc }));
+	return BADGE_DEFS.filter((b) => b.check(stats)).map(({ id, emoji, label, desc }) => ({
+		id,
+		emoji,
+		label,
+		desc
+	}));
 }
 
 export function computeStreaks(history: { won: boolean; podium: boolean }[]): {
@@ -43,16 +94,30 @@ export function computeStreaks(history: { won: boolean; podium: boolean }[]): {
 	const desc = [...history].reverse();
 
 	let winStreak = 0;
-	for (const r of desc) { if (r.won) winStreak++; else break; }
+	for (const r of desc) {
+		if (r.won) winStreak++;
+		else break;
+	}
 
 	let podiumStreak = 0;
-	for (const r of desc) { if (r.podium) podiumStreak++; else break; }
-
-	let bestWinStreak = 0, winRun = 0;
-	let bestPodiumStreak = 0, podiumRun = 0;
 	for (const r of desc) {
-		if (r.won) { winRun++; bestWinStreak = Math.max(bestWinStreak, winRun); } else winRun = 0;
-		if (r.podium) { podiumRun++; bestPodiumStreak = Math.max(bestPodiumStreak, podiumRun); } else podiumRun = 0;
+		if (r.podium) podiumStreak++;
+		else break;
+	}
+
+	let bestWinStreak = 0,
+		winRun = 0;
+	let bestPodiumStreak = 0,
+		podiumRun = 0;
+	for (const r of desc) {
+		if (r.won) {
+			winRun++;
+			bestWinStreak = Math.max(bestWinStreak, winRun);
+		} else winRun = 0;
+		if (r.podium) {
+			podiumRun++;
+			bestPodiumStreak = Math.max(bestPodiumStreak, podiumRun);
+		} else podiumRun = 0;
 	}
 
 	return { winStreak, podiumStreak, bestWinStreak, bestPodiumStreak };

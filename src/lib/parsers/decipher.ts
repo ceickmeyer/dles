@@ -39,7 +39,10 @@ export function parseDecipherResult(text: string): DecipherResult | null {
 
 	if (failed) {
 		return {
-			solved: false, seconds: FAIL_SCORE, rawSeconds, hints: 0,
+			solved: false,
+			seconds: FAIL_SCORE,
+			rawSeconds,
+			hints: 0,
 			display: 'Failed (10 min cap)'
 		};
 	}
@@ -49,7 +52,10 @@ export function parseDecipherResult(text: string): DecipherResult | null {
 		const capNote = capped < seconds ? ' (capped at 10 min)' : '';
 		const displaySeconds = capped < seconds ? FAIL_SCORE : seconds;
 		return {
-			solved: true, seconds: capped, rawSeconds, hints,
+			solved: true,
+			seconds: capped,
+			rawSeconds,
+			hints,
 			display: `${formatTime(rawSeconds!)}${penaltyNote} = ${formatTime(displaySeconds)}${capNote}`
 		};
 	}

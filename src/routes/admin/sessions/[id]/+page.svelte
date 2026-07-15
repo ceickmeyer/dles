@@ -4,13 +4,33 @@
 	import { displayName, formatScore } from '$lib/utils';
 
 	let { data } = $props();
-	const session = $derived(data.session as { id: string; name: string; date: string; status: string });
-	const gameGroups = $derived(data.gameGroups as {
-		game: { id: string; name: string; icon_emoji: string | null; scoring_direction: string; max_score: number | null; allow_dnf: boolean; share_parser: string | null };
-		scores: { id: string; raw_score: number; share_text: string | null; submitted_at: string; player: { id: string; name: string; alias: string | null } }[];
-	}[]);
+	const session = $derived(
+		data.session as { id: string; name: string; date: string; status: string }
+	);
+	const gameGroups = $derived(
+		data.gameGroups as {
+			game: {
+				id: string;
+				name: string;
+				icon_emoji: string | null;
+				scoring_direction: string;
+				max_score: number | null;
+				allow_dnf: boolean;
+				share_parser: string | null;
+			};
+			scores: {
+				id: string;
+				raw_score: number;
+				share_text: string | null;
+				submitted_at: string;
+				player: { id: string; name: string; alias: string | null };
+			}[];
+		}[]
+	);
 
-	const availableGames = $derived(data.availableGames as { id: string; name: string; icon_emoji: string | null }[]);
+	const availableGames = $derived(
+		data.availableGames as { id: string; name: string; icon_emoji: string | null }[]
+	);
 
 	let confirmDeleteId = $state<string | null>(null);
 	let addGameId = $state('');
@@ -24,10 +44,13 @@
 			session_id: session.id,
 			game_id: addGameId,
 			sort_order: data.nextSortOrder,
-			is_special: false,
+			is_special: false
 		});
 		addingGame = false;
-		if (e) { globalError = e.message; return; }
+		if (e) {
+			globalError = e.message;
+			return;
+		}
 		addGameId = '';
 		await invalidateAll();
 	}
@@ -38,22 +61,43 @@
 
 	// Manual score edits bypass the scheduler's finish-session hook, so the
 	// cached ELO table can drift — recalculate it whenever a finished session's scores change.
-	function recalculateEloIfFinished() {
-		if (session.status === 'finished') fetch('/api/recalculate-elo', { method: 'POST' });
+	async function recalculateEloIfFinished() {
+		if (session.status !== 'finished') return;
+		const {
+			data: { session: authSession }
+		} = await supabase.auth.getSession();
+		if (!authSession?.access_token) return;
+		fetch('/api/recalculate-elo', {
+			method: 'POST',
+			headers: { Authorization: `Bearer ${authSession.access_token}` }
+		});
 	}
 
 	async function removeGame(gameId: string) {
 		removingGame = true;
 		globalError = '';
 		// Delete scores for this game in this session first
-		const { error: e1 } = await supabase.from('scores').delete()
-			.eq('session_id', session.id).eq('game_id', gameId);
-		if (e1) { globalError = e1.message; removingGame = false; return; }
+		const { error: e1 } = await supabase
+			.from('scores')
+			.delete()
+			.eq('session_id', session.id)
+			.eq('game_id', gameId);
+		if (e1) {
+			globalError = e1.message;
+			removingGame = false;
+			return;
+		}
 		// Remove from lineup
-		const { error: e2 } = await supabase.from('session_games').delete()
-			.eq('session_id', session.id).eq('game_id', gameId);
+		const { error: e2 } = await supabase
+			.from('session_games')
+			.delete()
+			.eq('session_id', session.id)
+			.eq('game_id', gameId);
 		removingGame = false;
-		if (e2) { globalError = e2.message; return; }
+		if (e2) {
+			globalError = e2.message;
+			return;
+		}
 		confirmRemoveGameId = null;
 		recalculateEloIfFinished();
 		await invalidateAll();
@@ -61,7 +105,9 @@
 
 	function fmtDate(dateStr: string) {
 		return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', {
-			weekday: 'long', month: 'long', day: 'numeric'
+			weekday: 'long',
+			month: 'long',
+			day: 'numeric'
 		});
 	}
 
@@ -69,7 +115,10 @@
 		return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 	}
 
-	function scoreLabel(score: { raw_score: number }, game: { max_score: number | null; allow_dnf: boolean; share_parser: string | null }) {
+	function scoreLabel(
+		score: { raw_score: number },
+		game: { max_score: number | null; allow_dnf: boolean; share_parser: string | null }
+	) {
 		return formatScore(score.raw_score, game);
 	}
 
@@ -78,7 +127,10 @@
 		globalError = '';
 		const { error: e } = await supabase.from('scores').delete().eq('id', id);
 		deleting = false;
-		if (e) { globalError = e.message; return; }
+		if (e) {
+			globalError = e.message;
+			return;
+		}
 		confirmDeleteId = null;
 		recalculateEloIfFinished();
 		await invalidateAll();
@@ -90,19 +142,24 @@
 <div class="space-y-6">
 	<div class="flex items-center justify-between">
 		<div>
-			<div class="flex items-center gap-2 text-sm text-ayu-muted mb-1">
-				<a href="/admin" class="hover:text-zinc-300 transition">Dashboard</a>
+			<div class="mb-1 flex items-center gap-2 text-sm text-ayu-muted">
+				<a href="/admin" class="transition hover:text-zinc-300">Dashboard</a>
 				<span>/</span>
 				<span>Scores</span>
 			</div>
 			<h1 class="text-2xl font-bold text-white">{session.name}</h1>
-			<p class="mt-0.5 text-sm text-ayu-muted">{fmtDate(session.date)} · {totalScores} score{totalScores === 1 ? '' : 's'}</p>
+			<p class="mt-0.5 text-sm text-ayu-muted">
+				{fmtDate(session.date)} · {totalScores} score{totalScores === 1 ? '' : 's'}
+			</p>
 		</div>
-		<span class="rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wider {
-			session.status === 'active' ? 'bg-ayu-green/20 text-ayu-green' :
-			session.status === 'finished' ? 'bg-zinc-800 text-zinc-500' :
-			'bg-zinc-700 text-zinc-300'
-		}">
+		<span
+			class="rounded-full px-3 py-1 text-xs font-semibold tracking-wider uppercase {session.status ===
+			'active'
+				? 'bg-ayu-green/20 text-ayu-green'
+				: session.status === 'finished'
+					? 'bg-zinc-800 text-zinc-500'
+					: 'bg-zinc-700 text-zinc-300'}"
+		>
 			{session.status}
 		</span>
 	</div>
@@ -138,14 +195,20 @@
 		<div class="space-y-4">
 			{#each gameGroups as { game, scores }}
 				<div class="overflow-hidden rounded-xl border border-ayu-border">
-					<div class="flex items-center gap-2 border-b border-ayu-border bg-ayu-surface2 px-4 py-2.5">
+					<div
+						class="flex items-center gap-2 border-b border-ayu-border bg-ayu-surface2 px-4 py-2.5"
+					>
 						{#if game.icon_emoji}<span>{game.icon_emoji}</span>{/if}
-						<span class="font-semibold text-white text-sm">{game.name}</span>
-						<span class="text-xs text-ayu-muted">{scores.length} submission{scores.length === 1 ? '' : 's'}</span>
+						<span class="text-sm font-semibold text-white">{game.name}</span>
+						<span class="text-xs text-ayu-muted"
+							>{scores.length} submission{scores.length === 1 ? '' : 's'}</span
+						>
 						<div class="ml-auto flex items-center gap-3">
 							{#if confirmRemoveGameId === game.id}
 								<span class="text-xs text-zinc-400">
-									Remove game{scores.length > 0 ? ` + delete ${scores.length} score${scores.length === 1 ? '' : 's'}` : ''}?
+									Remove game{scores.length > 0
+										? ` + delete ${scores.length} score${scores.length === 1 ? '' : 's'}`
+										: ''}?
 								</span>
 								<button
 									onclick={() => removeGame(game.id)}
@@ -175,11 +238,13 @@
 					{:else}
 						<table class="w-full text-sm">
 							<thead>
-								<tr class="border-b border-ayu-border text-left text-xs font-semibold uppercase tracking-wider text-ayu-muted">
+								<tr
+									class="border-b border-ayu-border text-left text-xs font-semibold tracking-wider text-ayu-muted uppercase"
+								>
 									<th class="px-4 py-2">Player</th>
 									<th class="px-4 py-2">Score</th>
-									<th class="px-4 py-2 hidden sm:table-cell">Submitted</th>
-									<th class="px-4 py-2 hidden md:table-cell">Share text</th>
+									<th class="hidden px-4 py-2 sm:table-cell">Submitted</th>
+									<th class="hidden px-4 py-2 md:table-cell">Share text</th>
 									<th class="px-4 py-2"></th>
 								</tr>
 							</thead>
@@ -187,7 +252,7 @@
 								{#each scores as score}
 									<tr class="border-b border-ayu-border bg-ayu-surface last:border-0">
 										<td class="px-4 py-2.5 font-medium text-white">
-											<a href="/player/{score.player.id}" class="hover:text-ayu-gold transition">
+											<a href="/player/{score.player.id}" class="transition hover:text-ayu-gold">
 												{displayName(score.player)}
 											</a>
 											{#if score.player.alias}
@@ -197,10 +262,12 @@
 										<td class="px-4 py-2.5 font-mono text-ayu-gold">
 											{scoreLabel(score, game)}
 										</td>
-										<td class="px-4 py-2.5 text-xs text-ayu-muted hidden sm:table-cell">
+										<td class="hidden px-4 py-2.5 text-xs text-ayu-muted sm:table-cell">
 											{fmtTime(score.submitted_at)}
 										</td>
-										<td class="px-4 py-2.5 text-xs text-ayu-muted hidden md:table-cell max-w-xs truncate">
+										<td
+											class="hidden max-w-xs truncate px-4 py-2.5 text-xs text-ayu-muted md:table-cell"
+										>
 											{score.share_text ?? '—'}
 										</td>
 										<td class="px-4 py-2.5 text-right whitespace-nowrap">

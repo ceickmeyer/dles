@@ -25,23 +25,49 @@ export const load: PageServerLoad = async ({ params }) => {
 		return {
 			player,
 			displayName: displayName(player),
-			nights: 0, bestWinStreak: 0, bestPodiumStreak: 0, sessionWins: 0,
+			nights: 0,
+			bestWinStreak: 0,
+			bestPodiumStreak: 0,
+			sessionWins: 0,
 			perGame: [],
 			rankHistory: [],
-			playerElo: null,
+			playerElo: null
 		};
 	}
 
-	const sessionIds = sessions.map(s => s.id);
+	const sessionIds = sessions.map((s) => s.id);
+
+	type PlayerScoreRow = {
+		id: string;
+		session_id: string;
+		game_id: string;
+		player_id: string;
+		raw_score: number;
+		share_text: string | null;
+		submitted_at: string;
+		player: { name: string; alias: string | null } | null;
+		game: {
+			id: string;
+			name: string;
+			icon_emoji: string | null;
+			scoring_direction: 'higher_is_better' | 'lower_is_better';
+			max_score: number | null;
+			allow_dnf: boolean;
+		} | null;
+	};
 
 	// Fetch all scores — paginated to avoid Supabase's 1000-row default limit
-	const allScores: any[] = [];
+	const allScores: PlayerScoreRow[] = [];
 	for (let from = 0; ; from += 1000) {
 		const { data: page } = await supabase
 			.from('scores')
-			.select('*, player:players(name, alias), game:games(id, name, icon_emoji, scoring_direction, max_score, allow_dnf)')
+			.select(
+				'*, player:players(name, alias), game:games(id, name, icon_emoji, scoring_direction, max_score, allow_dnf)'
+			)
 			.in('session_id', sessionIds)
-			.order('session_id').order('game_id').order('player_id')
+			.order('session_id')
+			.order('game_id')
+			.order('player_id')
 			.range(from, from + 999);
 		if (!page?.length) break;
 		allScores.push(...page);
@@ -53,16 +79,19 @@ export const load: PageServerLoad = async ({ params }) => {
 		.select('session_id, game_id')
 		.eq('is_special', true)
 		.in('session_id', sessionIds);
-	const specialGameMap = new Map((specialGameRows ?? []).map(sg => [sg.session_id, sg.game_id]));
+	const specialGameMap = new Map((specialGameRows ?? []).map((sg) => [sg.session_id, sg.game_id]));
 
 	if (allScores.length === 0) {
 		return {
 			player,
 			displayName: displayName(player),
-			nights: 0, bestWinStreak: 0, bestPodiumStreak: 0, sessionWins: 0,
+			nights: 0,
+			bestWinStreak: 0,
+			bestPodiumStreak: 0,
+			sessionWins: 0,
 			perGame: [],
 			rankHistory: [],
-			playerElo: null,
+			playerElo: null
 		};
 	}
 
@@ -74,7 +103,21 @@ export const load: PageServerLoad = async ({ params }) => {
 	}
 
 	// Per-game stats for this player
-	const perGameMap = new Map<string, { name: string; emoji: string; scoring_direction: string; gold: number; silver: number; bronze: number; total: number; played: number; rankSum: number; rankCount: number }>();
+	const perGameMap = new Map<
+		string,
+		{
+			name: string;
+			emoji: string;
+			scoring_direction: string;
+			gold: number;
+			silver: number;
+			bronze: number;
+			total: number;
+			played: number;
+			rankSum: number;
+			rankCount: number;
+		}
+	>();
 
 	// Session history for streaks
 	const playerHistory: { won: boolean; podium: boolean }[] = [];
@@ -86,7 +129,7 @@ export const load: PageServerLoad = async ({ params }) => {
 		const sessionScores = bySession.get(sessionId);
 		if (!sessionScores) continue;
 
-		const myScores = sessionScores.filter(s => s.player_id === params.id);
+		const myScores = sessionScores.filter((s) => s.player_id === params.id);
 		if (myScores.length === 0) continue; // player didn't participate
 
 		// Group by game for this session
@@ -98,11 +141,15 @@ export const load: PageServerLoad = async ({ params }) => {
 
 		const specialGameId = specialGameMap.get(sessionId);
 		const sessionGameResults = [...byGame.entries()].map(([gameId, group]) => {
-			const g = group[0].game as { scoring_direction: 'higher_is_better' | 'lower_is_better'; max_score: number | null; allow_dnf: boolean };
+			const g = group[0].game as {
+				scoring_direction: 'higher_is_better' | 'lower_is_better';
+				max_score: number | null;
+				allow_dnf: boolean;
+			};
 			return {
 				isSpecial: gameId === specialGameId,
 				scores: rankScores(
-					group.map(s => ({
+					group.map((s) => ({
 						player_id: s.player_id,
 						player_name: displayName(s.player as { name: string; alias?: string | null }),
 						raw_score: s.raw_score
@@ -115,9 +162,16 @@ export const load: PageServerLoad = async ({ params }) => {
 
 		// Per-game medal tracking for this player
 		for (const group of [...byGame.values()]) {
-			const game = group[0].game as { id: string; name: string; icon_emoji: string | null; scoring_direction: string; max_score: number | null; allow_dnf: boolean };
+			const game = group[0].game as {
+				id: string;
+				name: string;
+				icon_emoji: string | null;
+				scoring_direction: string;
+				max_score: number | null;
+				allow_dnf: boolean;
+			};
 			const ranked = rankScores(
-				group.map(s => ({
+				group.map((s) => ({
 					player_id: s.player_id,
 					player_name: '',
 					raw_score: s.raw_score
@@ -125,13 +179,31 @@ export const load: PageServerLoad = async ({ params }) => {
 				game.scoring_direction as 'higher_is_better' | 'lower_is_better',
 				game.allow_dnf && game.max_score !== null ? game.max_score + 1 : null
 			);
-			const mine = ranked.find(r => r.player_id === params.id);
+			const mine = ranked.find((r) => r.player_id === params.id);
 			if (!mine) continue;
 
-			const existing = perGameMap.get(game.id) ?? { name: game.name, emoji: game.icon_emoji ?? '🎮', scoring_direction: game.scoring_direction, gold: 0, silver: 0, bronze: 0, total: 0, played: 0, rankSum: 0, rankCount: 0 };
-			if (mine.medal === 'gold') { existing.gold++; existing.total += 4; }
-			else if (mine.medal === 'silver') { existing.silver++; existing.total += 2; }
-			else if (mine.medal === 'bronze') { existing.bronze++; existing.total += 1; }
+			const existing = perGameMap.get(game.id) ?? {
+				name: game.name,
+				emoji: game.icon_emoji ?? '🎮',
+				scoring_direction: game.scoring_direction,
+				gold: 0,
+				silver: 0,
+				bronze: 0,
+				total: 0,
+				played: 0,
+				rankSum: 0,
+				rankCount: 0
+			};
+			if (mine.medal === 'gold') {
+				existing.gold++;
+				existing.total += 4;
+			} else if (mine.medal === 'silver') {
+				existing.silver++;
+				existing.total += 2;
+			} else if (mine.medal === 'bronze') {
+				existing.bronze++;
+				existing.total += 1;
+			}
 			existing.played++;
 			// Track average percentile placement (0 = best, 1 = worst), normalized for player count
 			const outOf = ranked.length;
@@ -144,10 +216,13 @@ export const load: PageServerLoad = async ({ params }) => {
 
 		// Session-level tally
 		const sessionTally = sortTally([...computeSessionTally(sessionGameResults).values()]);
-		const myTally = sessionTally.find(t => t.player_id === params.id);
+		const myTally = sessionTally.find((t) => t.player_id === params.id);
 		if (!myTally) continue;
 
-		const myRank = sessionTally.findIndex(t => t.gold === myTally.gold && t.silver === myTally.silver && t.bronze === myTally.bronze) + 1;
+		const myRank =
+			sessionTally.findIndex(
+				(t) => t.gold === myTally.gold && t.silver === myTally.silver && t.bronze === myTally.bronze
+			) + 1;
 
 		sessionRankMap.set(sessionId, { rank: myRank, outOf: sessionTally.length });
 		if (myRank === 1) sessionWins++;
@@ -163,11 +238,11 @@ export const load: PageServerLoad = async ({ params }) => {
 
 	const perGame = [...perGameMap.values()].sort((a, b) => b.gold - a.gold || b.total - a.total);
 
-	const rankHistory = sessions.slice(-10).map(s => ({
+	const rankHistory = sessions.slice(-10).map((s) => ({
 		name: s.name,
 		date: s.date,
 		rank: sessionRankMap.get(s.id)?.rank ?? null,
-		outOf: sessionRankMap.get(s.id)?.outOf ?? null,
+		outOf: sessionRankMap.get(s.id)?.outOf ?? null
 	}));
 
 	// ELO — read from cache (refreshed by the scheduler / admin edits, not recomputed per request)
@@ -177,16 +252,24 @@ export const load: PageServerLoad = async ({ params }) => {
 		.eq('player_id', params.id)
 		.maybeSingle();
 
-	let playerElo: { elo: number; prevElo: number | null; eloHistory: { date: string; elo: number; delta: number }[] } | null = null;
+	let playerElo: {
+		elo: number;
+		prevElo: number | null;
+		eloHistory: { date: string; elo: number; delta: number }[];
+	} | null = null;
 	if (eloRow) {
-		const sessionDateMap = new Map(sessions.map(s => [s.id, s.date]));
+		const sessionDateMap = new Map(sessions.map((s) => [s.id, s.date]));
 		let running = 1000;
 		const eloHistory = eloRow.history
-			.map(h => {
+			.map((h) => {
 				running += h.delta;
-				return { date: sessionDateMap.get(h.session_id) ?? '', elo: Math.round(running), delta: h.delta };
+				return {
+					date: sessionDateMap.get(h.session_id) ?? '',
+					elo: Math.round(running),
+					delta: h.delta
+				};
 			})
-			.filter(h => h.date)
+			.filter((h) => h.date)
 			.slice(-10);
 		playerElo = { elo: eloRow.elo, prevElo: eloRow.prev_elo, eloHistory };
 	}
@@ -200,6 +283,6 @@ export const load: PageServerLoad = async ({ params }) => {
 		sessionWins,
 		perGame,
 		rankHistory,
-		playerElo,
+		playerElo
 	};
 };

@@ -22,9 +22,9 @@ export const load: PageServerLoad = async () => {
 	}
 
 	return {
-		players: (players ?? []).map(p => ({
+		players: (players ?? []).map((p) => ({
 			...p,
-			sessions_played: sessionsByPlayer.get(p.id)?.size ?? 0,
+			sessions_played: sessionsByPlayer.get(p.id)?.size ?? 0
 		}))
 	};
 };

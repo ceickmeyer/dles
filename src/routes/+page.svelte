@@ -20,7 +20,9 @@
 	let { data } = $props();
 
 	let scores = $state<ScoreWithPlayer[]>([]);
-	$effect(() => { scores = data.scores as ScoreWithPlayer[]; });
+	$effect(() => {
+		scores = data.scores as ScoreWithPlayer[];
+	});
 
 	let subscriptions: ReturnType<typeof supabase.channel>[] = [];
 	const player = $derived($playerStore);
@@ -57,11 +59,14 @@
 
 	const sessionBadges = $derived(
 		player.id && session
-			? computeSessionBadges(myScores, session.session_games.map(sg => ({ ...sg.game, is_special: sg.is_special ?? false })))
+			? computeSessionBadges(
+					myScores,
+					session.session_games.map((sg) => ({ ...sg.game, is_special: sg.is_special ?? false }))
+				)
 			: []
 	);
 	const gamesWithScores = $derived(gameResults.filter((gr) => gr.scores.length > 0));
-	const gameScoresMap = $derived(new Map(gameResults.map(gr => [gr.game.id, gr.scores])));
+	const gameScoresMap = $derived(new Map(gameResults.map((gr) => [gr.game.id, gr.scores])));
 	const allDone = $derived(
 		!!session && session.session_games.length > 0 && myScores.size === session.session_games.length
 	);
@@ -69,51 +74,67 @@
 	const prevFullRanking = $derived(data.prevFullRanking ?? []);
 
 	const prevRankMap = $derived(
-		new Map((data.prevRanks ?? []).map((r: { player_id: string; rank: number; outOf: number }) => [r.player_id, r]))
+		new Map(
+			(data.prevRanks ?? []).map((r: { player_id: string; rank: number; outOf: number }) => [
+				r.player_id,
+				r
+			])
+		)
 	);
 
 	const totalGames = $derived(session?.session_games.length ?? 0);
 
 	const featuredWinnerIds = $derived(
-		new Set(gameResults.find(r => r.isSpecial)?.scores.filter(s => s.medal === 'gold').map(s => s.player_id) ?? [])
+		new Set(
+			gameResults
+				.find((r) => r.isSpecial)
+				?.scores.filter((s) => s.medal === 'gold')
+				.map((s) => s.player_id) ?? []
+		)
 	);
 
-	const playerGameCounts = $derived((() => {
-		const counts = new Map<string, number>();
-		for (const s of scores) counts.set(s.player_id, (counts.get(s.player_id) ?? 0) + 1);
-		return counts;
-	})());
+	const playerGameCounts = $derived(
+		(() => {
+			const counts = new Map<string, number>();
+			for (const s of scores) counts.set(s.player_id, (counts.get(s.player_id) ?? 0) + 1);
+			return counts;
+		})()
+	);
 
-	const completedPlayerIds = $derived((() => {
-		if (totalGames === 0) return new Set<string>();
-		const done = new Set<string>();
-		for (const [pid, count] of playerGameCounts) {
-			if (count >= totalGames) done.add(pid);
-		}
-		return done;
-	})());
+	const completedPlayerIds = $derived(
+		(() => {
+			if (totalGames === 0) return new Set<string>();
+			const done = new Set<string>();
+			for (const [pid, count] of playerGameCounts) {
+				if (count >= totalGames) done.add(pid);
+			}
+			return done;
+		})()
+	);
 
-	const playerDayStats = $derived(new Map(
-		tally.map(row => [
-			row.player_id,
-			gameResults
-				.map(gr => {
-					const s = gr.scores.find(sc => sc.player_id === row.player_id);
-					if (!s) return null;
-					return {
-						gameName: gr.game.name,
-						gameEmoji: gr.game.icon_emoji,
-						formattedScore: formatScore(s.raw_score, gr.game),
-						medal: s.medal,
-						dnf: isDnf(s.raw_score, gr.game)
-					} satisfies PlayerDayStat;
-				})
-				.filter((x): x is PlayerDayStat => x !== null)
-		])
-	));
+	const playerDayStats = $derived(
+		new Map(
+			tally.map((row) => [
+				row.player_id,
+				gameResults
+					.map((gr) => {
+						const s = gr.scores.find((sc) => sc.player_id === row.player_id);
+						if (!s) return null;
+						return {
+							gameName: gr.game.name,
+							gameEmoji: gr.game.icon_emoji,
+							formattedScore: formatScore(s.raw_score, gr.game),
+							medal: s.medal,
+							dnf: isDnf(s.raw_score, gr.game)
+						} satisfies PlayerDayStat;
+					})
+					.filter((x): x is PlayerDayStat => x !== null)
+			])
+		)
+	);
 
-	const specialGame = $derived(session?.session_games.find(sg => sg.is_special) ?? null);
-	const regularGames = $derived(session?.session_games.filter(sg => !sg.is_special) ?? []);
+	const specialGame = $derived(session?.session_games.find((sg) => sg.is_special) ?? null);
+	const regularGames = $derived(session?.session_games.filter((sg) => !sg.is_special) ?? []);
 
 	let shareCopied = $state(false);
 	let copiedGameId = $state<string | null>(null);
@@ -129,14 +150,22 @@
 		prevRankingTipY = rect.bottom + 8;
 		prevRankingTipVisible = true;
 	}
-	function hidePrevRankingTip() { prevRankingTipVisible = false; }
+	function hidePrevRankingTip() {
+		prevRankingTipVisible = false;
+	}
 
 	function buildStandingsShare(): string {
 		if (!session) return '';
-		const date = parseLocalDate(session.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+		const date = parseLocalDate(session.date).toLocaleDateString('en-US', {
+			weekday: 'long',
+			month: 'long',
+			day: 'numeric'
+		});
 		const lines = [`Live Standings — ${date}`, ''];
 		const tallyRanks = tally.map((row, _, arr) => {
-			const first = arr.findIndex(r => r.gold === row.gold && r.silver === row.silver && r.bronze === row.bronze);
+			const first = arr.findIndex(
+				(r) => r.gold === row.gold && r.silver === row.silver && r.bronze === row.bronze
+			);
 			return first + 1;
 		});
 		for (let i = 0; i < tally.length; i++) {
@@ -146,8 +175,10 @@
 			const medals = [
 				row.gold > 0 ? `🥇×${row.gold}` : '',
 				row.silver > 0 ? `🥈×${row.silver}` : '',
-				row.bronze > 0 ? `🥉×${row.bronze}` : '',
-			].filter(Boolean).join(' ');
+				row.bronze > 0 ? `🥉×${row.bronze}` : ''
+			]
+				.filter(Boolean)
+				.join(' ');
 			lines.push(`${rankStr} ${row.player_name}${medals ? ' — ' + medals : ''}`);
 		}
 		lines.push('', 'https://dles.cooody.com');
@@ -163,10 +194,15 @@
 			return;
 		}
 		standingsCopied = true;
-		setTimeout(() => { standingsCopied = false; }, 2000);
+		setTimeout(() => {
+			standingsCopied = false;
+		}, 2000);
 	}
 
-	async function copyGameResults(game: typeof gamesWithScores[number]['game'], ranked: typeof gamesWithScores[number]['scores']) {
+	async function copyGameResults(
+		game: (typeof gamesWithScores)[number]['game'],
+		ranked: (typeof gamesWithScores)[number]['scores']
+	) {
 		const lines = [`${game.icon_emoji ?? '🎮'} ${game.name}`];
 		for (const s of ranked) {
 			const medal = s.medal ? `${MEDAL[s.medal]} ` : '   ';
@@ -179,7 +215,9 @@
 			return;
 		}
 		copiedGameId = game.id;
-		setTimeout(() => { copiedGameId = null; }, 2000);
+		setTimeout(() => {
+			copiedGameId = null;
+		}, 2000);
 	}
 
 	// Score toasts
@@ -188,9 +226,15 @@
 	function addToast(message: string) {
 		const id = ++toastSeq;
 		toasts = [...toasts, { id, message }];
-		setTimeout(() => { toasts = toasts.filter(t => t.id !== id); }, 5000);
+		setTimeout(() => {
+			toasts = toasts.filter((t) => t.id !== id);
+		}, 5000);
 	}
-	function toastMessage(raw_score: number, game: { name: string; icon_emoji: string | null; max_score: number | null; allow_dnf: boolean }, playerName: string): string {
+	function toastMessage(
+		raw_score: number,
+		game: { name: string; icon_emoji: string | null; max_score: number | null; allow_dnf: boolean },
+		playerName: string
+	): string {
 		const emoji = game.icon_emoji ? `${game.icon_emoji} ` : '';
 		if (game.allow_dnf && game.max_score !== null && raw_score === game.max_score + 1)
 			return `${playerName} got a DNF in ${emoji}${game.name}`;
@@ -208,10 +252,12 @@
 	}
 
 	function formatSessionDate(dateStr: string): string {
-		return parseLocalDate(dateStr).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+		return parseLocalDate(dateStr).toLocaleDateString('en-US', {
+			weekday: 'long',
+			month: 'long',
+			day: 'numeric'
+		});
 	}
-
-
 
 	function buildShareText(): string {
 		if (!session) return '';
@@ -219,7 +265,10 @@
 		const header = session.name.includes(date) ? session.name : `${session.name} — ${date}`;
 		const lines = [header, ''];
 		const myMedals = new Map(
-			gameResults.map(gr => [gr.game.id, gr.scores.find(s => s.player_id === player.id)?.medal ?? null])
+			gameResults.map((gr) => [
+				gr.game.id,
+				gr.scores.find((s) => s.player_id === player.id)?.medal ?? null
+			])
 		);
 		for (const { game } of session.session_games) {
 			const raw = myScores.get(game.id);
@@ -249,7 +298,9 @@
 			try {
 				await navigator.share({ text });
 				return;
-			} catch { /* cancelled or unsupported — fall through to clipboard */ }
+			} catch {
+				/* cancelled or unsupported — fall through to clipboard */
+			}
 		}
 		try {
 			await navigator.clipboard.writeText(text);
@@ -259,7 +310,9 @@
 			return;
 		}
 		shareCopied = true;
-		setTimeout(() => { shareCopied = false; }, 2000);
+		setTimeout(() => {
+			shareCopied = false;
+		}, 2000);
 	}
 
 	// Play finished sound when player submits all games for the session
@@ -267,21 +320,29 @@
 	$effect(() => {
 		const total = session?.session_games.length ?? 0;
 		const current = myScores.size;
-		if (prevMyScoresSize !== null && total > 0 && current === total && prevMyScoresSize < total) { sounds.finished(); fireConfetti(); }
+		if (prevMyScoresSize !== null && total > 0 && current === total && prevMyScoresSize < total) {
+			sounds.finished();
+			fireConfetti();
+		}
 		prevMyScoresSize = current;
 	});
 
 	// Play uptempo / fire medal confetti when any player takes a podium spot on any game
 	let _medalInit = false;
-	let _prevMedalHolders = new Map<string, { gold: string | null; silver: string | null; bronze: string | null }>();
+	let _prevMedalHolders = new Map<
+		string,
+		{ gold: string | null; silver: string | null; bronze: string | null }
+	>();
 	$effect(() => {
 		const holders = new Map(
-			gameResults.map(gr => ({
-				id: gr.game.id,
-				gold: gr.scores.find(s => s.medal === 'gold')?.player_id ?? null,
-				silver: gr.scores.find(s => s.medal === 'silver')?.player_id ?? null,
-				bronze: gr.scores.find(s => s.medal === 'bronze')?.player_id ?? null,
-			})).map(h => [h.id, { gold: h.gold, silver: h.silver, bronze: h.bronze }])
+			gameResults
+				.map((gr) => ({
+					id: gr.game.id,
+					gold: gr.scores.find((s) => s.medal === 'gold')?.player_id ?? null,
+					silver: gr.scores.find((s) => s.medal === 'silver')?.player_id ?? null,
+					bronze: gr.scores.find((s) => s.medal === 'bronze')?.player_id ?? null
+				}))
+				.map((h) => [h.id, { gold: h.gold, silver: h.silver, bronze: h.bronze }])
 		);
 		if (_medalInit) {
 			for (const gr of gameResults) {
@@ -293,8 +354,14 @@
 					if (cur.gold === player.id) fireMedalConfetti('gold');
 					break;
 				}
-				if (cur.silver !== prev?.silver && cur.silver === player.id) { fireMedalConfetti('silver'); break; }
-				if (cur.bronze !== prev?.bronze && cur.bronze === player.id) { fireMedalConfetti('bronze'); break; }
+				if (cur.silver !== prev?.silver && cur.silver === player.id) {
+					fireMedalConfetti('silver');
+					break;
+				}
+				if (cur.bronze !== prev?.bronze && cur.bronze === player.id) {
+					fireMedalConfetti('bronze');
+					break;
+				}
 			}
 		}
 		_medalInit = true;
@@ -317,9 +384,9 @@
 		newOverallLeaderId: string | null
 	): string {
 		const parts: string[] = [];
-		const playerRank = ranked.find(r => r.player_id === forPlayerId);
+		const playerRank = ranked.find((r) => r.player_id === forPlayerId);
 		if (ranked.length >= 2 && playerRank?.medal) {
-			const tied = ranked.filter(r => r.rank === playerRank.rank).length > 1;
+			const tied = ranked.filter((r) => r.rank === playerRank.rank).length > 1;
 			if (playerRank.rank === 1) parts.push(tied ? 'Tied for 1st 🥇' : '1st place 🥇');
 			else if (playerRank.rank === 2) parts.push(tied ? 'Tied for 2nd 🥈' : '2nd place 🥈');
 			else if (playerRank.rank === 3) parts.push(tied ? 'Tied for 3rd 🥉' : '3rd place 🥉');
@@ -342,15 +409,15 @@
 			await refreshScores();
 			const newLeader = overallLeaderId(tally);
 			const gameScores = scores
-				.filter(s => s.game_id === game.id)
-				.map(s => ({
+				.filter((s) => s.game_id === game.id)
+				.map((s) => ({
 					player_id: s.player_id,
 					player_name: displayName(s.player as { name: string; alias?: string | null }),
 					raw_score: s.raw_score
 				}));
 			const ranked = rankScores(gameScores, game.scoring_direction);
 			const dnf = isDnf(rawScore, game);
-			const myRank = ranked.find(r => r.player_id === player.id);
+			const myRank = ranked.find((r) => r.player_id === player.id);
 			if (!dnf && ranked.length >= 2 && myRank?.medal) {
 				if (myRank.medal === 'gold') sounds.gold();
 				else if (myRank.medal === 'silver') sounds.silver();
@@ -358,13 +425,20 @@
 			} else {
 				sounds.submit();
 			}
-			const myEntry = scores.find(s => s.player_id === player.id && s.game_id === game.id);
-			const name = myEntry ? displayName(myEntry.player as { name: string; alias?: string | null }) : player.name ?? 'Someone';
+			const myEntry = scores.find((s) => s.player_id === player.id && s.game_id === game.id);
+			const name = myEntry
+				? displayName(myEntry.player as { name: string; alias?: string | null })
+				: (player.name ?? 'Someone');
 			const rankSuffix = dnf ? '' : buildRankSuffix(ranked, player.id!, prevLeader, newLeader);
 			const logMsg = dnf
 				? `${name} DNF'd ${game.icon_emoji ?? '🎮'} ${game.name}`
 				: `${name} scored ${formatScore(rawScore, game)} on ${game.icon_emoji ?? '🎮'} ${game.name}${rankSuffix}`;
-			const { error: logErr } = await supabase.from('messages').insert({ session_id: session!.id, player_id: null, player_name: '__log__', content: logMsg });
+			const { error: logErr } = await supabase.from('messages').insert({
+				session_id: session!.id,
+				player_id: null,
+				player_name: '__log__',
+				content: logMsg
+			});
 			if (logErr) console.error('log insert failed:', logErr);
 
 			// Check for personal best / server record (non-DNF only, compared against finished sessions)
@@ -372,29 +446,54 @@
 				const lower = game.scoring_direction === 'lower_is_better';
 				const dnfVal = game.allow_dnf && game.max_score !== null ? game.max_score + 1 : null;
 				const [pbRes, srRes] = await Promise.all([
-					supabase.from('scores').select('raw_score').eq('game_id', game.id).eq('player_id', player.id!).neq('session_id', session!.id),
-					supabase.from('scores').select('raw_score,session_id,player_id').eq('game_id', game.id),
+					supabase
+						.from('scores')
+						.select('raw_score')
+						.eq('game_id', game.id)
+						.eq('player_id', player.id!)
+						.neq('session_id', session!.id),
+					supabase.from('scores').select('raw_score,session_id,player_id').eq('game_id', game.id)
 				]);
-				const filterDnf = (vals: number[]) => dnfVal !== null ? vals.filter(v => v !== dnfVal) : vals;
-				const pbVals = filterDnf((pbRes.data ?? []).map(s => s.raw_score));
+				const filterDnf = (vals: number[]) =>
+					dnfVal !== null ? vals.filter((v) => v !== dnfVal) : vals;
+				const pbVals = filterDnf((pbRes.data ?? []).map((s) => s.raw_score));
 				const srVals = filterDnf(
 					(srRes.data ?? [])
-						.filter(s => !(s.session_id === session!.id && s.player_id === player.id))
-						.map(s => s.raw_score)
+						.filter((s) => !(s.session_id === session!.id && s.player_id === player.id))
+						.map((s) => s.raw_score)
 				);
-				const prevPB = pbVals.length > 0 ? (lower ? Math.min(...pbVals) : Math.max(...pbVals)) : null;
-				const prevSR = srVals.length > 0 ? (lower ? Math.min(...srVals) : Math.max(...srVals)) : null;
-				const beats = (v: number, ref: number) => lower ? v < ref : v > ref;
+				const prevPB =
+					pbVals.length > 0 ? (lower ? Math.min(...pbVals) : Math.max(...pbVals)) : null;
+				const prevSR =
+					srVals.length > 0 ? (lower ? Math.min(...srVals) : Math.max(...srVals)) : null;
+				const beats = (v: number, ref: number) => (lower ? v < ref : v > ref);
 				const fmtd = formatScore(rawScore, game);
 				const emoji = game.icon_emoji ?? '🎮';
-				const isPerfect = lower ? rawScore === 1 : (game.max_score !== null && rawScore === game.max_score);
+				const isPerfect = lower
+					? rawScore === 1
+					: game.max_score !== null && rawScore === game.max_score;
 				if (isPerfect) {
-					await supabase.from('messages').insert({ session_id: session!.id, player_id: null, player_name: '__perfect__', content: `${name} scored a perfect ${fmtd} on ${emoji} ${game.name}!` });
+					await supabase.from('messages').insert({
+						session_id: session!.id,
+						player_id: null,
+						player_name: '__perfect__',
+						content: `${name} scored a perfect ${fmtd} on ${emoji} ${game.name}!`
+					});
 				}
 				if (prevSR !== null && beats(rawScore, prevSR)) {
-					await supabase.from('messages').insert({ session_id: session!.id, player_id: null, player_name: '__sr__', content: `${name} set a new server record for ${emoji} ${game.name} — ${fmtd}` });
+					await supabase.from('messages').insert({
+						session_id: session!.id,
+						player_id: null,
+						player_name: '__sr__',
+						content: `${name} set a new server record for ${emoji} ${game.name} — ${fmtd}`
+					});
 				} else if (prevPB !== null && beats(rawScore, prevPB)) {
-					await supabase.from('messages').insert({ session_id: session!.id, player_id: null, player_name: '__pb__', content: `${name} achieved a new personal best in ${emoji} ${game.name} — ${fmtd}` });
+					await supabase.from('messages').insert({
+						session_id: session!.id,
+						player_id: null,
+						player_name: '__pb__',
+						content: `${name} achieved a new personal best in ${emoji} ${game.name} — ${fmtd}`
+					});
 				}
 			}
 		};
@@ -403,7 +502,11 @@
 	onMount(async () => {
 		// Verify stored player ID still exists (handles DB reset / admin deletion)
 		if (player.id) {
-			const { data } = await supabase.from('players').select('id').eq('id', player.id).maybeSingle();
+			const { data } = await supabase
+				.from('players')
+				.select('id')
+				.eq('id', player.id)
+				.maybeSingle();
 			if (!data) playerStore.clear();
 		}
 
@@ -413,7 +516,9 @@
 			subscriptions.push(
 				supabase
 					.channel('sessions:upcoming')
-					.on('postgres_changes', { event: '*', schema: 'public', table: 'sessions' }, () => invalidateAll())
+					.on('postgres_changes', { event: '*', schema: 'public', table: 'sessions' }, () =>
+						invalidateAll()
+					)
 					.subscribe()
 			);
 			return;
@@ -423,22 +528,32 @@
 		subscriptions.push(
 			supabase
 				.channel(`scores:${session.id}`)
-				.on('postgres_changes', { event: '*', schema: 'public', table: 'scores', filter: `session_id=eq.${session.id}` }, async (payload) => {
-					const row = payload.new as { player_id?: string; game_id?: string; raw_score?: number };
-					const isOtherInsert = row.player_id && row.player_id !== player.id && payload.eventType === 'INSERT';
-					if (isOtherInsert) sounds.others();
+				.on(
+					'postgres_changes',
+					{ event: '*', schema: 'public', table: 'scores', filter: `session_id=eq.${session.id}` },
+					async (payload) => {
+						const row = payload.new as { player_id?: string; game_id?: string; raw_score?: number };
+						const isOtherInsert =
+							row.player_id && row.player_id !== player.id && payload.eventType === 'INSERT';
+						if (isOtherInsert) sounds.others();
 
-					await refreshScores();
+						await refreshScores();
 
-					if (isOtherInsert && row.raw_score !== undefined) {
-						const game = session.session_games.find(sg => sg.game.id === row.game_id)?.game;
-						if (game) {
-							const entry = scores.find(s => s.player_id === row.player_id && s.game_id === row.game_id);
-							const pData = entry?.player as { name: string; alias?: string | null } | null | undefined;
-							addToast(toastMessage(row.raw_score, game, pData ? displayName(pData) : 'Someone'));
+						if (isOtherInsert && row.raw_score !== undefined) {
+							const game = session.session_games.find((sg) => sg.game.id === row.game_id)?.game;
+							if (game) {
+								const entry = scores.find(
+									(s) => s.player_id === row.player_id && s.game_id === row.game_id
+								);
+								const pData = entry?.player as
+									| { name: string; alias?: string | null }
+									| null
+									| undefined;
+								addToast(toastMessage(row.raw_score, game, pData ? displayName(pData) : 'Someone'));
+							}
 						}
 					}
-				})
+				)
 				.subscribe()
 		);
 
@@ -446,12 +561,18 @@
 		subscriptions.push(
 			supabase
 				.channel(`session:${session.id}`)
-				.on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'sessions', filter: `id=eq.${session.id}` }, () => invalidateAll())
+				.on(
+					'postgres_changes',
+					{ event: 'UPDATE', schema: 'public', table: 'sessions', filter: `id=eq.${session.id}` },
+					() => invalidateAll()
+				)
 				.subscribe()
 		);
 	});
 
-	onDestroy(() => { subscriptions.forEach((s) => s.unsubscribe()); });
+	onDestroy(() => {
+		subscriptions.forEach((s) => s.unsubscribe());
+	});
 
 	const MEDAL: Record<string, string> = { gold: '🥇', silver: '🥈', bronze: '🥉' };
 </script>
@@ -461,12 +582,18 @@
 {/if}
 
 {#if session}
-	<SessionChat sessionId={session.id} playerId={player.id || null} playerName={player.name || null} />
+	<SessionChat
+		sessionId={session.id}
+		playerId={player.id || null}
+		playerName={player.name || null}
+	/>
 {/if}
 
 <!-- Score toasts -->
 {#if toasts.length > 0}
-	<div class="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 items-center pointer-events-none">
+	<div
+		class="pointer-events-none fixed top-4 left-1/2 z-50 flex -translate-x-1/2 flex-col items-center gap-2"
+	>
 		{#each toasts as toast (toast.id)}
 			<div
 				transition:fly={{ y: -16, duration: 200 }}
@@ -488,23 +615,43 @@
 			<div>
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<p
-					class="mb-2 inline-block cursor-default border-b border-dotted border-ayu-gold/50 text-xs font-semibold uppercase tracking-widest text-ayu-gold transition-colors hover:border-ayu-gold hover:text-white"
+					class="mb-2 inline-block cursor-default border-b border-dotted border-ayu-gold/50 text-xs font-semibold tracking-widest text-ayu-gold uppercase transition-colors hover:border-ayu-gold hover:text-white"
 					onmouseenter={showPrevRankingTip}
 					onmouseleave={hidePrevRankingTip}
-				>Yesterday's Winners</p>
-				<div class="grid gap-2" style="grid-template-columns: repeat({data.prevWinners.length}, minmax(0, 1fr))">
+				>
+					Yesterday's Winners
+				</p>
+				<div
+					class="grid gap-2"
+					style="grid-template-columns: repeat({data.prevWinners.length}, minmax(0, 1fr))"
+				>
 					{#each data.prevWinners as w}
-						<div class="rounded-xl border px-3 py-3 text-center
-							{w.medal === '🥇' ? 'border-ayu-gold/40 bg-yellow-400/10' : w.medal === '🥈' ? 'border-zinc-500/40 bg-slate-400/8' : 'border-amber-700/40 bg-amber-800/10'}">
+						<div
+							class="rounded-xl border px-3 py-3 text-center
+							{w.medal === '🥇'
+								? 'border-ayu-gold/40 bg-yellow-400/10'
+								: w.medal === '🥈'
+									? 'border-zinc-500/40 bg-slate-400/8'
+									: 'border-amber-700/40 bg-amber-800/10'}"
+						>
 							<p class="text-2xl">{w.medal}</p>
-							<a href="/player/{w.player_id}" class="mt-1 block text-sm font-semibold leading-tight text-white transition hover:text-ayu-gold">
+							<a
+								href="/player/{w.player_id}"
+								class="mt-1 block text-sm leading-tight font-semibold text-white transition hover:text-ayu-gold"
+							>
 								{w.player_name}
 							</a>
 							{#if w.goldStreak}
 								<p class="mt-1 text-xs text-orange-400">🔥×{w.goldStreak}</p>
 							{/if}
 							<p class="mt-1 text-xs text-ayu-muted">
-								{[w.gold > 0 ? `🥇×${w.gold}` : '', w.silver > 0 ? `🥈×${w.silver}` : '', w.bronze > 0 ? `🥉×${w.bronze}` : ''].filter(Boolean).join(' ')}
+								{[
+									w.gold > 0 ? `🥇×${w.gold}` : '',
+									w.silver > 0 ? `🥈×${w.silver}` : '',
+									w.bronze > 0 ? `🥉×${w.bronze}` : ''
+								]
+									.filter(Boolean)
+									.join(' ')}
 							</p>
 						</div>
 					{/each}
@@ -515,13 +662,28 @@
 		<!-- Featured game (if any) -->
 		{#if specialGame}
 			<div>
-				<h2 class="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-ayu-gold">
+				<h2
+					class="mb-3 flex items-center gap-1.5 text-xs font-semibold tracking-widest text-ayu-gold uppercase"
+				>
 					⭐ Featured Game
 					<span class="group relative inline-flex">
-						<svg class="w-3.5 h-3.5 cursor-default" style="color: var(--color-ayu-blue)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-							<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="8"/><path d="M12 12v4"/>
+						<svg
+							class="h-3.5 w-3.5 cursor-default"
+							style="color: var(--color-ayu-blue)"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						>
+							<circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="8" /><path
+								d="M12 12v4"
+							/>
 						</svg>
-						<span class="pointer-events-none absolute bottom-full left-1/2 mb-2 w-48 -translate-x-1/2 rounded-lg border border-ayu-border bg-zinc-900 px-2.5 py-1.5 text-xs font-normal normal-case tracking-normal text-zinc-300 opacity-0 shadow-xl transition-opacity group-hover:opacity-100">
+						<span
+							class="pointer-events-none absolute bottom-full left-1/2 mb-2 w-48 -translate-x-1/2 rounded-lg border border-ayu-border bg-zinc-900 px-2.5 py-1.5 text-xs font-normal tracking-normal text-zinc-300 normal-case opacity-0 shadow-xl transition-opacity group-hover:opacity-100"
+						>
 							Winning this game is worth +1 more point than regular games
 						</span>
 					</span>
@@ -536,7 +698,8 @@
 							onscored={makeOnscoredHandler(specialGame.game)}
 							rankedScores={scoresHidden ? [] : (gameScoresMap.get(specialGame.game.id) ?? [])}
 							currentPlayerId={player.id}
-							onCopyResults={() => copyGameResults(specialGame.game, gameScoresMap.get(specialGame.game.id) ?? [])}
+							onCopyResults={() =>
+								copyGameResults(specialGame.game, gameScoresMap.get(specialGame.game.id) ?? [])}
 							resultsCopied={copiedGameId === specialGame.game.id}
 							featured
 							{prevWinnerId}
@@ -544,7 +707,9 @@
 						/>
 					</div>
 				{:else}
-					<div class="flex items-center gap-3 rounded-xl border border-ayu-gold/60 bg-ayu-surface px-4 py-3">
+					<div
+						class="flex items-center gap-3 rounded-xl border border-ayu-gold/60 bg-ayu-surface px-4 py-3"
+					>
 						<span class="text-2xl">{specialGame.game.icon_emoji ?? '🎮'}</span>
 						<span class="text-white">{specialGame.game.name}</span>
 						<span class="ml-auto text-xs font-semibold text-ayu-gold">⭐ Featured</span>
@@ -556,7 +721,9 @@
 		<!-- Regular game cards -->
 		{#if regularGames.length > 0}
 			<div>
-				<h2 class="mb-3 text-xs font-semibold uppercase tracking-widest text-ayu-muted">Tonight's Games</h2>
+				<h2 class="mb-3 text-xs font-semibold tracking-widest text-ayu-muted uppercase">
+					Tonight's Games
+				</h2>
 				<div class="space-y-2">
 					{#if player.id}
 						{#each regularGames as sg, i}
@@ -577,7 +744,9 @@
 						{/each}
 					{:else}
 						{#each regularGames as sg}
-							<div class="flex items-center gap-3 rounded-xl border border-ayu-border bg-ayu-surface px-4 py-3">
+							<div
+								class="flex items-center gap-3 rounded-xl border border-ayu-border bg-ayu-surface px-4 py-3"
+							>
 								<span class="text-2xl">{sg.game.icon_emoji ?? '🎮'}</span>
 								<span class="text-white">{sg.game.name}</span>
 							</div>
@@ -589,14 +758,18 @@
 
 		<!-- Share button — appears once the player has at least one score -->
 		{#if myScores.size > 0 && player.id}
-			<div class="rounded-xl border border-ayu-border bg-ayu-surface px-5 py-4 flex items-center justify-between gap-4">
+			<div
+				class="flex items-center justify-between gap-4 rounded-xl border border-ayu-border bg-ayu-surface px-5 py-4"
+			>
 				<div>
 					{#if allDone}
 						<p class="font-semibold text-white">All done! 🎉</p>
-						<p class="text-xs text-ayu-muted mt-0.5">Share your scores with the group.</p>
+						<p class="mt-0.5 text-xs text-ayu-muted">Share your scores with the group.</p>
 					{:else}
 						<p class="font-semibold text-white">Share your scores so far</p>
-						<p class="text-xs text-ayu-muted mt-0.5">{myScores.size}/{session.session_games.length} games submitted.</p>
+						<p class="mt-0.5 text-xs text-ayu-muted">
+							{myScores.size}/{session.session_games.length} games submitted.
+						</p>
 					{/if}
 				</div>
 				<button
@@ -608,8 +781,16 @@
 					{:else}
 						<span class="flex items-center gap-1.5">
 							<svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-								<path fill-rule="evenodd" clip-rule="evenodd" d="M19.6495 0.799565C18.4834 -0.72981 16.0093 0.081426 16.0093 1.99313V3.91272C12.2371 3.86807 9.65665 5.16473 7.9378 6.97554C6.10034 8.9113 5.34458 11.3314 5.02788 12.9862C4.86954 13.8135 5.41223 14.4138 5.98257 14.6211C6.52743 14.8191 7.25549 14.7343 7.74136 14.1789C9.12036 12.6027 11.7995 10.4028 16.0093 10.5464V13.0069C16.0093 14.9186 18.4834 15.7298 19.6495 14.2004L23.3933 9.29034C24.2022 8.2294 24.2022 6.7706 23.3933 5.70966L19.6495 0.799565Z" fill="currentColor"/>
-								<path d="M7 1.00391H4C2.34315 1.00391 1 2.34705 1 4.00391V20.0039C1 21.6608 2.34315 23.0039 4 23.0039H20C21.6569 23.0039 23 21.6608 23 20.0039V17.0039C23 16.4516 22.5523 16.0039 22 16.0039C21.4477 16.0039 21 16.4516 21 17.0039V20.0039C21 20.5562 20.5523 21.0039 20 21.0039H4C3.44772 21.0039 3 20.5562 3 20.0039V4.00391C3 3.45162 3.44772 3.00391 4 3.00391H7C7.55228 3.00391 8 2.55619 8 2.00391C8 1.45162 7.55228 1.00391 7 1.00391Z" fill="currentColor"/>
+								<path
+									fill-rule="evenodd"
+									clip-rule="evenodd"
+									d="M19.6495 0.799565C18.4834 -0.72981 16.0093 0.081426 16.0093 1.99313V3.91272C12.2371 3.86807 9.65665 5.16473 7.9378 6.97554C6.10034 8.9113 5.34458 11.3314 5.02788 12.9862C4.86954 13.8135 5.41223 14.4138 5.98257 14.6211C6.52743 14.8191 7.25549 14.7343 7.74136 14.1789C9.12036 12.6027 11.7995 10.4028 16.0093 10.5464V13.0069C16.0093 14.9186 18.4834 15.7298 19.6495 14.2004L23.3933 9.29034C24.2022 8.2294 24.2022 6.7706 23.3933 5.70966L19.6495 0.799565Z"
+									fill="currentColor"
+								/>
+								<path
+									d="M7 1.00391H4C2.34315 1.00391 1 2.34705 1 4.00391V20.0039C1 21.6608 2.34315 23.0039 4 23.0039H20C21.6569 23.0039 23 21.6608 23 20.0039V17.0039C23 16.4516 22.5523 16.0039 22 16.0039C21.4477 16.0039 21 16.4516 21 17.0039V20.0039C21 20.5562 20.5523 21.0039 20 21.0039H4C3.44772 21.0039 3 20.5562 3 20.0039V4.00391C3 3.45162 3.44772 3.00391 4 3.00391H7C7.55228 3.00391 8 2.55619 8 2.00391C8 1.45162 7.55228 1.00391 7 1.00391Z"
+									fill="currentColor"
+								/>
 							</svg>
 							Share
 						</span>
@@ -621,45 +802,78 @@
 		{#if scoresHidden}
 			<!-- Hidden scores banner -->
 			<div class="rounded-xl border border-ayu-border bg-ayu-surface px-5 py-8 text-center">
-				<p class="text-3xl mb-2">🙈</p>
+				<p class="mb-2 text-3xl">🙈</p>
 				<p class="font-semibold text-white">Scores are hidden</p>
-				<p class="mt-1 text-sm text-ayu-muted">The host will reveal results when everyone's done.</p>
+				<p class="mt-1 text-sm text-ayu-muted">
+					The host will reveal results when everyone's done.
+				</p>
 			</div>
 		{:else}
 			<!-- Live standings -->
 			{#if tally.length > 0}
 				<div>
 					<div class="mb-3 flex items-center justify-between">
-						<h2 class="text-xs font-semibold uppercase tracking-widest text-ayu-muted">Live Standings</h2>
+						<h2 class="text-xs font-semibold tracking-widest text-ayu-muted uppercase">
+							Live Standings
+						</h2>
 						<button
 							onclick={copyStandings}
-							class="flex items-center gap-1 text-xs transition {standingsCopied ? 'text-ayu-green' : 'text-ayu-muted hover:text-white'}"
+							class="flex items-center gap-1 text-xs transition {standingsCopied
+								? 'text-ayu-green'
+								: 'text-ayu-muted hover:text-white'}"
 							title="Copy standings"
 						>
 							{#if standingsCopied}
-								<svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+								<svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+									><path
+										d="M5 13l4 4L19 7"
+										stroke="currentColor"
+										stroke-width="2"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+									/></svg
+								>
 								Copied!
 							{:else}
 								<svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-									<path fill-rule="evenodd" clip-rule="evenodd" d="M19.6495 0.799565C18.4834 -0.72981 16.0093 0.081426 16.0093 1.99313V3.91272C12.2371 3.86807 9.65665 5.16473 7.9378 6.97554C6.10034 8.9113 5.34458 11.3314 5.02788 12.9862C4.86954 13.8135 5.41223 14.4138 5.98257 14.6211C6.52743 14.8191 7.25549 14.7343 7.74136 14.1789C9.12036 12.6027 11.7995 10.4028 16.0093 10.5464V13.0069C16.0093 14.9186 18.4834 15.7298 19.6495 14.2004L23.3933 9.29034C24.2022 8.2294 24.2022 6.7706 23.3933 5.70966L19.6495 0.799565Z" fill="currentColor"/>
-									<path d="M7 1.00391H4C2.34315 1.00391 1 2.34705 1 4.00391V20.0039C1 21.6608 2.34315 23.0039 4 23.0039H20C21.6569 23.0039 23 21.6608 23 20.0039V17.0039C23 16.4516 22.5523 16.0039 22 16.0039C21.4477 16.0039 21 16.4516 21 17.0039V20.0039C21 20.5562 20.5523 21.0039 20 21.0039H4C3.44772 21.0039 3 20.5562 3 20.0039V4.00391C3 3.45162 3.44772 3.00391 4 3.00391H7C7.55228 3.00391 8 2.55619 8 2.00391C8 1.45162 7.55228 1.00391 7 1.00391Z" fill="currentColor"/>
+									<path
+										fill-rule="evenodd"
+										clip-rule="evenodd"
+										d="M19.6495 0.799565C18.4834 -0.72981 16.0093 0.081426 16.0093 1.99313V3.91272C12.2371 3.86807 9.65665 5.16473 7.9378 6.97554C6.10034 8.9113 5.34458 11.3314 5.02788 12.9862C4.86954 13.8135 5.41223 14.4138 5.98257 14.6211C6.52743 14.8191 7.25549 14.7343 7.74136 14.1789C9.12036 12.6027 11.7995 10.4028 16.0093 10.5464V13.0069C16.0093 14.9186 18.4834 15.7298 19.6495 14.2004L23.3933 9.29034C24.2022 8.2294 24.2022 6.7706 23.3933 5.70966L19.6495 0.799565Z"
+										fill="currentColor"
+									/>
+									<path
+										d="M7 1.00391H4C2.34315 1.00391 1 2.34705 1 4.00391V20.0039C1 21.6608 2.34315 23.0039 4 23.0039H20C21.6569 23.0039 23 21.6608 23 20.0039V17.0039C23 16.4516 22.5523 16.0039 22 16.0039C21.4477 16.0039 21 16.4516 21 17.0039V20.0039C21 20.5562 20.5523 21.0039 20 21.0039H4C3.44772 21.0039 3 20.5562 3 20.0039V4.00391C3 3.45162 3.44772 3.00391 4 3.00391H7C7.55228 3.00391 8 2.55619 8 2.00391C8 1.45162 7.55228 1.00391 7 1.00391Z"
+										fill="currentColor"
+									/>
 								</svg>
 								Share
 							{/if}
 						</button>
 					</div>
 					<div class="rounded-xl border border-ayu-border bg-ayu-surface p-4">
-						<MedalTally {tally} currentPlayerId={player.id} playerStats={playerDayStats} {prevRankMap} {completedPlayerIds} {prevWinnerId} {prevFullRanking} {totalGames} {playerGameCounts} {featuredWinnerIds} />
+						<MedalTally
+							{tally}
+							currentPlayerId={player.id}
+							playerStats={playerDayStats}
+							{prevRankMap}
+							{completedPlayerIds}
+							{prevWinnerId}
+							{prevFullRanking}
+							{totalGames}
+							{playerGameCounts}
+							{featuredWinnerIds}
+						/>
 					</div>
 				</div>
 			{/if}
 
-
-
 			<!-- Badges -->
 			{#if sessionBadges.length > 0}
 				<div class="rounded-xl border border-ayu-border bg-ayu-surface p-5">
-					<h2 class="mb-4 text-xs font-semibold uppercase tracking-widest text-ayu-muted">Badges</h2>
+					<h2 class="mb-4 text-xs font-semibold tracking-widest text-ayu-muted uppercase">
+						Badges
+					</h2>
 					<div class="flex flex-wrap gap-3">
 						{#each sessionBadges as badge (badge.id)}
 							<div
@@ -668,12 +882,17 @@
 							>
 								<span class="text-xl leading-none">{badge.emoji}</span>
 								<div>
-									<p class="text-sm font-semibold text-white leading-tight">{badge.name}</p>
+									<p class="text-sm leading-tight font-semibold text-white">{badge.name}</p>
 									{#if badge.gameName}
-										<p class="text-xs text-ayu-muted leading-tight">{badge.gameEmoji} {badge.gameName}</p>
+										<p class="text-xs leading-tight text-ayu-muted">
+											{badge.gameEmoji}
+											{badge.gameName}
+										</p>
 									{/if}
 								</div>
-								<div class="pointer-events-none absolute bottom-full left-0 mb-2 z-10 w-48 rounded-lg border border-ayu-border bg-zinc-900 px-3 py-2 text-xs text-zinc-300 opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+								<div
+									class="pointer-events-none absolute bottom-full left-0 z-10 mb-2 w-48 rounded-lg border border-ayu-border bg-zinc-900 px-3 py-2 text-xs text-zinc-300 opacity-0 shadow-lg transition-opacity group-hover:opacity-100"
+								>
 									{badge.description}
 								</div>
 							</div>
@@ -693,7 +912,9 @@
 		<div class="space-y-1">
 			{#each prevFullRanking as r}
 				<div class="flex items-center justify-between gap-3">
-					<span class="{r.rank === 1 ? 'text-ayu-gold' : 'text-zinc-300'}">#{r.rank} {r.player_name}</span>
+					<span class={r.rank === 1 ? 'text-ayu-gold' : 'text-zinc-300'}
+						>#{r.rank} {r.player_name}</span
+					>
 					<span class="font-mono text-ayu-muted">{r.total}</span>
 				</div>
 			{/each}

@@ -42,7 +42,9 @@ export const load: PageServerLoad = async ({ params }) => {
 
 	// Build shareable text
 	const dateStr = new Date(session.date + 'T12:00:00').toLocaleDateString('en-US', {
-		weekday: 'long', month: 'long', day: 'numeric'
+		weekday: 'long',
+		month: 'long',
+		day: 'numeric'
 	});
 
 	const lines: string[] = [`🏅 ${session.name} — ${dateStr}`, ''];
@@ -50,15 +52,15 @@ export const load: PageServerLoad = async ({ params }) => {
 	if (tally.length > 0) {
 		lines.push('Overall standings:');
 		tally.slice(0, 3).forEach((t, i) => {
-			lines.push(`${['🥇','🥈','🥉'][i]} ${t.player_name}`);
+			lines.push(`${['🥇', '🥈', '🥉'][i]} ${t.player_name}`);
 		});
 		lines.push('');
 	}
 
 	for (const { game, scores: ranked } of gameResults) {
 		if (ranked.length === 0) continue;
-		const parts = ranked.map((r) =>
-			`${r.player_name} (${r.raw_score})${r.medal ? ' ' + MEDAL_EMOJI[r.medal] : ''}`
+		const parts = ranked.map(
+			(r) => `${r.player_name} (${r.raw_score})${r.medal ? ' ' + MEDAL_EMOJI[r.medal] : ''}`
 		);
 		lines.push(`${game.icon_emoji ?? '🎮'} ${game.name}: ${parts.join('  ')}`);
 	}

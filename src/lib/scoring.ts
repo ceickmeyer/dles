@@ -23,7 +23,11 @@ export interface MedalTally {
 	total: number;
 }
 
-export function rankScores(scores: PlayerScore[], direction: ScoringDirection, dnfValue?: number | null): RankedScore[] {
+export function rankScores(
+	scores: PlayerScore[],
+	direction: ScoringDirection,
+	dnfValue?: number | null
+): RankedScore[] {
 	if (scores.length === 0) return [];
 
 	const sorted = [...scores].sort((a, b) =>
@@ -39,7 +43,11 @@ export function rankScores(scores: PlayerScore[], direction: ScoringDirection, d
 			currentRank = i + 1;
 		}
 		const isDnf = dnfValue != null && sorted[i].raw_score === dnfValue;
-		ranked.push({ ...sorted[i], rank: currentRank, medal: isDnf ? null : medalForRank(currentRank) });
+		ranked.push({
+			...sorted[i],
+			rank: currentRank,
+			medal: isDnf ? null : medalForRank(currentRank)
+		});
 	}
 
 	return ranked;
@@ -84,14 +92,25 @@ export function computeSessionTally(
 				});
 			}
 			const t = tally.get(score.player_id)!;
-			if (score.medal === 'gold') { t.gold++; t.total += isSpecial ? 5 : 4; }
-			else if (score.medal === 'silver') { t.silver++; t.total += 2; }
-			else if (score.medal === 'bronze') { t.bronze++; t.total += 1; }
+			if (score.medal === 'gold') {
+				t.gold++;
+				t.total += isSpecial ? 5 : 4;
+			} else if (score.medal === 'silver') {
+				t.silver++;
+				t.total += 2;
+			} else if (score.medal === 'bronze') {
+				t.bronze++;
+				t.total += 1;
+			}
 		}
 	}
 
 	return tally;
 }
+
+export const LEADERBOARD_MIN_PLAYS = 3;
+export const LEADERBOARD_ROLLING_WINDOW = 10;
+export const LEADERBOARD_MIN_DAYS = 10;
 
 export function sortTally(tally: MedalTally[]): MedalTally[] {
 	return [...tally].sort((a, b) => {

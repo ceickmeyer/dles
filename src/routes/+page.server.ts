@@ -3,7 +3,9 @@ import { sortSessionGames, displayName } from '$lib/utils';
 import { rankScores, computeSessionTally, sortTally } from '$lib/scoring';
 import type { PageServerLoad } from './$types';
 
-function computeNextSession(schedules: { name: string; days_of_week: number[]; session_name_template: string }[]) {
+function computeNextSession(
+	schedules: { name: string; days_of_week: number[]; session_name_template: string }[]
+) {
 	const now = new Date();
 	const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(now);
 	const [y, m, d] = todayStr.split('-').map(Number);
@@ -19,7 +21,11 @@ function computeNextSession(schedules: { name: string; days_of_week: number[]; s
 			if (days.includes(dow)) {
 				if (!best || ahead < best.daysAhead) {
 					const date = new Date(todayNY.getTime() + ahead * 86400000);
-					const dateLabel = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).format(date);
+					const dateLabel = new Intl.DateTimeFormat('en-US', {
+						weekday: 'long',
+						month: 'long',
+						day: 'numeric'
+					}).format(date);
 					const label = schedule.session_name_template.replace('{date}', dateLabel);
 					best = { daysAhead: ahead, label };
 				}
@@ -50,13 +56,15 @@ function tallyFromScores(scores: ScoreRow[], specialGameId?: string): ReturnType
 	const gameResults = [...byGame.entries()].map(([gameId, group]) => ({
 		isSpecial: gameId === specialGameId,
 		scores: rankScores(
-			group.map(s => ({
+			group.map((s) => ({
 				player_id: s.player_id,
 				player_name: displayName(s.player),
-				raw_score: s.raw_score,
+				raw_score: s.raw_score
 			})),
 			group[0].game.scoring_direction as 'higher_is_better' | 'lower_is_better',
-			group[0].game.allow_dnf && group[0].game.max_score !== null ? group[0].game.max_score + 1 : null
+			group[0].game.allow_dnf && group[0].game.max_score !== null
+				? group[0].game.max_score + 1
+				: null
 		)
 	}));
 	return sortTally([...computeSessionTally(gameResults).values()]);
@@ -78,21 +86,29 @@ async function loadPrevWinners(excludeSessionId: string | null) {
 	const [{ data: allScores }, { data: specialGameRows }] = await Promise.all([
 		supabase
 			.from('scores')
-			.select('session_id, game_id, player_id, raw_score, player:players(name, alias), game:games(scoring_direction, max_score, allow_dnf)')
-			.in('session_id', sessions.map(s => s.id)),
+			.select(
+				'session_id, game_id, player_id, raw_score, player:players(name, alias), game:games(scoring_direction, max_score, allow_dnf)'
+			)
+			.in(
+				'session_id',
+				sessions.map((s) => s.id)
+			),
 		supabase
 			.from('session_games')
 			.select('session_id, game_id')
 			.eq('is_special', true)
-			.in('session_id', sessions.map(s => s.id)),
+			.in(
+				'session_id',
+				sessions.map((s) => s.id)
+			)
 	]);
 
 	if (!allScores?.length) return null;
 
-	const specialGameMap = new Map((specialGameRows ?? []).map(sg => [sg.session_id, sg.game_id]));
+	const specialGameMap = new Map((specialGameRows ?? []).map((sg) => [sg.session_id, sg.game_id]));
 
 	const prevId = sessions[0].id;
-	const prevScores = (allScores as ScoreRow[]).filter(s => s.session_id === prevId);
+	const prevScores = (allScores as ScoreRow[]).filter((s) => s.session_id === prevId);
 	if (!prevScores.length) return null;
 
 	const tally = tallyFromScores(prevScores, specialGameMap.get(prevId));
@@ -100,7 +116,9 @@ async function loadPrevWinners(excludeSessionId: string | null) {
 
 	const outOf = tally.length;
 	const ranks = tally.map((row, _, arr) => {
-		const first = arr.findIndex(r => r.gold === row.gold && r.silver === row.silver && r.bronze === row.bronze);
+		const first = arr.findIndex(
+			(r) => r.gold === row.gold && r.silver === row.silver && r.bronze === row.bronze
+		);
 		return { player_id: row.player_id, rank: first + 1, outOf };
 	});
 
@@ -108,33 +126,36 @@ async function loadPrevWinners(excludeSessionId: string | null) {
 		player_id: row.player_id,
 		player_name: row.player_name,
 		rank: ranks[idx].rank,
-		total: row.total,
+		total: row.total
 	}));
 
 	const goldWinnerId = tally[0].player_id;
 	let goldStreak = 1;
 	for (let i = 1; i < sessions.length; i++) {
-		const sessionScores = (allScores as ScoreRow[]).filter(s => s.session_id === sessions[i].id);
-		const winner = tallyFromScores(sessionScores, specialGameMap.get(sessions[i].id))[0]?.player_id ?? null;
+		const sessionScores = (allScores as ScoreRow[]).filter((s) => s.session_id === sessions[i].id);
+		const winner =
+			tallyFromScores(sessionScores, specialGameMap.get(sessions[i].id))[0]?.player_id ?? null;
 		if (winner === goldWinnerId) goldStreak++;
 		else break;
 	}
 
-	const medalEmoji = (rank: number) => rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉';
+	const medalEmoji = (rank: number) => (rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉');
 
 	return {
 		winners: tally
 			.map((t, idx) => ({ ...t, rank: ranks[idx].rank }))
-			.filter(t => t.rank <= 3)
-			.map(t => ({
+			.filter((t) => t.rank <= 3)
+			.map((t) => ({
 				player_id: t.player_id,
 				player_name: t.player_name,
 				medal: medalEmoji(t.rank),
-				gold: t.gold, silver: t.silver, bronze: t.bronze,
-				goldStreak: t.rank === 1 && goldStreak >= 2 ? goldStreak : null,
+				gold: t.gold,
+				silver: t.silver,
+				bronze: t.bronze,
+				goldStreak: t.rank === 1 && goldStreak >= 2 ? goldStreak : null
 			})),
 		ranks,
-		fullRanking,
+		fullRanking
 	};
 }
 
@@ -150,18 +171,28 @@ export const load: PageServerLoad = async () => {
 
 	if (!session) {
 		const [{ data: schedules }, prevData] = await Promise.all([
-			supabase.from('schedules').select('name, days_of_week, session_name_template').eq('active', true),
-			loadPrevWinners(null),
+			supabase
+				.from('schedules')
+				.select('name, days_of_week, session_name_template')
+				.eq('active', true),
+			loadPrevWinners(null)
 		]);
 		const nextSession = schedules ? computeNextSession(schedules) : null;
-		return { session: null, scores: [], nextSession, prevWinners: prevData?.winners ?? null, prevRanks: prevData?.ranks ?? [], prevFullRanking: prevData?.fullRanking ?? [] };
+		return {
+			session: null,
+			scores: [],
+			nextSession,
+			prevWinners: prevData?.winners ?? null,
+			prevRanks: prevData?.ranks ?? [],
+			prevFullRanking: prevData?.fullRanking ?? []
+		};
 	}
 
 	const sessionGames = sortSessionGames(session.session_games ?? []);
 
 	const [{ data: scores }, prevData] = await Promise.all([
 		supabase.from('scores').select('*, player:players(name, alias)').eq('session_id', session.id),
-		loadPrevWinners(session.id),
+		loadPrevWinners(session.id)
 	]);
 
 	return {
@@ -170,6 +201,6 @@ export const load: PageServerLoad = async () => {
 		nextSession: null,
 		prevWinners: prevData?.winners ?? null,
 		prevRanks: prevData?.ranks ?? [],
-		prevFullRanking: prevData?.fullRanking ?? [],
+		prevFullRanking: prevData?.fullRanking ?? []
 	};
 };

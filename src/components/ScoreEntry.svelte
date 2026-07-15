@@ -44,14 +44,20 @@
 	async function confirmParsed(score: number) {
 		showConfirm = false;
 		const validationError = validateScore(score);
-		if (validationError) { error = validationError; return; }
+		if (validationError) {
+			error = validationError;
+			return;
+		}
 		await doSubmit(score, shareText.trim());
 	}
 
 	async function submitManual() {
 		const n = Number(manualScore);
 		const validationError = validateScore(n);
-		if (validationError) { error = validationError; return; }
+		if (validationError) {
+			error = validationError;
+			return;
+		}
 		await doSubmit(n);
 	}
 
@@ -98,7 +104,9 @@
 							{parsedScore}
 							maxScore={game.max_score}
 							onconfirm={confirmParsed}
-							oncancel={() => { showConfirm = false; }}
+							oncancel={() => {
+								showConfirm = false;
+							}}
 						/>
 					</div>
 				{:else}
@@ -111,7 +119,7 @@
 					</button>
 				{/if}
 			</div>
-			<div class="flex items-center gap-3 text-zinc-500 text-xs">
+			<div class="flex items-center gap-3 text-xs text-zinc-500">
 				<div class="h-px flex-1 bg-zinc-700"></div>
 				<span>or enter manually</span>
 				<div class="h-px flex-1 bg-zinc-700"></div>
@@ -158,8 +166,8 @@
 
 		{#if existingScore !== null}
 			<p class="text-xs text-zinc-400">
-				You already submitted <strong class="text-white">{existingScore}</strong> — submitting again
-				will overwrite it.
+				You already submitted <strong class="text-white">{existingScore}</strong> — submitting again will
+				overwrite it.
 			</p>
 		{/if}
 

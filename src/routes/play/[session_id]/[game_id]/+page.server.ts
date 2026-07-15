@@ -11,11 +11,7 @@ export const load: PageServerLoad = async ({ params }) => {
 
 	if (!session) error(404, 'Session not found');
 
-	const { data: game } = await supabase
-		.from('games')
-		.select('*')
-		.eq('id', params.game_id)
-		.single();
+	const { data: game } = await supabase.from('games').select('*').eq('id', params.game_id).single();
 
 	if (!game) error(404, 'Game not found');
 

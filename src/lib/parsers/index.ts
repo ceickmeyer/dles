@@ -70,7 +70,11 @@ export function testCustomRegex(regex: string, text: string): number | null {
 	}
 }
 
-export function parseShareText(text: string, parserKey: string | null, shareRegex?: string | null): number | null {
+export function parseShareText(
+	text: string,
+	parserKey: string | null,
+	shareRegex?: string | null
+): number | null {
 	if (!parserKey) return null;
 	if (parserKey === 'custom') return shareRegex ? testCustomRegex(shareRegex, text) : null;
 	const parser = PARSERS[parserKey];

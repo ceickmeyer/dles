@@ -18,8 +18,13 @@
 
 	function initDrafts(): DayDraft[] {
 		return DAYS.map((_, i) => {
-			const row = (data.schedule as { day_of_week: number; game_ids: string[]; special_game_id: string | null }[])
-				.find(s => s.day_of_week === i);
+			const row = (
+				data.schedule as {
+					day_of_week: number;
+					game_ids: string[];
+					special_game_id: string | null;
+				}[]
+			).find((s) => s.day_of_week === i);
 			return {
 				gameIds: row ? [...row.game_ids] : [],
 				specialGameId: row?.special_game_id ?? null,
@@ -35,7 +40,7 @@
 	let scheduleMsg = $state('');
 	let scheduleMsgType = $state<'ok' | 'err'>('ok');
 
-	const gameMap = $derived(new Map((data.games as GameInfo[]).map(g => [g.id, g])));
+	const gameMap = $derived(new Map((data.games as GameInfo[]).map((g) => [g.id, g])));
 
 	async function triggerScheduler() {
 		scheduling = true;
@@ -43,9 +48,11 @@
 		try {
 			const result = await runScheduler(supabase);
 			const parts: string[] = [];
-			if (result.finished) parts.push(`Finished ${result.finished} stale session${result.finished > 1 ? 's' : ''}`);
+			if (result.finished)
+				parts.push(`Finished ${result.finished} stale session${result.finished > 1 ? 's' : ''}`);
 			if (result.created) parts.push(`Created "${result.sessionName}"`);
-			else if (result.skippedReason === 'session_exists') parts.push('Today\'s session already exists');
+			else if (result.skippedReason === 'session_exists')
+				parts.push("Today's session already exists");
 			else if (result.skippedReason === 'no_schedule') parts.push('No games configured for today');
 			scheduleMsg = parts.join(' · ');
 			scheduleMsgType = 'ok';
@@ -67,8 +74,11 @@
 				{ onConflict: 'day_of_week' }
 			);
 		d.saving = false;
-		if (error) { d.error = error.message; }
-		else { d.dirty = false; }
+		if (error) {
+			d.error = error.message;
+		} else {
+			d.dirty = false;
+		}
 	}
 
 	function copyToAll(i: number) {
@@ -91,7 +101,7 @@
 
 	function removeGame(i: number, gameId: string) {
 		const d = drafts[i];
-		d.gameIds = d.gameIds.filter(id => id !== gameId);
+		d.gameIds = d.gameIds.filter((id) => id !== gameId);
 		if (d.specialGameId === gameId) d.specialGameId = null;
 		d.dirty = true;
 	}
@@ -122,7 +132,7 @@
 
 	function availableGames(i: number): GameInfo[] {
 		const added = new Set(drafts[i].gameIds);
-		return (data.games as GameInfo[]).filter(g => !added.has(g.id));
+		return (data.games as GameInfo[]).filter((g) => !added.has(g.id));
 	}
 </script>
 
@@ -130,15 +140,21 @@
 	<div class="flex items-start justify-between gap-4">
 		<div>
 			<h1 class="text-2xl font-bold text-white">Weekly Schedule</h1>
-			<p class="mt-0.5 text-sm text-ayu-muted">Repeats every week. ⭐ = featured game of the day.</p>
+			<p class="mt-0.5 text-sm text-ayu-muted">
+				Repeats every week. ⭐ = featured game of the day.
+			</p>
 		</div>
 		<div class="flex shrink-0 flex-col items-end gap-1.5">
 			<div class="flex gap-2">
-				{#if drafts.some(d => d.dirty)}
+				{#if drafts.some((d) => d.dirty)}
 					<button
-						onclick={() => drafts.forEach((_, i) => { if (drafts[i].dirty) save(i); })}
+						onclick={() =>
+							drafts.forEach((_, i) => {
+								if (drafts[i].dirty) save(i);
+							})}
 						class="rounded-lg border border-ayu-gold px-4 py-2 text-sm font-bold text-ayu-gold transition hover:bg-ayu-gold/10"
-					>Save all</button>
+						>Save all</button
+					>
 				{/if}
 				<button
 					onclick={triggerScheduler}
@@ -149,7 +165,9 @@
 				</button>
 			</div>
 			{#if scheduleMsg}
-				<p class="text-xs {scheduleMsgType === 'err' ? 'text-ayu-red' : 'text-ayu-green'}">{scheduleMsg}</p>
+				<p class="text-xs {scheduleMsgType === 'err' ? 'text-ayu-red' : 'text-ayu-green'}">
+					{scheduleMsg}
+				</p>
 			{/if}
 		</div>
 	</div>
@@ -157,8 +175,11 @@
 	<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
 		{#each DAYS as dayName, i}
 			{@const d = drafts[i]}
-			<div class="flex flex-col overflow-hidden rounded-xl border transition-colors {d.dirty ? 'border-ayu-gold/60' : 'border-ayu-border'} bg-ayu-surface">
-
+			<div
+				class="flex flex-col overflow-hidden rounded-xl border transition-colors {d.dirty
+					? 'border-ayu-gold/60'
+					: 'border-ayu-border'} bg-ayu-surface"
+			>
 				<!-- Day header -->
 				<div class="flex items-center justify-between gap-2 border-b border-ayu-border px-4 py-3">
 					<p class="font-semibold text-white">{dayName}</p>
@@ -168,7 +189,8 @@
 								onclick={() => copyToAll(i)}
 								title="Copy these games to all other days"
 								class="rounded-lg px-2 py-1 text-xs text-ayu-muted transition hover:text-white"
-							>→ all</button>
+								>→ all</button
+							>
 						{/if}
 						<button
 							onclick={() => save(i)}
@@ -182,18 +204,22 @@
 				</div>
 
 				<!-- Game list -->
-				<div class="flex-1 p-3 space-y-0.5">
+				<div class="flex-1 space-y-0.5 p-3">
 					{#if d.gameIds.length === 0}
 						<p class="py-4 text-center text-xs text-ayu-muted">No games configured.</p>
 					{:else}
 						{#each d.gameIds as gameId, gi}
 							{@const game = gameMap.get(gameId)}
 							{#if game}
-								<div class="group flex items-center gap-1.5 rounded-lg px-1.5 py-1 hover:bg-ayu-surface2">
+								<div
+									class="group flex items-center gap-1.5 rounded-lg px-1.5 py-1 hover:bg-ayu-surface2"
+								>
 									<button
 										onclick={() => toggleSpecial(i, gameId)}
 										title="Set as featured game"
-										class="shrink-0 text-sm leading-none transition {d.specialGameId === gameId ? 'text-ayu-gold' : 'text-zinc-600 hover:text-zinc-400'}"
+										class="shrink-0 text-sm leading-none transition {d.specialGameId === gameId
+											? 'text-ayu-gold'
+											: 'text-zinc-600 hover:text-zinc-400'}"
 									>
 										{d.specialGameId === gameId ? '⭐' : '☆'}
 									</button>
@@ -204,16 +230,19 @@
 											onclick={() => moveUp(i, gi)}
 											disabled={gi === 0}
 											class="flex h-5 w-5 items-center justify-center rounded text-xs text-ayu-muted hover:text-white disabled:opacity-20"
-										>↑</button>
+											>↑</button
+										>
 										<button
 											onclick={() => moveDown(i, gi)}
 											disabled={gi === d.gameIds.length - 1}
 											class="flex h-5 w-5 items-center justify-center rounded text-xs text-ayu-muted hover:text-white disabled:opacity-20"
-										>↓</button>
+											>↓</button
+										>
 										<button
 											onclick={() => removeGame(i, gameId)}
 											class="flex h-5 w-5 items-center justify-center rounded text-xs text-ayu-muted hover:text-ayu-red"
-										>×</button>
+											>×</button
+										>
 									</div>
 								</div>
 							{/if}
@@ -222,7 +251,7 @@
 				</div>
 
 				<!-- Add game -->
-				<div class="border-t border-ayu-border px-3 pb-3 pt-2">
+				<div class="border-t border-ayu-border px-3 pt-2 pb-3">
 					<select
 						onchange={(e) => {
 							addGame(i, (e.target as HTMLSelectElement).value);
@@ -239,7 +268,6 @@
 						<p class="mt-1 text-xs text-ayu-red">{d.error}</p>
 					{/if}
 				</div>
-
 			</div>
 		{/each}
 	</div>

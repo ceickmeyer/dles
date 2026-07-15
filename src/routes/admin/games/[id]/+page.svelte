@@ -9,7 +9,9 @@
 	let url = $state(data.game.url ?? '');
 	let description = $state(data.game.description ?? '');
 	let iconEmoji = $state(data.game.icon_emoji ?? '');
-	let scoringDirection = $state<'higher_is_better' | 'lower_is_better'>(data.game.scoring_direction);
+	let scoringDirection = $state<'higher_is_better' | 'lower_is_better'>(
+		data.game.scoring_direction
+	);
 	let maxScore = $state(data.game.max_score?.toString() ?? '');
 	let shareParser = $state(data.game.share_parser ?? '');
 	let shareRegex = $state(data.game.share_regex ?? '');
@@ -27,22 +29,31 @@
 	});
 
 	async function save() {
-		if (!name.trim()) { error = 'Name is required.'; return; }
-		if (shareParser === 'custom' && !shareRegex.trim()) { error = 'Enter a regex pattern for the custom parser.'; return; }
+		if (!name.trim()) {
+			error = 'Name is required.';
+			return;
+		}
+		if (shareParser === 'custom' && !shareRegex.trim()) {
+			error = 'Enter a regex pattern for the custom parser.';
+			return;
+		}
 		saving = true;
 		error = '';
-		const { error: e } = await supabase.from('games').update({
-			name: name.trim(),
-			url: url.trim() || null,
-			icon_emoji: iconEmoji.trim() || null,
-			description: description.trim() || null,
-			scoring_direction: scoringDirection,
-			max_score: maxScore ? parseInt(maxScore, 10) : null,
-			share_parser: shareParser || null,
-			share_regex: shareParser === 'custom' ? (shareRegex.trim() || null) : null,
-			allow_dnf: allowDnf,
-			input_mode: inputMode
-		}).eq('id', data.game.id);
+		const { error: e } = await supabase
+			.from('games')
+			.update({
+				name: name.trim(),
+				url: url.trim() || null,
+				icon_emoji: iconEmoji.trim() || null,
+				description: description.trim() || null,
+				scoring_direction: scoringDirection,
+				max_score: maxScore ? parseInt(maxScore, 10) : null,
+				share_parser: shareParser || null,
+				share_regex: shareParser === 'custom' ? shareRegex.trim() || null : null,
+				allow_dnf: allowDnf,
+				input_mode: inputMode
+			})
+			.eq('id', data.game.id);
 		saving = false;
 		if (e) error = e.message;
 		else goto('/admin/games');
@@ -53,18 +64,36 @@
 		error = '';
 		// Cascade: remove scores and session lineup entries before deleting the game
 		const { error: e1 } = await supabase.from('scores').delete().eq('game_id', data.game.id);
-		if (e1) { error = e1.message; deleting = false; confirmDelete = false; return; }
+		if (e1) {
+			error = e1.message;
+			deleting = false;
+			confirmDelete = false;
+			return;
+		}
 		const { error: e2 } = await supabase.from('session_games').delete().eq('game_id', data.game.id);
-		if (e2) { error = e2.message; deleting = false; confirmDelete = false; return; }
+		if (e2) {
+			error = e2.message;
+			deleting = false;
+			confirmDelete = false;
+			return;
+		}
 		const { error: e3 } = await supabase.from('games').delete().eq('id', data.game.id);
-		if (e3) { error = e3.message; deleting = false; confirmDelete = false; return; }
+		if (e3) {
+			error = e3.message;
+			deleting = false;
+			confirmDelete = false;
+			return;
+		}
 		goto('/admin/games');
 	}
 </script>
 
 <div class="max-w-lg space-y-6">
 	<div>
-		<a href="/admin/games" class="mb-4 inline-flex items-center gap-1 text-sm text-ayu-muted hover:text-white">← Games</a>
+		<a
+			href="/admin/games"
+			class="mb-4 inline-flex items-center gap-1 text-sm text-ayu-muted hover:text-white">← Games</a
+		>
 		<h1 class="text-2xl font-bold text-white">Edit Game</h1>
 	</div>
 
@@ -101,7 +130,9 @@
 
 		<div>
 			<label class="mb-1.5 block text-sm font-medium text-zinc-300" for="description">
-				Info tooltip <span class="text-ayu-muted font-normal">(optional — shown on hover of ℹ icon)</span>
+				Info tooltip <span class="font-normal text-ayu-muted"
+					>(optional — shown on hover of ℹ icon)</span
+				>
 			</label>
 			<textarea
 				id="description"
@@ -116,34 +147,49 @@
 			<p class="mb-2 text-sm font-medium text-zinc-300">Scoring direction *</p>
 			<div class="flex flex-wrap gap-4">
 				<label class="flex cursor-pointer items-center gap-2 text-sm text-zinc-300">
-					<input type="radio" bind:group={scoringDirection} value="lower_is_better" class="accent-ayu-gold" />
+					<input
+						type="radio"
+						bind:group={scoringDirection}
+						value="lower_is_better"
+						class="accent-ayu-gold"
+					/>
 					Lower is better (Wordle, Framed…)
 				</label>
 				<label class="flex cursor-pointer items-center gap-2 text-sm text-zinc-300">
-					<input type="radio" bind:group={scoringDirection} value="higher_is_better" class="accent-ayu-gold" />
+					<input
+						type="radio"
+						bind:group={scoringDirection}
+						value="higher_is_better"
+						class="accent-ayu-gold"
+					/>
 					Higher is better (TimeGuessr…)
 				</label>
 			</div>
 		</div>
 
 		<label class="flex cursor-pointer items-center gap-3">
-			<input type="checkbox" bind:checked={allowDnf} class="accent-ayu-gold h-4 w-4" />
+			<input type="checkbox" bind:checked={allowDnf} class="h-4 w-4 accent-ayu-gold" />
 			<span class="text-sm text-zinc-300">Allow "Did not solve" option</span>
 		</label>
 
 		<div>
 			<p class="mb-2 text-sm font-medium text-zinc-300">Score entry mode</p>
 			<div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
-				{#each [
-					{ value: 'auto',    label: 'Auto' },
-					{ value: 'buttons', label: 'Buttons only' },
-					{ value: 'parser',  label: 'Paste & parse' },
-					{ value: 'manual',  label: 'Manual entry' }
-				] as opt}
-					<label class="cursor-pointer rounded-lg border p-2.5 transition text-center
-						{inputMode === opt.value ? 'border-ayu-gold bg-ayu-gold/10' : 'border-ayu-border hover:border-zinc-500'}">
+				{#each [{ value: 'auto', label: 'Auto' }, { value: 'buttons', label: 'Buttons only' }, { value: 'parser', label: 'Paste & parse' }, { value: 'manual', label: 'Manual entry' }] as opt}
+					<label
+						class="cursor-pointer rounded-lg border p-2.5 text-center transition
+						{inputMode === opt.value
+							? 'border-ayu-gold bg-ayu-gold/10'
+							: 'border-ayu-border hover:border-zinc-500'}"
+					>
 						<input type="radio" bind:group={inputMode} value={opt.value} class="sr-only" />
-						<p class="text-sm font-medium {inputMode === opt.value ? 'text-ayu-gold' : 'text-zinc-300'}">{opt.label}</p>
+						<p
+							class="text-sm font-medium {inputMode === opt.value
+								? 'text-ayu-gold'
+								: 'text-zinc-300'}"
+						>
+							{opt.label}
+						</p>
 					</label>
 				{/each}
 			</div>
@@ -161,7 +207,9 @@
 				/>
 			</div>
 			<div>
-				<label class="mb-1.5 block text-sm font-medium text-zinc-300" for="parser">Share parser</label>
+				<label class="mb-1.5 block text-sm font-medium text-zinc-300" for="parser"
+					>Share parser</label
+				>
 				<select
 					id="parser"
 					bind:value={shareParser}
@@ -175,20 +223,28 @@
 		</div>
 
 		{#if shareParser === 'custom'}
-			<div class="rounded-lg border border-ayu-border bg-ayu-bg p-4 space-y-3">
-				<p class="text-xs font-semibold uppercase tracking-wider text-ayu-muted">Custom Regex Builder</p>
+			<div class="space-y-3 rounded-lg border border-ayu-border bg-ayu-bg p-4">
+				<p class="text-xs font-semibold tracking-wider text-ayu-muted uppercase">
+					Custom Regex Builder
+				</p>
 				<div>
-					<label class="mb-1.5 block text-sm font-medium text-zinc-300" for="regex">Regex pattern</label>
+					<label class="mb-1.5 block text-sm font-medium text-zinc-300" for="regex"
+						>Regex pattern</label
+					>
 					<input
 						id="regex"
 						bind:value={shareRegex}
 						placeholder="e.g. Score:\s*(\d+)"
 						class="w-full rounded-lg border border-ayu-border bg-ayu-surface px-3 py-2 font-mono text-sm text-white placeholder-ayu-muted focus:border-ayu-gold focus:outline-none"
 					/>
-					<p class="mt-1 text-xs text-ayu-muted">Use a capture group <code class="text-ayu-gold">(\d+)</code> to extract the number. Case-insensitive.</p>
+					<p class="mt-1 text-xs text-ayu-muted">
+						Use a capture group <code class="text-ayu-gold">(\d+)</code> to extract the number. Case-insensitive.
+					</p>
 				</div>
 				<div>
-					<label class="mb-1.5 block text-sm font-medium text-zinc-300" for="sample">Test with sample text</label>
+					<label class="mb-1.5 block text-sm font-medium text-zinc-300" for="sample"
+						>Test with sample text</label
+					>
 					<textarea
 						id="sample"
 						bind:value={regexSample}
@@ -198,7 +254,11 @@
 					></textarea>
 				</div>
 				{#if regexSample.trim() && shareRegex.trim()}
-					<div class="rounded-lg px-3 py-2 text-sm {regexTestResult !== null ? 'bg-green-900/30 text-green-400' : 'bg-ayu-red/10 text-ayu-red'}">
+					<div
+						class="rounded-lg px-3 py-2 text-sm {regexTestResult !== null
+							? 'bg-green-900/30 text-green-400'
+							: 'bg-ayu-red/10 text-ayu-red'}"
+					>
 						{#if regexTestResult !== null}
 							Parsed: <strong>{regexTestResult}</strong>
 						{:else}
@@ -222,14 +282,17 @@
 		>
 			{saving ? 'Saving…' : 'Save changes'}
 		</button>
-		<a href="/admin/games" class="rounded-lg border border-ayu-border px-4 py-2.5 text-sm text-ayu-muted hover:text-white">
+		<a
+			href="/admin/games"
+			class="rounded-lg border border-ayu-border px-4 py-2.5 text-sm text-ayu-muted hover:text-white"
+		>
 			Cancel
 		</a>
 	</div>
 
 	<!-- Danger zone -->
 	<div class="rounded-xl border border-ayu-red/30 bg-ayu-surface p-5">
-		<h2 class="mb-3 text-sm font-semibold uppercase tracking-wider text-ayu-red">Danger Zone</h2>
+		<h2 class="mb-3 text-sm font-semibold tracking-wider text-ayu-red uppercase">Danger Zone</h2>
 		{#if !confirmDelete}
 			<button
 				onclick={() => (confirmDelete = true)}
@@ -238,7 +301,10 @@
 				Delete game
 			</button>
 		{:else}
-			<p class="mb-3 text-sm text-zinc-300">This cannot be undone. All historical scores and session history for this game will be permanently deleted.</p>
+			<p class="mb-3 text-sm text-zinc-300">
+				This cannot be undone. All historical scores and session history for this game will be
+				permanently deleted.
+			</p>
 			<div class="flex gap-2">
 				<button
 					onclick={deleteGame}
@@ -247,7 +313,10 @@
 				>
 					{deleting ? 'Deleting…' : 'Yes, delete'}
 				</button>
-				<button onclick={() => (confirmDelete = false)} class="rounded-lg border border-ayu-border px-4 py-2 text-sm text-ayu-muted hover:text-white">
+				<button
+					onclick={() => (confirmDelete = false)}
+					class="rounded-lg border border-ayu-border px-4 py-2 text-sm text-ayu-muted hover:text-white"
+				>
 					Cancel
 				</button>
 			</div>

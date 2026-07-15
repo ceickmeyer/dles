@@ -49,7 +49,7 @@
 			<div class="flex items-center justify-between">
 				<div>
 					<p class="font-semibold text-white">{parsed.solved ? '✅ Solved' : '❌ Failed'}</p>
-					<p class="text-xs text-ayu-muted mt-0.5">
+					<p class="mt-0.5 text-xs text-ayu-muted">
 						{parsed.groups}/4 groups · {parsed.mistakes} mistake{parsed.mistakes !== 1 ? 's' : ''}
 					</p>
 				</div>
@@ -64,7 +64,10 @@
 					{submitting ? 'Submitting…' : 'Submit'}
 				</button>
 				<button
-					onclick={() => { parsed = null; shareText = ''; }}
+					onclick={() => {
+						parsed = null;
+						shareText = '';
+					}}
 					class="rounded-lg border border-ayu-border px-3 py-2 text-sm text-ayu-muted hover:text-white"
 				>
 					Re-paste
@@ -86,7 +89,8 @@
 
 	{#if myScore !== null}
 		<p class="text-xs text-ayu-muted">
-			Current: <span class="font-semibold text-white">{myScore} pts</span> — submitting again will overwrite it.
+			Current: <span class="font-semibold text-white">{myScore} pts</span> — submitting again will overwrite
+			it.
 		</p>
 	{/if}
 
