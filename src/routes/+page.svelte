@@ -387,6 +387,10 @@
 				const beats = (v: number, ref: number) => lower ? v < ref : v > ref;
 				const fmtd = formatScore(rawScore, game);
 				const emoji = game.icon_emoji ?? '🎮';
+				const isPerfect = lower ? rawScore === 1 : (game.max_score !== null && rawScore === game.max_score);
+				if (isPerfect) {
+					await supabase.from('messages').insert({ session_id: session!.id, player_id: null, player_name: '__perfect__', content: `${name} scored a perfect ${fmtd} on ${emoji} ${game.name}!` });
+				}
 				if (prevSR !== null && beats(rawScore, prevSR)) {
 					await supabase.from('messages').insert({ session_id: session!.id, player_id: null, player_name: '__sr__', content: `${name} set a new server record for ${emoji} ${game.name} — ${fmtd}` });
 				} else if (prevPB !== null && beats(rawScore, prevPB)) {

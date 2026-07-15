@@ -49,14 +49,15 @@
 		let i = 0;
 		while (i < messages.length) {
 			const m = messages[i];
-			if (isLogMsg(m)) {
+			if (m.player_id === null && m.player_name === '__log__') {
 				const player = logPlayer(m.content);
 				if (player) {
 					const run: Message[] = [m];
 					let j = i + 1;
 					while (
 						j < messages.length &&
-						isLogMsg(messages[j]) &&
+						messages[j].player_id === null &&
+						messages[j].player_name === '__log__' &&
 						logPlayer(messages[j].content) === player
 					) {
 						run.push(messages[j]);
@@ -174,9 +175,9 @@
 								<!-- Single system/log message -->
 								{@const pn = group.msg.player_name}
 								<div class="flex items-center gap-2 py-0.5">
-									<div class="flex-1 h-px {pn === '__sr__' ? 'bg-ayu-gold/40' : pn === '__pb__' ? 'bg-ayu-green/40' : 'bg-ayu-border'}"></div>
-									<span class="px-1 text-center text-xs {pn === '__sr__' ? 'font-semibold text-ayu-gold' : pn === '__pb__' ? 'text-ayu-green' : 'text-ayu-blue/80'}">{group.msg.content}</span>
-									<div class="flex-1 h-px {pn === '__sr__' ? 'bg-ayu-gold/40' : pn === '__pb__' ? 'bg-ayu-green/40' : 'bg-ayu-border'}"></div>
+									<div class="flex-1 h-px {pn === '__sr__' ? 'bg-ayu-gold/40' : pn === '__pb__' ? 'bg-ayu-green/40' : pn === '__perfect__' ? 'bg-ayu-purple/40' : 'bg-ayu-border'}"></div>
+									<span class="px-1 text-center text-xs {pn === '__sr__' || pn === '__perfect__' ? 'font-semibold' : ''}" style="{pn === '__sr__' ? 'color:var(--color-ayu-gold)' : pn === '__pb__' ? 'color:var(--color-ayu-green)' : pn === '__perfect__' ? 'color:var(--color-ayu-purple)' : 'color:var(--color-ayu-blue);opacity:0.8'}">{group.msg.content}</span>
+									<div class="flex-1 h-px {pn === '__sr__' ? 'bg-ayu-gold/40' : pn === '__pb__' ? 'bg-ayu-green/40' : pn === '__perfect__' ? 'bg-ayu-purple/40' : 'bg-ayu-border'}"></div>
 								</div>
 							{:else}
 								<!-- Regular chat message -->
