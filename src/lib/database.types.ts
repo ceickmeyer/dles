@@ -177,16 +177,19 @@ export interface Database {
 					day_of_week: number;
 					game_ids: string[];
 					special_game_id: string | null;
+					random_special: boolean;
 				};
 				Insert: {
 					day_of_week: number;
 					game_ids?: string[];
 					special_game_id?: string | null;
+					random_special?: boolean;
 				};
 				Update: {
 					day_of_week?: number;
 					game_ids?: string[];
 					special_game_id?: string | null;
+					random_special?: boolean;
 				};
 				Relationships: [
 					{

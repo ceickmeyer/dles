@@ -75,11 +75,17 @@ export async function runScheduler(supabase: SupabaseClient<Database>): Promise<
 
 	if (error || !session) return { created: false, finished };
 
-	const gameInserts = (schedule.game_ids as string[]).map((gameId, i) => ({
+	const gameIds = schedule.game_ids as string[];
+	let specialGameId: string | null = schedule.special_game_id;
+	if (schedule.random_special && gameIds.length > 0) {
+		specialGameId = gameIds[Math.floor(Math.random() * gameIds.length)];
+	}
+
+	const gameInserts = gameIds.map((gameId, i) => ({
 		session_id: session.id,
 		game_id: gameId,
 		sort_order: i,
-		is_special: gameId === schedule.special_game_id
+		is_special: gameId === specialGameId
 	}));
 
 	if (gameInserts.length > 0) {

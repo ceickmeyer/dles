@@ -11,6 +11,7 @@
 	type DayDraft = {
 		gameIds: string[];
 		specialGameId: string | null;
+		randomSpecial: boolean;
 		dirty: boolean;
 		saving: boolean;
 		error: string;
@@ -23,11 +24,13 @@
 					day_of_week: number;
 					game_ids: string[];
 					special_game_id: string | null;
+					random_special: boolean;
 				}[]
 			).find((s) => s.day_of_week === i);
 			return {
 				gameIds: row ? [...row.game_ids] : [],
 				specialGameId: row?.special_game_id ?? null,
+				randomSpecial: row?.random_special ?? false,
 				dirty: false,
 				saving: false,
 				error: ''
@@ -36,11 +39,23 @@
 	}
 
 	let drafts = $state<DayDraft[]>(initDrafts());
+	let selectedDay = $state(new Date().getDay());
 	let scheduling = $state(false);
 	let scheduleMsg = $state('');
 	let scheduleMsgType = $state<'ok' | 'err'>('ok');
 
 	const gameMap = $derived(new Map((data.games as GameInfo[]).map((g) => [g.id, g])));
+
+	// Games sorted: featured pinned first (when fixed), then A-Z
+	const displayOrder = $derived(
+		[...d.gameIds].sort((a, b) => {
+			if (!d.randomSpecial) {
+				if (a === d.specialGameId) return -1;
+				if (b === d.specialGameId) return 1;
+			}
+			return (gameMap.get(a)?.name ?? '').localeCompare(gameMap.get(b)?.name ?? '');
+		})
+	);
 
 	async function triggerScheduler() {
 		scheduling = true;
@@ -67,12 +82,15 @@
 		const d = drafts[i];
 		d.saving = true;
 		d.error = '';
-		const { error } = await supabase
-			.from('weekly_schedule')
-			.upsert(
-				{ day_of_week: i, game_ids: d.gameIds, special_game_id: d.specialGameId },
-				{ onConflict: 'day_of_week' }
-			);
+		const { error } = await supabase.from('weekly_schedule').upsert(
+			{
+				day_of_week: i,
+				game_ids: d.gameIds,
+				special_game_id: d.randomSpecial ? null : d.specialGameId,
+				random_special: d.randomSpecial
+			},
+			{ onConflict: 'day_of_week' }
+		);
 		d.saving = false;
 		if (error) {
 			d.error = error.message;
@@ -87,6 +105,7 @@
 			if (j === i) continue;
 			drafts[j].gameIds = [...src.gameIds];
 			drafts[j].specialGameId = src.specialGameId;
+			drafts[j].randomSpecial = src.randomSpecial;
 			drafts[j].dirty = true;
 		}
 	}
@@ -112,21 +131,10 @@
 		d.dirty = true;
 	}
 
-	function moveUp(i: number, gi: number) {
-		if (gi === 0) return;
+	function toggleRandom(i: number) {
 		const d = drafts[i];
-		const ids = [...d.gameIds];
-		[ids[gi - 1], ids[gi]] = [ids[gi], ids[gi - 1]];
-		d.gameIds = ids;
-		d.dirty = true;
-	}
-
-	function moveDown(i: number, gi: number) {
-		const d = drafts[i];
-		if (gi >= d.gameIds.length - 1) return;
-		const ids = [...d.gameIds];
-		[ids[gi], ids[gi + 1]] = [ids[gi + 1], ids[gi]];
-		d.gameIds = ids;
+		d.randomSpecial = !d.randomSpecial;
+		if (d.randomSpecial) d.specialGameId = null;
 		d.dirty = true;
 	}
 
@@ -134,27 +142,30 @@
 		const added = new Set(drafts[i].gameIds);
 		return (data.games as GameInfo[]).filter((g) => !added.has(g.id));
 	}
+
+	const anyDirty = $derived(drafts.some((d) => d.dirty));
+	const d = $derived(drafts[selectedDay]);
 </script>
 
-<div class="space-y-6">
-	<div class="flex items-start justify-between gap-4">
+<div class="space-y-5">
+	<!-- Header -->
+	<div class="flex flex-wrap items-start justify-between gap-3">
 		<div>
 			<h1 class="text-2xl font-bold text-white">Weekly Schedule</h1>
-			<p class="mt-0.5 text-sm text-ayu-muted">
-				Repeats every week. ⭐ = featured game of the day.
-			</p>
+			<p class="mt-0.5 text-sm text-ayu-muted">Repeats every week. ⭐ marks the featured game.</p>
 		</div>
-		<div class="flex shrink-0 flex-col items-end gap-1.5">
+		<div class="flex flex-col items-end gap-1.5">
 			<div class="flex gap-2">
-				{#if drafts.some((d) => d.dirty)}
+				{#if anyDirty}
 					<button
 						onclick={() =>
 							drafts.forEach((_, i) => {
 								if (drafts[i].dirty) save(i);
 							})}
 						class="rounded-lg border border-ayu-gold px-4 py-2 text-sm font-bold text-ayu-gold transition hover:bg-ayu-gold/10"
-						>Save all</button
 					>
+						Save all
+					</button>
 				{/if}
 				<button
 					onclick={triggerScheduler}
@@ -172,103 +183,145 @@
 		</div>
 	</div>
 
-	<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+	<!-- Day tabs -->
+	<div class="flex gap-1 rounded-xl border border-ayu-border bg-ayu-surface p-1">
 		{#each DAYS as dayName, i}
-			{@const d = drafts[i]}
-			<div
-				class="flex flex-col overflow-hidden rounded-xl border transition-colors {d.dirty
-					? 'border-ayu-gold/60'
-					: 'border-ayu-border'} bg-ayu-surface"
+			{@const isDirty = drafts[i].dirty}
+			{@const isSelected = selectedDay === i}
+			<button
+				onclick={() => (selectedDay = i)}
+				class="relative flex-1 rounded-lg py-2 text-xs font-semibold transition sm:text-sm
+					{isSelected
+						? 'bg-ayu-gold text-ayu-bg'
+						: 'text-ayu-muted hover:bg-ayu-surface2 hover:text-white'}"
 			>
-				<!-- Day header -->
-				<div class="flex items-center justify-between gap-2 border-b border-ayu-border px-4 py-3">
-					<p class="font-semibold text-white">{dayName}</p>
-					<div class="flex items-center gap-1.5">
-						{#if d.gameIds.length > 0}
-							<button
-								onclick={() => copyToAll(i)}
-								title="Copy these games to all other days"
-								class="rounded-lg px-2 py-1 text-xs text-ayu-muted transition hover:text-white"
-								>→ all</button
-							>
-						{/if}
-						<button
-							onclick={() => save(i)}
-							disabled={!d.dirty || d.saving}
-							class="rounded-lg px-3 py-1 text-xs font-bold transition disabled:opacity-40
-								{d.dirty ? 'bg-ayu-gold text-ayu-bg hover:brightness-110' : 'bg-ayu-surface2 text-ayu-muted'}"
-						>
-							{d.saving ? '…' : 'Save'}
-						</button>
-					</div>
-				</div>
+				<span class="hidden sm:inline">{dayName.slice(0, 3)}</span>
+				<span class="sm:hidden">{dayName.slice(0, 1)}</span>
+				{#if isDirty && !isSelected}
+					<span
+						class="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-ayu-gold"
+						aria-label="unsaved"
+					></span>
+				{/if}
+			</button>
+		{/each}
+	</div>
 
-				<!-- Game list -->
-				<div class="flex-1 space-y-0.5 p-3">
-					{#if d.gameIds.length === 0}
-						<p class="py-4 text-center text-xs text-ayu-muted">No games configured.</p>
-					{:else}
-						{#each d.gameIds as gameId, gi}
-							{@const game = gameMap.get(gameId)}
-							{#if game}
-								<div
-									class="group flex items-center gap-1.5 rounded-lg px-1.5 py-1 hover:bg-ayu-surface2"
-								>
+	<!-- Selected day panel -->
+	<div
+		class="rounded-xl border bg-ayu-surface transition-colors {d.dirty
+			? 'border-ayu-gold/40'
+			: 'border-ayu-border'}"
+	>
+		<!-- Panel header -->
+		<div class="flex items-center justify-between gap-3 border-b border-ayu-border px-5 py-3">
+			<p class="font-semibold text-white">{DAYS[selectedDay]}</p>
+			<div class="flex items-center gap-2">
+				{#if d.gameIds.length > 0}
+					<button
+						onclick={() => copyToAll(selectedDay)}
+						title="Copy these games to all other days"
+						class="rounded-lg px-2 py-1 text-xs text-ayu-muted transition hover:text-white"
+					>
+						→ copy to all days
+					</button>
+				{/if}
+				<button
+					onclick={() => save(selectedDay)}
+					disabled={!d.dirty || d.saving}
+					class="rounded-lg px-4 py-1.5 text-sm font-bold transition disabled:opacity-40
+						{d.dirty
+						? 'bg-ayu-gold text-ayu-bg hover:brightness-110'
+						: 'bg-ayu-surface2 text-ayu-muted'}"
+				>
+					{d.saving ? 'Saving…' : 'Save'}
+				</button>
+			</div>
+		</div>
+
+		<!-- Random featured toggle -->
+		{#if d.gameIds.length > 0}
+			<div class="flex items-center justify-between border-b border-ayu-border px-5 py-2.5">
+				<div>
+					<span class="text-sm text-zinc-300">🎲 Random featured game</span>
+					<span class="ml-2 text-xs text-ayu-muted">Pick a random ⭐ when the session starts</span>
+				</div>
+				<button
+					onclick={() => toggleRandom(selectedDay)}
+					role="switch"
+					aria-checked={d.randomSpecial}
+					class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors
+						{d.randomSpecial ? 'bg-ayu-gold' : 'bg-ayu-border'}"
+				>
+					<span
+						class="inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform
+							{d.randomSpecial ? 'translate-x-4.5' : 'translate-x-0.5'}"
+					></span>
+				</button>
+			</div>
+		{/if}
+
+		<!-- Game list -->
+		<div class="min-h-30 p-4">
+			{#if d.gameIds.length === 0}
+				<p class="py-8 text-center text-sm text-ayu-muted">No games configured for this day.</p>
+			{:else}
+				<div class="space-y-1">
+					{#each displayOrder as gameId (gameId)}
+						{@const game = gameMap.get(gameId)}
+						{@const isFeatured = d.specialGameId === gameId}
+						{#if game}
+							<div
+								class="group flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-ayu-surface2"
+							>
+								<!-- Featured indicator -->
+								{#if d.randomSpecial}
+									<span class="w-5 shrink-0 text-center text-sm text-zinc-600" title="Any game may be chosen as featured">🎲</span>
+								{:else}
 									<button
-										onclick={() => toggleSpecial(i, gameId)}
-										title="Set as featured game"
-										class="shrink-0 text-sm leading-none transition {d.specialGameId === gameId
+										onclick={() => toggleSpecial(selectedDay, gameId)}
+										title={isFeatured ? 'Remove featured' : 'Set as featured game'}
+										class="shrink-0 text-base leading-none transition {isFeatured
 											? 'text-ayu-gold'
 											: 'text-zinc-600 hover:text-zinc-400'}"
 									>
-										{d.specialGameId === gameId ? '⭐' : '☆'}
+										{isFeatured ? '⭐' : '☆'}
 									</button>
-									<span class="shrink-0 text-base leading-none">{game.icon_emoji ?? '🎮'}</span>
-									<span class="flex-1 truncate text-sm text-white">{game.name}</span>
-									<div class="flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-										<button
-											onclick={() => moveUp(i, gi)}
-											disabled={gi === 0}
-											class="flex h-5 w-5 items-center justify-center rounded text-xs text-ayu-muted hover:text-white disabled:opacity-20"
-											>↑</button
-										>
-										<button
-											onclick={() => moveDown(i, gi)}
-											disabled={gi === d.gameIds.length - 1}
-											class="flex h-5 w-5 items-center justify-center rounded text-xs text-ayu-muted hover:text-white disabled:opacity-20"
-											>↓</button
-										>
-										<button
-											onclick={() => removeGame(i, gameId)}
-											class="flex h-5 w-5 items-center justify-center rounded text-xs text-ayu-muted hover:text-ayu-red"
-											>×</button
-										>
-									</div>
-								</div>
-							{/if}
-						{/each}
-					{/if}
-				</div>
+								{/if}
 
-				<!-- Add game -->
-				<div class="border-t border-ayu-border px-3 pt-2 pb-3">
-					<select
-						onchange={(e) => {
-							addGame(i, (e.target as HTMLSelectElement).value);
-							(e.target as HTMLSelectElement).value = '';
-						}}
-						class="w-full rounded-lg border border-ayu-border bg-ayu-bg px-2 py-1.5 text-sm text-white focus:border-ayu-gold focus:outline-none"
-					>
-						<option value="">+ Add game…</option>
-						{#each availableGames(i) as g (g.id)}
-							<option value={g.id}>{g.icon_emoji ?? '🎮'} {g.name}</option>
-						{/each}
-					</select>
-					{#if d.error}
-						<p class="mt-1 text-xs text-ayu-red">{d.error}</p>
-					{/if}
+								<!-- Game identity -->
+								<span class="shrink-0 text-lg leading-none">{game.icon_emoji ?? '🎮'}</span>
+								<span class="flex-1 text-sm text-white">{game.name}</span>
+
+								<!-- Remove (visible on hover) -->
+								<button
+									onclick={() => removeGame(selectedDay, gameId)}
+									class="flex h-6 w-6 items-center justify-center rounded text-sm text-ayu-muted opacity-0 transition hover:text-ayu-red group-hover:opacity-100"
+								>×</button>
+							</div>
+						{/if}
+					{/each}
 				</div>
-			</div>
-		{/each}
+			{/if}
+		</div>
+
+		<!-- Add game -->
+		<div class="border-t border-ayu-border px-4 pb-4 pt-3">
+			<select
+				onchange={(e) => {
+					addGame(selectedDay, (e.target as HTMLSelectElement).value);
+					(e.target as HTMLSelectElement).value = '';
+				}}
+				class="w-full rounded-lg border border-ayu-border bg-ayu-bg px-3 py-2 text-sm text-white focus:border-ayu-gold focus:outline-none sm:w-72"
+			>
+				<option value="">+ Add game…</option>
+				{#each availableGames(selectedDay) as g (g.id)}
+					<option value={g.id}>{g.icon_emoji ?? '🎮'} {g.name}</option>
+				{/each}
+			</select>
+			{#if d.error}
+				<p class="mt-1 text-xs text-ayu-red">{d.error}</p>
+			{/if}
+		</div>
 	</div>
 </div>

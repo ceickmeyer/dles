@@ -35,6 +35,9 @@
 				<a href="/admin" class="text-zinc-300 transition hover:text-ayu-gold">Dashboard</a>
 				<a href="/admin/schedule" class="text-zinc-300 transition hover:text-ayu-gold">Schedule</a>
 				<a href="/admin/games" class="text-zinc-300 transition hover:text-ayu-gold">Games</a>
+				<a href="/admin/games/stats" class="text-zinc-300 transition hover:text-ayu-gold"
+					>Game Stats</a
+				>
 				<a href="/admin/players" class="text-zinc-300 transition hover:text-ayu-gold">Players</a>
 				<a href="/admin/backup" class="text-zinc-300 transition hover:text-ayu-gold">Backup</a>
 				<a href="/admin/scores" class="text-zinc-300 transition hover:text-ayu-gold">Scores</a>
