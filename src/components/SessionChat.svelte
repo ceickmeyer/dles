@@ -34,6 +34,27 @@
 	let listEl = $state<HTMLElement | null>(null);
 	let subscription: ReturnType<typeof supabase.channel> | null = null;
 	let expandedKeys = $state(new Set<string>());
+	let revealedSpoilers = $state(new Set<string>());
+
+	function parseContent(content: string): { type: 'text' | 'spoiler'; value: string }[] {
+		const parts: { type: 'text' | 'spoiler'; value: string }[] = [];
+		const regex = /\|\|([^|]*)\|\|/g;
+		let last = 0;
+		let match: RegExpExecArray | null;
+		while ((match = regex.exec(content)) !== null) {
+			if (match.index > last) parts.push({ type: 'text', value: content.slice(last, match.index) });
+			parts.push({ type: 'spoiler', value: match[1] });
+			last = match.index + match[0].length;
+		}
+		if (last < content.length) parts.push({ type: 'text', value: content.slice(last) });
+		return parts;
+	}
+
+	function revealSpoiler(key: string) {
+		const next = new Set(revealedSpoilers);
+		next.add(key);
+		revealedSpoilers = next;
+	}
 
 	function isLogMsg(m: Message): boolean {
 		return m.player_id === null;
@@ -252,7 +273,25 @@
 											? 'rounded-br-sm bg-ayu-gold text-ayu-bg'
 											: 'rounded-bl-sm bg-ayu-surface2 text-white'}"
 									>
-										{group.msg.content}
+										{#each parseContent(group.msg.content) as seg, si (si)}
+											{#if seg.type === 'text'}
+												{seg.value}
+											{:else}
+												{@const key = `${group.msg.id}-${si}`}
+												{@const revealed = revealedSpoilers.has(key)}
+												<!-- svelte-ignore a11y_no_static_element_interactions -->
+												<span
+													onclick={revealed ? undefined : () => revealSpoiler(key)}
+													onkeydown={revealed ? undefined : (e) => e.key === 'Enter' && revealSpoiler(key)}
+													role={revealed ? undefined : 'button'}
+													tabindex={revealed ? undefined : 0}
+													aria-label={revealed ? undefined : 'Spoiler — click to reveal'}
+													class="inline rounded px-0.5 transition-all duration-300 {revealed
+														? 'cursor-default bg-black/15 text-inherit'
+														: 'cursor-pointer select-none bg-zinc-600 text-transparent hover:bg-zinc-500'}"
+												>{seg.value}</span>
+											{/if}
+										{/each}
 									</div>
 								</div>
 							{/if}
