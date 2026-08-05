@@ -43,6 +43,7 @@ export const load: PageServerLoad = async () => {
 			.from('session_games')
 			.select('game_id, session_id')
 			.in('session_id', sessionIds)
+			.order('session_id')
 			.range(from, from + 999);
 		if (!page?.length) break;
 		sgAll.push(...page);
@@ -55,6 +56,7 @@ export const load: PageServerLoad = async () => {
 			.from('scores')
 			.select('game_id, session_id, player_id')
 			.in('session_id', sessionIds)
+			.order('submitted_at', { ascending: true })
 			.range(from, from + 999);
 		if (!page?.length) break;
 		scoresAll.push(...page);

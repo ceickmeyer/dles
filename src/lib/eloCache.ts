@@ -35,6 +35,7 @@ export async function refreshEloCache(supabase: SupabaseClient<Database>): Promi
 				'session_id, game_id, player_id, raw_score, game:games(scoring_direction, allow_dnf, max_score)'
 			)
 			.in('session_id', sessionIds)
+			.order('submitted_at', { ascending: true })
 			.range(from, from + 999);
 		if (!page?.length) break;
 		allScores.push(...(page as unknown as ScoreRow[]));
@@ -64,6 +65,7 @@ export async function refreshEloCache(supabase: SupabaseClient<Database>): Promi
 	}));
 
 	if (rows.length > 0) {
-		await supabase.from('player_elo').upsert(rows, { onConflict: 'player_id' });
+		const { error } = await supabase.from('player_elo').upsert(rows, { onConflict: 'player_id' });
+		if (error) throw new Error(`player_elo upsert failed: ${error.message}`);
 	}
 }

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { supabase } from '$lib/supabase';
+
 	let { data } = $props();
 	const sessions = $derived(
 		data.sessions as { id: string; name: string; date: string; status: string }[]
@@ -17,14 +19,48 @@
 			day: 'numeric'
 		});
 	}
+
+	let recalcState = $state<'idle' | 'running' | 'ok' | 'err'>('idle');
+
+	async function recalculateElo() {
+		recalcState = 'running';
+		const {
+			data: { session: authSession }
+		} = await supabase.auth.getSession();
+		if (!authSession?.access_token) {
+			recalcState = 'err';
+			return;
+		}
+		const res = await fetch('/api/recalculate-elo', {
+			method: 'POST',
+			headers: { Authorization: `Bearer ${authSession.access_token}` }
+		});
+		recalcState = res.ok ? 'ok' : 'err';
+	}
 </script>
 
 <div class="space-y-6">
-	<div>
-		<h1 class="text-2xl font-bold text-white">Dashboard</h1>
-		<p class="mt-0.5 text-sm text-ayu-muted">
-			Recent sessions — scheduler runs automatically on page load.
-		</p>
+	<div class="flex flex-wrap items-start justify-between gap-3">
+		<div>
+			<h1 class="text-2xl font-bold text-white">Dashboard</h1>
+			<p class="mt-0.5 text-sm text-ayu-muted">
+				Scheduler runs automatically on page load.
+			</p>
+		</div>
+		<div class="flex flex-col items-end gap-1">
+			<button
+				onclick={recalculateElo}
+				disabled={recalcState === 'running'}
+				class="rounded-lg border border-ayu-border px-4 py-2 text-sm text-ayu-muted transition hover:border-zinc-500 hover:text-white disabled:opacity-50"
+			>
+				{recalcState === 'running' ? 'Recalculating…' : '⚡ Recalculate ELO'}
+			</button>
+			{#if recalcState === 'ok'}
+				<p class="text-xs text-ayu-green">ELO updated.</p>
+			{:else if recalcState === 'err'}
+				<p class="text-xs text-ayu-red">Failed — check console.</p>
+			{/if}
+		</div>
 	</div>
 
 	{#if sessions.length === 0}

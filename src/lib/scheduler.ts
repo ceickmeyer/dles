@@ -27,13 +27,14 @@ export async function runScheduler(supabase: SupabaseClient<Database>): Promise<
 		.in('status', ['active', 'lobby'])
 		.lt('date', todayStr);
 	if (stale && stale.length > 0) {
-		await supabase
+		const { error: finishError } = await supabase
 			.from('sessions')
 			.update({ status: 'finished' })
 			.in(
 				'id',
 				stale.map((s) => s.id)
 			);
+		if (finishError) throw new Error(`Failed to finish stale sessions: ${finishError.message}`);
 	}
 	const finished = stale?.length ?? 0;
 	if (finished > 0) await refreshEloCache(supabase);
