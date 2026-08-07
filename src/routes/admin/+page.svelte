@@ -42,10 +42,8 @@
 <div class="space-y-6">
 	<div class="flex flex-wrap items-start justify-between gap-3">
 		<div>
-			<h1 class="text-2xl font-bold text-white">Dashboard</h1>
-			<p class="mt-0.5 text-sm text-ayu-muted">
-				Scheduler runs automatically on page load.
-			</p>
+			<h1 class="text-2xl font-bold text-white">Sessions</h1>
+			<p class="mt-0.5 text-sm text-ayu-muted">Click a session to view or edit scores.</p>
 		</div>
 		<div class="flex flex-col items-end gap-1">
 			<button

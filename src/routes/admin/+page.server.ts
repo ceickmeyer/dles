@@ -19,8 +19,7 @@ export const load: PageServerLoad = async () => {
 	const { data: sessions } = await anon
 		.from('sessions')
 		.select('id, name, date, status')
-		.order('date', { ascending: false })
-		.limit(14);
+		.order('date', { ascending: false });
 
 	return { sessions: sessions ?? [] };
 };

@@ -32,15 +32,17 @@
 	{#if !(typeof window !== 'undefined' && window.location.pathname === '/admin/login')}
 		<div class="mb-6 flex items-center justify-between border-b border-ayu-border pb-4">
 			<nav class="flex gap-4 text-sm">
-				<a href="/admin" class="text-zinc-300 transition hover:text-ayu-gold">Dashboard</a>
+				<a href="/admin" class="text-zinc-300 transition hover:text-ayu-gold">Sessions</a>
 				<a href="/admin/schedule" class="text-zinc-300 transition hover:text-ayu-gold">Schedule</a>
+				<a href="/admin/schedule/array" class="text-zinc-300 transition hover:text-ayu-gold"
+					>Array</a
+				>
 				<a href="/admin/games" class="text-zinc-300 transition hover:text-ayu-gold">Games</a>
 				<a href="/admin/games/stats" class="text-zinc-300 transition hover:text-ayu-gold"
 					>Game Stats</a
 				>
 				<a href="/admin/players" class="text-zinc-300 transition hover:text-ayu-gold">Players</a>
 				<a href="/admin/backup" class="text-zinc-300 transition hover:text-ayu-gold">Backup</a>
-				<a href="/admin/scores" class="text-zinc-300 transition hover:text-ayu-gold">Scores</a>
 			</nav>
 			<button
 				onclick={async () => {

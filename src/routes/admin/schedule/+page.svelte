@@ -267,13 +267,14 @@
 				<p class="py-8 text-center text-sm text-ayu-muted">No games configured for this day.</p>
 			{:else}
 				<div class="space-y-1">
-					{#each displayOrder as gameId (gameId)}
+					{#each displayOrder as gameId, rowIdx (gameId)}
 						{@const game = gameMap.get(gameId)}
 						{@const isFeatured = d.specialGameId === gameId}
 						{#if game}
 							<div
 								class="group flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-ayu-surface2"
 							>
+								<span class="w-5 shrink-0 text-right text-xs tabular-nums text-zinc-600">{rowIdx + 1}</span>
 								<!-- Featured indicator -->
 								{#if d.randomSpecial}
 									<span class="w-5 shrink-0 text-center text-sm text-zinc-600" title="Any game may be chosen as featured">🎲</span>
