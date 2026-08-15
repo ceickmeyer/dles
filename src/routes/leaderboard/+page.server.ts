@@ -159,6 +159,7 @@ export const load: PageServerLoad = async () => {
 	const prevRankMap = new Map(prevRanked);
 
 	const sessionMeta = new Map(sessions.map((s) => [s.id, { name: s.name, date: s.date }]));
+	const mostRecentSessionId = sessions[0]?.id ?? null;
 
 	// ELO chart — last 10 sessions, running ELO per qualified player
 	const displaySessions = sessions.slice(0, 10).reverse(); // most-recent-10, chronological
@@ -182,13 +183,19 @@ export const load: PageServerLoad = async () => {
 		const prevRank = prevRankMap.get(r.player_id) ?? null;
 		const movement = prevRank !== null ? prevRank - (i + 1) : null;
 		const delta = r.prevElo !== null ? r.elo - r.prevElo : null;
-		const recentHistory = r.history
-			.slice(-5)
-			.reverse()
-			.map((h) => ({
-				date: sessionMeta.get(h.session_id)?.date ?? '?',
-				delta: h.delta
-			}));
+
+		type HistoryEntry = { session_id: string; delta: number; games?: { game_id: string; delta: number }[] };
+		const lastEntry = mostRecentSessionId
+			? (r.history as HistoryEntry[]).find((h) => h.session_id === mostRecentSessionId)
+			: null;
+		const yesterdayBreakdown = lastEntry?.games
+			?.map((g) => ({
+				name: gameData.get(g.game_id)?.name ?? '?',
+				emoji: gameData.get(g.game_id)?.emoji ?? '🎮',
+				delta: g.delta
+			}))
+			.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta)) ?? null;
+
 		return {
 			player_id: r.player_id,
 			name: r.name,
@@ -196,7 +203,8 @@ export const load: PageServerLoad = async () => {
 			delta,
 			movement,
 			sessions: r.sessions,
-			recentHistory
+			yesterdayBreakdown,
+			yesterdaySessionName: mostRecentSessionId ? (sessionMeta.get(mostRecentSessionId)?.name ?? null) : null
 		};
 	});
 

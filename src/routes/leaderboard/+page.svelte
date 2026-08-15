@@ -138,32 +138,45 @@
 							<span class="w-14 text-right text-xs text-ayu-muted">—</span>
 						{/if}
 
-						<!-- Hover tooltip: last 5 sessions -->
-						{#if row.recentHistory.length > 0}
+						<!-- Hover tooltip: last session per-game breakdown -->
+						{#if row.yesterdayBreakdown && row.yesterdayBreakdown.length > 0}
+							{@const total = row.yesterdayBreakdown.reduce((s, g) => s + g.delta, 0)}
 							<div
 								class="pointer-events-none absolute top-full right-0 z-10 mt-1 w-52 rounded-lg border border-ayu-border bg-zinc-900 p-3 text-xs opacity-0 shadow-lg transition-opacity group-hover:opacity-100"
 							>
 								<p class="mb-2 font-semibold tracking-wider text-ayu-muted uppercase">
-									Recent sessions
+									{row.yesterdaySessionName ?? 'Last session'}
 								</p>
 								<div class="space-y-1.5">
-									{#each row.recentHistory as h}
-										{@const d = new Date(h.date + 'T12:00:00')}
-										<div class="flex items-center justify-between">
-											<span class="text-zinc-300"
-												>{d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span
-											>
+									{#each row.yesterdayBreakdown as g}
+										<div class="flex items-center justify-between gap-2">
+											<span class="flex min-w-0 items-center gap-1.5 text-zinc-300">
+												<span class="shrink-0">{g.emoji}</span>
+												<span class="truncate">{g.name}</span>
+											</span>
 											<span
-												class="ml-3 font-semibold {h.delta > 0
+												class="shrink-0 font-semibold tabular-nums {g.delta > 0
 													? 'text-ayu-green'
-													: h.delta < 0
+													: g.delta < 0
 														? 'text-ayu-red'
 														: 'text-ayu-muted'}"
 											>
-												{h.delta > 0 ? '+' : ''}{h.delta}
+												{g.delta > 0 ? '+' : ''}{g.delta}
 											</span>
 										</div>
 									{/each}
+									<div class="mt-2 flex items-center justify-between border-t border-zinc-700 pt-2">
+										<span class="font-semibold text-zinc-400">Total</span>
+										<span
+											class="font-bold tabular-nums {total > 0
+												? 'text-ayu-green'
+												: total < 0
+													? 'text-ayu-red'
+													: 'text-ayu-muted'}"
+										>
+											{total > 0 ? '+' : ''}{total}
+										</span>
+									</div>
 								</div>
 							</div>
 						{/if}

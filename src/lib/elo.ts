@@ -18,7 +18,7 @@ export interface PlayerEloResult {
 	prevElo: number | null;
 	sessions: number;
 	matchups: number;
-	history: { session_id: string; delta: number }[];
+	history: { session_id: string; delta: number; games: { game_id: string; delta: number }[] }[];
 }
 
 export function computeElo(
@@ -29,7 +29,7 @@ export function computeElo(
 	const sessions = new Map<string, number>();
 	const matchups = new Map<string, number>();
 	const prevElos = new Map<string, number>();
-	const history = new Map<string, { session_id: string; delta: number }[]>();
+	const history = new Map<string, { session_id: string; delta: number; games: { game_id: string; delta: number }[] }[]>();
 
 	// Group entries by session::game
 	const byKey = new Map<string, EloEntry[]>();
@@ -47,11 +47,13 @@ export function computeElo(
 		}
 
 		const deltas = new Map<string, number>();
+		const gameDeltas = new Map<string, Map<string, number>>(); // pid -> game_id -> delta
 		const sessionMatchups = new Map<string, number>();
 		const played = new Set<string>();
 
 		for (const [key, group] of byKey) {
 			if (!key.startsWith(`${sessionId}::`)) continue;
+			const gameId = key.split('::')[1];
 			const { scoring_direction, allow_dnf, max_score } = group[0];
 			const dnfVal = allow_dnf && max_score !== null ? max_score + 1 : null;
 			const valid = group.filter((e) => dnfVal === null || e.raw_score !== dnfVal);
@@ -74,6 +76,10 @@ export function computeElo(
 					const delta = kNorm * (sA - eA);
 					deltas.set(a.player_id, (deltas.get(a.player_id) ?? 0) + delta);
 					deltas.set(b.player_id, (deltas.get(b.player_id) ?? 0) - delta);
+					if (!gameDeltas.has(a.player_id)) gameDeltas.set(a.player_id, new Map());
+					if (!gameDeltas.has(b.player_id)) gameDeltas.set(b.player_id, new Map());
+					gameDeltas.get(a.player_id)!.set(gameId, (gameDeltas.get(a.player_id)!.get(gameId) ?? 0) + delta);
+					gameDeltas.get(b.player_id)!.set(gameId, (gameDeltas.get(b.player_id)!.get(gameId) ?? 0) - delta);
 					sessionMatchups.set(a.player_id, (sessionMatchups.get(a.player_id) ?? 0) + 1);
 					sessionMatchups.set(b.player_id, (sessionMatchups.get(b.player_id) ?? 0) + 1);
 					played.add(a.player_id);
@@ -89,7 +95,11 @@ export function computeElo(
 			sessions.set(pid, (sessions.get(pid) ?? 0) + 1);
 			matchups.set(pid, (matchups.get(pid) ?? 0) + (sessionMatchups.get(pid) ?? 0));
 			if (!history.has(pid)) history.set(pid, []);
-			history.get(pid)!.push({ session_id: sessionId, delta: Math.round(d) });
+			const gd = gameDeltas.get(pid);
+			const games = gd
+				? [...gd.entries()].map(([game_id, gDelta]) => ({ game_id, delta: Math.round(gDelta) }))
+				: [];
+			history.get(pid)!.push({ session_id: sessionId, delta: Math.round(d), games });
 		}
 	}
 
