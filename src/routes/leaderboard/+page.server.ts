@@ -161,6 +161,18 @@ export const load: PageServerLoad = async () => {
 	const sessionMeta = new Map(sessions.map((s) => [s.id, { name: s.name, date: s.date }]));
 	const mostRecentSessionId = sessions[0]?.id ?? null;
 
+	// Fetch the featured game for the most recent session
+	let mostRecentFeaturedGameId: string | null = null;
+	if (mostRecentSessionId) {
+		const { data: sgRows } = await supabase
+			.from('session_games')
+			.select('game_id')
+			.eq('session_id', mostRecentSessionId)
+			.eq('is_special', true)
+			.limit(1);
+		mostRecentFeaturedGameId = sgRows?.[0]?.game_id ?? null;
+	}
+
 	// ELO chart — last 10 sessions, running ELO per qualified player
 	const displaySessions = sessions.slice(0, 10).reverse(); // most-recent-10, chronological
 	const eloChartDates = displaySessions.map((s) => s.date);
@@ -192,9 +204,14 @@ export const load: PageServerLoad = async () => {
 			?.map((g) => ({
 				name: gameData.get(g.game_id)?.name ?? '?',
 				emoji: gameData.get(g.game_id)?.emoji ?? '🎮',
-				delta: g.delta
+				delta: g.delta,
+				isFeatured: g.game_id === mostRecentFeaturedGameId
 			}))
-			.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta)) ?? null;
+			.sort((a, b) => {
+				if (a.isFeatured && !b.isFeatured) return -1;
+				if (!a.isFeatured && b.isFeatured) return 1;
+				return a.name.localeCompare(b.name);
+			}) ?? null;
 
 		return {
 			player_id: r.player_id,

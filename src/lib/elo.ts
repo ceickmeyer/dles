@@ -97,7 +97,7 @@ export function computeElo(
 			if (!history.has(pid)) history.set(pid, []);
 			const gd = gameDeltas.get(pid);
 			const games = gd
-				? [...gd.entries()].map(([game_id, gDelta]) => ({ game_id, delta: Math.round(gDelta) }))
+				? [...gd.entries()].map(([game_id, gDelta]) => ({ game_id, delta: gDelta }))
 				: [];
 			history.get(pid)!.push({ session_id: sessionId, delta: Math.round(d), games });
 		}

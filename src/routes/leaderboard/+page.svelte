@@ -140,7 +140,7 @@
 
 						<!-- Hover tooltip: last session per-game breakdown -->
 						{#if row.yesterdayBreakdown && row.yesterdayBreakdown.length > 0}
-							{@const total = row.yesterdayBreakdown.reduce((s, g) => s + g.delta, 0)}
+							{@const total = row.delta ?? 0}
 							<div
 								class="pointer-events-none absolute top-full right-0 z-10 mt-1 w-52 rounded-lg border border-ayu-border bg-zinc-900 p-3 text-xs opacity-0 shadow-lg transition-opacity group-hover:opacity-100"
 							>
@@ -149,19 +149,21 @@
 								</p>
 								<div class="space-y-1.5">
 									{#each row.yesterdayBreakdown as g}
+										{@const gd = Math.round(g.delta)}
 										<div class="flex items-center justify-between gap-2">
 											<span class="flex min-w-0 items-center gap-1.5 text-zinc-300">
 												<span class="shrink-0">{g.emoji}</span>
 												<span class="truncate">{g.name}</span>
+												{#if g.isFeatured}<span class="shrink-0 text-ayu-gold">⭐</span>{/if}
 											</span>
 											<span
-												class="shrink-0 font-semibold tabular-nums {g.delta > 0
+												class="shrink-0 font-semibold tabular-nums {gd > 0
 													? 'text-ayu-green'
-													: g.delta < 0
+													: gd < 0
 														? 'text-ayu-red'
 														: 'text-ayu-muted'}"
 											>
-												{g.delta > 0 ? '+' : ''}{g.delta}
+												{gd > 0 ? '+' : ''}{gd}
 											</span>
 										</div>
 									{/each}
