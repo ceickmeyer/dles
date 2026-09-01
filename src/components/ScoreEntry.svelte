@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { parseShareText } from '$lib/parsers';
-	import ParseConfirm from './ParseConfirm.svelte';
 	import type { Game } from '$lib/database.types';
 
 	let {
@@ -16,21 +15,28 @@
 	let shareText = $state('');
 	let manualScore = $state('');
 	let parsedScore = $state<number | null>(null);
-	let showConfirm = $state(false);
+	let parseError = $state('');
 	let submitting = $state(false);
 	let submitted = $state(false);
 	let error = $state('');
 
-	function tryParse() {
-		error = '';
-		const result = parseShareText(shareText.trim(), game.share_parser, game.share_regex);
+	// Auto-parse whenever the pasted text changes
+	$effect(() => {
+		const trimmed = shareText.trim();
+		if (!trimmed) {
+			parsedScore = null;
+			parseError = '';
+			return;
+		}
+		const result = parseShareText(trimmed, game.share_parser, game.share_regex);
 		if (result !== null) {
 			parsedScore = result;
-			showConfirm = true;
+			parseError = '';
 		} else {
-			error = 'Could not parse that result — try entering your score manually below.';
+			parsedScore = null;
+			parseError = 'Could not parse — enter your score manually below.';
 		}
-	}
+	});
 
 	function validateScore(score: number): string {
 		if (!Number.isFinite(score)) return 'Enter a valid number.';
@@ -41,14 +47,11 @@
 		return '';
 	}
 
-	async function confirmParsed(score: number) {
-		showConfirm = false;
-		const validationError = validateScore(score);
-		if (validationError) {
-			error = validationError;
-			return;
-		}
-		await doSubmit(score, shareText.trim());
+	async function submitParsed() {
+		if (parsedScore === null) return;
+		const validationError = validateScore(parsedScore);
+		if (validationError) { error = validationError; return; }
+		await doSubmit(parsedScore, shareText.trim());
 	}
 
 	async function submitManual() {
@@ -98,25 +101,21 @@
 					placeholder="Paste the share text from the game…"
 					class="w-full resize-none rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white placeholder-zinc-500 focus:border-amber-400 focus:outline-none"
 				></textarea>
-				{#if showConfirm && parsedScore !== null}
-					<div class="mt-2">
-						<ParseConfirm
-							{parsedScore}
-							maxScore={game.max_score}
-							onconfirm={confirmParsed}
-							oncancel={() => {
-								showConfirm = false;
-							}}
-						/>
+				{#if parsedScore !== null}
+					<div class="mt-2 flex items-center gap-3">
+						<span class="text-sm text-zinc-400">
+							Score: <strong class="text-amber-400">{parsedScore}</strong>
+						</span>
+						<button
+							onclick={submitParsed}
+							disabled={submitting}
+							class="rounded-lg bg-amber-400 px-4 py-2 text-sm font-bold text-black transition hover:bg-amber-300 disabled:opacity-50"
+						>
+							{submitting ? 'Submitting…' : existingScore !== null ? 'Update' : 'Submit'}
+						</button>
 					</div>
-				{:else}
-					<button
-						onclick={tryParse}
-						disabled={!shareText.trim()}
-						class="mt-2 rounded-lg bg-zinc-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-600 disabled:opacity-50"
-					>
-						Parse my result
-					</button>
+				{:else if parseError && shareText.trim()}
+					<p class="mt-1 text-xs text-zinc-400">{parseError}</p>
 				{/if}
 			</div>
 			<div class="flex items-center gap-3 text-xs text-zinc-500">
