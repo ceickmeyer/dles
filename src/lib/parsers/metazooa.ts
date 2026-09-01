@@ -10,7 +10,7 @@ export const metazooaParser: Parser = {
 	parse(text: string): number | null {
 		if (!/metazooa|animal\s*#\d/i.test(text)) return null;
 
-		// Stumped = DNF
+		// Stumped = DNF ("I was stumped" or "🔥 0" streak with no solve message)
 		if (/stumped/i.test(text)) return DNF_SCORE;
 
 		// Solved: "figured it out in N guess(es)"
