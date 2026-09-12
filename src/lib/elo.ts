@@ -1,7 +1,22 @@
 import { rankScores } from './scoring';
 
-const K = 16;
+export const K = 16;
 export const ELO_INITIAL = 1000;
+
+// The core pairwise Elo update, shared by computeElo and anything that needs
+// to explain/replay a single matchup (e.g. the admin session-detail view).
+export function pairwiseElo(
+	ratingA: number,
+	ratingB: number,
+	rankA: number,
+	rankB: number,
+	kNorm: number
+): { eA: number; sA: number; delta: number } {
+	const eA = 1 / (1 + Math.pow(10, (ratingB - ratingA) / 400));
+	const sA = rankA < rankB ? 1 : rankA === rankB ? 0.5 : 0;
+	const delta = kNorm * (sA - eA);
+	return { eA, sA, delta };
+}
 
 export interface EloEntry {
 	session_id: string;
@@ -71,9 +86,7 @@ export function computeElo(
 						b = ranked[j];
 					const rA = ratings.get(a.player_id) ?? ELO_INITIAL;
 					const rB = ratings.get(b.player_id) ?? ELO_INITIAL;
-					const eA = 1 / (1 + Math.pow(10, (rB - rA) / 400));
-					const sA = a.rank < b.rank ? 1 : a.rank === b.rank ? 0.5 : 0;
-					const delta = kNorm * (sA - eA);
+					const { delta } = pairwiseElo(rA, rB, a.rank, b.rank, kNorm);
 					deltas.set(a.player_id, (deltas.get(a.player_id) ?? 0) + delta);
 					deltas.set(b.player_id, (deltas.get(b.player_id) ?? 0) - delta);
 					if (!gameDeltas.has(a.player_id)) gameDeltas.set(a.player_id, new Map());

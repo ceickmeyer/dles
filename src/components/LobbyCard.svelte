@@ -1,9 +1,11 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { supabase } from '$lib/supabase';
 	import { parseShareText } from '$lib/parsers';
 	import { playerStore } from '$lib/stores/player';
 	import { dnfScore, isDnf, formatScore } from '$lib/utils';
 	import { sounds } from '$lib/sounds';
+	import { canHover } from '$lib/hover';
 	import ParseConfirm from './ParseConfirm.svelte';
 	import ConnectionsForm from './ConnectionsForm.svelte';
 	import DecipherForm from './DecipherForm.svelte';
@@ -164,6 +166,27 @@
 		expanded = !expanded;
 	}
 
+	// Tap-to-toggle for info tooltips. Only wired on touch devices — see
+	// $lib/hover for why hover and tap-toggle are never layered on one trigger.
+	function toggleTip(isOpen: boolean, open: (e: MouseEvent) => void, close: () => void) {
+		return (e: MouseEvent) => {
+			e.stopPropagation();
+			if (isOpen) close();
+			else open(e);
+		};
+	}
+
+	onMount(() => {
+		if (canHover) return;
+		function closeAll() {
+			tipVisible = false;
+			shareTipText = null;
+			crownTipVisible = false;
+		}
+		document.addEventListener('click', closeAll);
+		return () => document.removeEventListener('click', closeAll);
+	});
+
 	function tryParse() {
 		error = '';
 		const result = parseShareText(shareText.trim(), game.share_parser, game.share_regex);
@@ -301,8 +324,9 @@
 				<p class="font-semibold text-white">{game.name}</p>
 				{#if tip}
 					<button
-						onmouseenter={showTip}
-						onmouseleave={hideTip}
+						onmouseenter={canHover ? showTip : undefined}
+						onmouseleave={canHover ? hideTip : undefined}
+						onclick={!canHover ? toggleTip(tipVisible, showTip, hideTip) : undefined}
 						class="shrink-0 text-ayu-blue transition-colors hover:text-white"
 						aria-label="Game info"
 					>
@@ -618,10 +642,18 @@
 			<div class="space-y-1.5">
 				{#each rankedScores as s}
 					<!-- svelte-ignore a11y_no_static_element_interactions -->
+					<!-- svelte-ignore a11y_click_events_have_key_events -->
 					<div
 						class="flex items-baseline gap-2 text-sm {s.share_text ? 'cursor-default' : ''}"
-						onmouseenter={s.share_text ? (e) => showShareTip(e, s.share_text!) : undefined}
-						onmouseleave={s.share_text ? hideShareTip : undefined}
+						onmouseenter={s.share_text && canHover ? (e) => showShareTip(e, s.share_text!) : undefined}
+						onmouseleave={s.share_text && canHover ? hideShareTip : undefined}
+						onclick={s.share_text && !canHover
+							? toggleTip(
+									shareTipText === s.share_text,
+									(e) => showShareTip(e, s.share_text!),
+									hideShareTip
+								)
+							: undefined}
 					>
 						<span class="w-5 shrink-0 text-center leading-none"
 							>{s.medal ? MEDAL_EMOJI[s.medal] : ''}</span
@@ -630,10 +662,13 @@
 							class="shrink-0 {s.player_id === currentPlayerId
 								? 'font-semibold text-white'
 								: 'text-zinc-300'}"
-							>{s.player_name}{#if s.player_id === prevWinnerId}<!-- svelte-ignore a11y_no_static_element_interactions --><span
+							>{s.player_name}{#if s.player_id === prevWinnerId}<!-- svelte-ignore a11y_no_static_element_interactions --><!-- svelte-ignore a11y_click_events_have_key_events --><span
 									class="ml-0.5 cursor-default text-xs"
-									onmouseenter={showCrownTip}
-									onmouseleave={hideCrownTip}>👑</span
+									onmouseenter={canHover ? showCrownTip : undefined}
+									onmouseleave={canHover ? hideCrownTip : undefined}
+									onclick={!canHover
+										? toggleTip(crownTipVisible, showCrownTip, hideCrownTip)
+										: undefined}>👑</span
 								>{/if}</span
 						>
 						<span class="mb-1 flex-1 border-b border-dashed border-zinc-600"></span>

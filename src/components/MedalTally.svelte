@@ -1,6 +1,8 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import type { MedalTally, PlayerDayStat } from '$lib/scoring';
 	import { MEDAL_EMOJI } from '$lib/scoring';
+	import { canHover } from '$lib/hover';
 
 	let {
 		tally,
@@ -107,6 +109,33 @@
 		arrowTipVisible = true;
 	}
 
+	let starTipOpenId = $state<string | null>(null);
+
+	// Tap-to-toggle. Only wired on touch devices — see $lib/hover for why hover
+	// and tap-toggle are never layered on the same trigger. A tap that lands on
+	// the player-name link should navigate, not toggle the tooltip.
+	function toggle(isOpen: boolean, open: (e: MouseEvent) => void, close: () => void) {
+		return (e: MouseEvent) => {
+			if ((e.target as HTMLElement).closest('a')) return;
+			e.stopPropagation();
+			if (isOpen) close();
+			else open(e);
+		};
+	}
+
+	onMount(() => {
+		if (canHover) return;
+		function closeAll() {
+			scoreTipVisible = false;
+			playerTipVisible = false;
+			crownTipVisible = false;
+			arrowTipVisible = false;
+			starTipOpenId = null;
+		}
+		document.addEventListener('click', closeAll);
+		return () => document.removeEventListener('click', closeAll);
+	});
+
 	const SINGLE_PATH =
 		'M508.788,371.087L263.455,125.753c-4.16-4.16-10.88-4.16-15.04,0L2.975,371.087c-4.053,4.267-3.947,10.987,0.213,15.04c4.16,3.947,10.667,3.947,14.827,0l237.867-237.76l237.76,237.76c4.267,4.053,10.987,3.947,15.04-0.213C512.734,381.753,512.734,375.247,508.788,371.087z';
 	const DBL_PATH_1 =
@@ -139,8 +168,11 @@
 						<span class="hidden sm:inline">Total</span>
 						<span class="sm:hidden">Pts</span>
 						<button
-							onmouseenter={showScoreTip}
-							onmouseleave={() => (scoreTipVisible = false)}
+							onmouseenter={canHover ? showScoreTip : undefined}
+							onmouseleave={canHover ? () => (scoreTipVisible = false) : undefined}
+							onclick={!canHover
+								? toggle(scoreTipVisible, showScoreTip, () => (scoreTipVisible = false))
+								: undefined}
 							class="transition-colors"
 							style="color: var(--color-ayu-blue)"
 							aria-label="Scoring info"
@@ -188,13 +220,27 @@
 
 					<td
 						class="hidden w-4 cursor-default py-2.5 sm:table-cell"
-						onmouseenter={(e) => {
-							if (prevRankMap.has(row.player_id)) {
-								const p = prevRankMap.get(row.player_id)!;
-								showArrowTip(e, p.rank, ranks[i], p.outOf);
-							}
-						}}
-						onmouseleave={() => (arrowTipVisible = false)}
+						onmouseenter={canHover
+							? (e) => {
+									if (prevRankMap.has(row.player_id)) {
+										const p = prevRankMap.get(row.player_id)!;
+										showArrowTip(e, p.rank, ranks[i], p.outOf);
+									}
+								}
+							: undefined}
+						onmouseleave={canHover ? () => (arrowTipVisible = false) : undefined}
+						onclick={!canHover
+							? (e) => {
+									e.stopPropagation();
+									if (!prevRankMap.has(row.player_id)) return;
+									if (arrowTipVisible) {
+										arrowTipVisible = false;
+										return;
+									}
+									const p = prevRankMap.get(row.player_id)!;
+									showArrowTip(e, p.rank, ranks[i], p.outOf);
+								}
+							: undefined}
 					>
 						{#if prevRankMap.has(row.player_id)}
 							{@const prev = prevRankMap.get(row.player_id)!}
@@ -251,8 +297,11 @@
 
 					<td
 						class="py-2.5 pr-2 pl-2 font-medium text-white"
-						onmouseenter={(e) => showPlayerTip(e, row)}
-						onmouseleave={() => (playerTipVisible = false)}
+						onmouseenter={canHover ? (e) => showPlayerTip(e, row) : undefined}
+						onmouseleave={canHover ? () => (playerTipVisible = false) : undefined}
+						onclick={!canHover
+							? toggle(playerTipVisible, (e) => showPlayerTip(e, row), () => (playerTipVisible = false))
+							: undefined}
 					>
 						<span class="flex flex-wrap items-center gap-1">
 							<a href="/player/{row.player_id}" class="transition-colors hover:text-ayu-gold"
@@ -260,17 +309,31 @@
 							>
 							{#if featuredWinnerIds.has(row.player_id)}
 								<!-- svelte-ignore a11y_no_static_element_interactions -->
+								<!-- svelte-ignore a11y_click_events_have_key_events -->
 								<span
-									class="group relative z-10 inline-flex cursor-default"
-									onmouseenter={(e) => {
-										e.stopPropagation();
-										playerTipVisible = false;
-									}}
-									onmouseleave={() => (playerTipVisible = false)}
+									class="relative z-10 inline-flex cursor-default"
+									onmouseenter={canHover
+										? (e) => {
+												e.stopPropagation();
+												playerTipVisible = false;
+												starTipOpenId = row.player_id;
+											}
+										: undefined}
+									onmouseleave={canHover ? () => (starTipOpenId = null) : undefined}
+									onclick={!canHover
+										? (e) => {
+												e.stopPropagation();
+												playerTipVisible = false;
+												starTipOpenId = starTipOpenId === row.player_id ? null : row.player_id;
+											}
+										: undefined}
 								>
 									⭐
 									<span
-										class="pointer-events-none absolute bottom-full left-1/2 mb-1.5 w-36 -translate-x-1/2 rounded-lg border border-ayu-border bg-zinc-900 px-2 py-1 text-xs font-normal tracking-normal whitespace-nowrap text-zinc-300 normal-case opacity-0 shadow-xl transition-opacity group-hover:opacity-100"
+										class="pointer-events-none absolute bottom-full left-1/2 mb-1.5 w-36 -translate-x-1/2 rounded-lg border border-ayu-border bg-zinc-900 px-2 py-1 text-xs font-normal tracking-normal whitespace-nowrap text-zinc-300 normal-case shadow-xl transition-opacity {starTipOpenId ===
+										row.player_id
+											? 'opacity-100'
+											: 'opacity-0'}"
 									>
 										Won featured game
 									</span>
@@ -278,8 +341,14 @@
 							{/if}
 							{#if row.player_id === prevWinnerId}
 								<!-- svelte-ignore a11y_no_static_element_interactions -->
-								<span class="cursor-default" onmouseenter={showCrownTip} onmouseleave={hideCrownTip}
-									>👑</span
+								<!-- svelte-ignore a11y_click_events_have_key_events -->
+								<span
+									class="cursor-default"
+									onmouseenter={canHover ? showCrownTip : undefined}
+									onmouseleave={canHover ? hideCrownTip : undefined}
+									onclick={!canHover
+										? toggle(crownTipVisible, showCrownTip, () => (crownTipVisible = false))
+										: undefined}>👑</span
 								>
 							{/if}
 							{#if row.player_id === currentPlayerId}

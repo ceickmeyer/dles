@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
+	import { canHover } from '$lib/hover';
 	import { fly } from 'svelte/transition';
 	import { invalidateAll } from '$app/navigation';
 	import { playerStore } from '$lib/stores/player';
@@ -153,6 +154,32 @@
 	function hidePrevRankingTip() {
 		prevRankingTipVisible = false;
 	}
+
+	let featuredInfoVisible = $state(false);
+	let openBadgeId = $state<string | null>(null);
+
+	// Tap-to-toggle for info tooltips. Only wired on touch devices — see
+	// $lib/hover for why hover and tap-toggle are never layered on one trigger.
+	// A tap landing on a link inside the trigger should navigate, not toggle.
+	function toggleTip(isOpen: boolean, open: (e: MouseEvent) => void, close: () => void) {
+		return (e: MouseEvent) => {
+			if ((e.target as HTMLElement).closest('a')) return;
+			e.stopPropagation();
+			if (isOpen) close();
+			else open(e);
+		};
+	}
+
+	onMount(() => {
+		if (canHover) return;
+		function closeAll() {
+			prevRankingTipVisible = false;
+			featuredInfoVisible = false;
+			openBadgeId = null;
+		}
+		document.addEventListener('click', closeAll);
+		return () => document.removeEventListener('click', closeAll);
+	});
 
 	function buildStandingsShare(): string {
 		if (!session) return '';
@@ -614,10 +641,15 @@
 		{#if data.prevWinners?.length}
 			<div>
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
+				<!-- svelte-ignore a11y_click_events_have_key_events -->
+				<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 				<p
 					class="mb-2 inline-block cursor-default border-b border-dotted border-ayu-gold/50 text-xs font-semibold tracking-widest text-ayu-gold uppercase transition-colors hover:border-ayu-gold hover:text-white"
-					onmouseenter={showPrevRankingTip}
-					onmouseleave={hidePrevRankingTip}
+					onmouseenter={canHover ? showPrevRankingTip : undefined}
+					onmouseleave={canHover ? hidePrevRankingTip : undefined}
+					onclick={!canHover
+						? toggleTip(prevRankingTipVisible, showPrevRankingTip, hidePrevRankingTip)
+						: undefined}
 				>
 					Yesterday's Winners
 				</p>
@@ -656,6 +688,30 @@
 						</div>
 					{/each}
 				</div>
+
+				{#if data.prevEloWinners?.length}
+					<div class="mt-2 flex flex-wrap items-center gap-1.5">
+						<span class="text-[10px] font-semibold tracking-widest text-ayu-muted uppercase"
+							>⚡ Elo</span
+						>
+						{#each data.prevEloWinners as w, i}
+							<a
+								href="/player/{w.player_id}"
+								class="flex items-center gap-1.5 rounded-full border border-ayu-border bg-ayu-surface px-2.5 py-1 text-xs transition hover:border-ayu-gold/40"
+							>
+								<span
+									class="font-bold {i === 0
+										? 'text-ayu-gold'
+										: i === 1
+											? 'text-zinc-400'
+											: 'text-amber-700'}">{i + 1}</span
+								>
+								<span class="font-medium text-white">{w.player_name}</span>
+								<span class="font-mono font-semibold text-ayu-green">+{w.delta}</span>
+							</a>
+						{/each}
+					</div>
+				{/if}
 			</div>
 		{/if}
 
@@ -666,7 +722,20 @@
 					class="mb-3 flex items-center gap-1.5 text-xs font-semibold tracking-widest text-ayu-gold uppercase"
 				>
 					⭐ Featured Game
-					<span class="group relative inline-flex">
+					<!-- svelte-ignore a11y_no_static_element_interactions -->
+					<!-- svelte-ignore a11y_click_events_have_key_events -->
+					<span
+						class="relative inline-flex"
+						onmouseenter={canHover ? () => (featuredInfoVisible = true) : undefined}
+						onmouseleave={canHover ? () => (featuredInfoVisible = false) : undefined}
+						onclick={!canHover
+							? toggleTip(
+									featuredInfoVisible,
+									() => (featuredInfoVisible = true),
+									() => (featuredInfoVisible = false)
+								)
+							: undefined}
+					>
 						<svg
 							class="h-3.5 w-3.5 cursor-default"
 							style="color: var(--color-ayu-blue)"
@@ -682,7 +751,9 @@
 							/>
 						</svg>
 						<span
-							class="pointer-events-none absolute bottom-full left-1/2 mb-2 w-48 -translate-x-1/2 rounded-lg border border-ayu-border bg-zinc-900 px-2.5 py-1.5 text-xs font-normal tracking-normal text-zinc-300 normal-case opacity-0 shadow-xl transition-opacity group-hover:opacity-100"
+							class="pointer-events-none absolute bottom-full left-1/2 mb-2 w-48 -translate-x-1/2 rounded-lg border border-ayu-border bg-zinc-900 px-2.5 py-1.5 text-xs font-normal tracking-normal text-zinc-300 normal-case shadow-xl transition-opacity {featuredInfoVisible
+								? 'opacity-100'
+								: 'opacity-0'}"
 						>
 							Winning this game is worth +1 more point than regular games
 						</span>
@@ -876,9 +947,20 @@
 					</h2>
 					<div class="flex flex-wrap gap-3">
 						{#each sessionBadges as badge (badge.id)}
+							<!-- svelte-ignore a11y_no_static_element_interactions -->
+							<!-- svelte-ignore a11y_click_events_have_key_events -->
 							<div
-								class="group relative flex items-center gap-2.5 rounded-lg border border-ayu-border bg-ayu-surface2 px-3 py-2"
+								class="relative flex items-center gap-2.5 rounded-lg border border-ayu-border bg-ayu-surface2 px-3 py-2"
 								title={badge.description}
+								onmouseenter={canHover ? () => (openBadgeId = badge.id) : undefined}
+								onmouseleave={canHover ? () => (openBadgeId = null) : undefined}
+								onclick={!canHover
+									? toggleTip(
+											openBadgeId === badge.id,
+											() => (openBadgeId = badge.id),
+											() => (openBadgeId = null)
+										)
+									: undefined}
 							>
 								<span class="text-xl leading-none">{badge.emoji}</span>
 								<div>
@@ -891,7 +973,10 @@
 									{/if}
 								</div>
 								<div
-									class="pointer-events-none absolute bottom-full left-0 z-10 mb-2 w-48 rounded-lg border border-ayu-border bg-zinc-900 px-3 py-2 text-xs text-zinc-300 opacity-0 shadow-lg transition-opacity group-hover:opacity-100"
+									class="pointer-events-none absolute bottom-full left-0 z-10 mb-2 w-48 rounded-lg border border-ayu-border bg-zinc-900 px-3 py-2 text-xs text-zinc-300 shadow-lg transition-opacity {openBadgeId ===
+									badge.id
+										? 'opacity-100'
+										: 'opacity-0'}"
 								>
 									{badge.description}
 								</div>

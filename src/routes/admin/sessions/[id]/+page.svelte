@@ -25,11 +25,56 @@
 				submitted_at: string;
 				player: { id: string; name: string; alias: string | null };
 			}[];
+			isSpecial: boolean;
 		}[]
 	);
 
 	const availableGames = $derived(
 		data.availableGames as { id: string; name: string; icon_emoji: string | null }[]
+	);
+
+	const tally = $derived(
+		data.tally as {
+			player_id: string;
+			player_name: string;
+			gold: number;
+			silver: number;
+			bronze: number;
+			total: number;
+		}[]
+	);
+
+	const summary = $derived(
+		data.summary as { gamesPlayed: number; totalScores: number; playerCount: number }
+	);
+
+	const eloBreakdown = $derived(
+		data.eloBreakdown as {
+			player_id: string;
+			name: string;
+			before: number;
+			after: number;
+			delta: number;
+			games: {
+				game_id: string;
+				name: string;
+				emoji: string;
+				delta: number;
+				matchups: {
+					opponentId: string;
+					opponentName: string;
+					result: 'won' | 'lost' | 'tied';
+					ratingSelf: number;
+					ratingOpp: number;
+					winProb: number;
+					delta: number;
+				}[];
+			}[];
+		}[]
+	);
+
+	const maxAbsDelta = $derived(
+		Math.max(1, ...eloBreakdown.map((r) => Math.abs(r.delta)), 1)
 	);
 
 	let confirmDeleteId = $state<string | null>(null);
@@ -164,6 +209,190 @@
 		</span>
 	</div>
 
+	<!-- Day summary -->
+	<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+		<div class="rounded-xl border border-ayu-border bg-ayu-surface p-5">
+			<p class="mb-3 text-xs font-semibold tracking-widest text-ayu-muted uppercase">
+				Day Summary
+			</p>
+			<div class="grid grid-cols-3 gap-3 text-center">
+				<div>
+					<p class="text-2xl font-bold text-white">{summary.gamesPlayed}</p>
+					<p class="mt-0.5 text-xs text-ayu-muted">Games played</p>
+				</div>
+				<div>
+					<p class="text-2xl font-bold text-white">{summary.totalScores}</p>
+					<p class="mt-0.5 text-xs text-ayu-muted">Scores submitted</p>
+				</div>
+				<div>
+					<p class="text-2xl font-bold text-white">{summary.playerCount}</p>
+					<p class="mt-0.5 text-xs text-ayu-muted">Players</p>
+				</div>
+			</div>
+		</div>
+
+		<div class="rounded-xl border border-ayu-border bg-ayu-surface p-5">
+			<p class="mb-3 text-xs font-semibold tracking-widest text-ayu-muted uppercase">
+				Medal Tally
+			</p>
+			{#if tally.length === 0}
+				<p class="text-sm text-ayu-muted">No medals awarded yet.</p>
+			{:else}
+				<div class="space-y-1.5">
+					{#each tally.slice(0, 5) as t, i}
+						<div class="flex items-center gap-2 text-sm">
+							<span class="w-4 shrink-0 text-center text-xs text-ayu-muted">{i + 1}</span>
+							<span class="flex-1 truncate text-white">{t.player_name}</span>
+							<span class="font-mono text-xs text-ayu-muted"
+								>🥇{t.gold} 🥈{t.silver} 🥉{t.bronze}</span
+							>
+							<span class="w-8 text-right font-mono text-xs font-bold text-ayu-gold"
+								>{t.total}</span
+							>
+						</div>
+					{/each}
+				</div>
+			{/if}
+		</div>
+	</div>
+
+	<!-- ELO impact -->
+	{#if eloBreakdown.length > 0}
+		<div class="rounded-xl border border-ayu-border bg-ayu-surface p-5">
+			<div class="mb-4 border-b border-ayu-border pb-4">
+				<p class="font-semibold text-white">⚡ ELO Impact</p>
+				<p class="mt-0.5 text-xs text-ayu-muted">
+					Head-to-head rating change from this session's games, per player. Expand a player for
+					the per-game breakdown, then a game for every individual matchup — each pairing shows
+					the rating each side carried in, the win probability that implied, and the points that
+					result swung. Skipped games don't count against you, and ties still move rating toward
+					whoever was the underdog going in.
+				</p>
+			</div>
+			<div class="space-y-3">
+				{#each eloBreakdown as row (row.player_id)}
+					{@const pct = (Math.abs(row.delta) / maxAbsDelta) * 50}
+					<details class="group">
+						<summary
+							class="flex cursor-pointer list-none items-center gap-3 rounded-lg px-1 py-1 transition-colors hover:bg-ayu-surface2"
+						>
+							<a
+								href="/player/{row.player_id}"
+								class="w-28 shrink-0 truncate text-sm text-white transition-colors hover:text-ayu-gold"
+								onclick={(e) => e.stopPropagation()}
+							>
+								{row.name}
+							</a>
+							<span class="w-28 shrink-0 text-right font-mono text-xs text-ayu-muted">
+								{row.before} → {row.after}
+							</span>
+							<div class="relative h-4 flex-1">
+								<div class="absolute top-0 left-1/2 h-full w-px bg-ayu-border"></div>
+								{#if row.delta >= 0}
+									<div
+										class="absolute top-0 left-1/2 h-full rounded-r bg-ayu-green"
+										style="width: {pct}%"
+									></div>
+								{:else}
+									<div
+										class="absolute top-0 right-1/2 h-full rounded-l bg-ayu-red"
+										style="width: {pct}%"
+									></div>
+								{/if}
+							</div>
+							<span
+								class="w-10 shrink-0 text-right font-mono text-xs font-bold {row.delta > 0
+									? 'text-ayu-green'
+									: row.delta < 0
+										? 'text-ayu-red'
+										: 'text-ayu-muted'}"
+							>
+								{row.delta > 0 ? '+' : ''}{row.delta}
+							</span>
+							<svg
+								class="h-3 w-3 shrink-0 text-ayu-muted transition-transform group-open:rotate-90"
+								fill="currentColor"
+								viewBox="0 0 20 20"
+							>
+								<path
+									fill-rule="evenodd"
+									d="M6 6l8 4-8 4V6z"
+									clip-rule="evenodd"
+								/>
+							</svg>
+						</summary>
+						<div class="mt-1.5 ml-54 space-y-1 border-l border-ayu-border pl-3">
+							{#each row.games as g}
+								<details class="group/game">
+									<summary
+										class="flex cursor-pointer list-none items-center justify-between gap-2 text-xs"
+									>
+										<span class="flex min-w-0 items-center gap-1.5 text-zinc-300">
+											{#if g.matchups.length > 0}
+												<svg
+													class="h-2 w-2 shrink-0 text-ayu-muted transition-transform group-open/game:rotate-90"
+													fill="currentColor"
+													viewBox="0 0 20 20"
+												>
+													<path fill-rule="evenodd" d="M6 6l8 4-8 4V6z" clip-rule="evenodd" />
+												</svg>
+											{/if}
+											<span class="shrink-0">{g.emoji}</span>
+											<span class="truncate">{g.name}</span>
+										</span>
+										<span
+											class="shrink-0 font-mono font-semibold {g.delta > 0
+												? 'text-ayu-green'
+												: g.delta < 0
+													? 'text-ayu-red'
+													: 'text-ayu-muted'}"
+										>
+											{g.delta > 0 ? '+' : ''}{g.delta}
+										</span>
+									</summary>
+									{#if g.matchups.length > 0}
+										<div class="mt-1 ml-4 space-y-1 border-l border-ayu-border/60 pl-2">
+											{#each g.matchups as m}
+												<div
+													class="flex items-center justify-between gap-3 text-[11px] text-zinc-500"
+												>
+													<span>
+														vs {m.opponentName}
+														<span
+															class="font-semibold {m.result === 'won'
+																? 'text-ayu-green'
+																: m.result === 'lost'
+																	? 'text-ayu-red'
+																	: 'text-zinc-300'}">{m.result}</span
+														>
+														<span class="text-zinc-600"
+															>({m.ratingSelf} vs {m.ratingOpp} · expected {Math.round(
+																m.winProb * 100
+															)}%)</span
+														>
+													</span>
+													<span
+														class="shrink-0 font-mono {m.delta > 0
+															? 'text-ayu-green'
+															: m.delta < 0
+																? 'text-ayu-red'
+																: 'text-ayu-muted'}"
+													>
+														{m.delta > 0 ? '+' : ''}{m.delta.toFixed(1)}
+													</span>
+												</div>
+											{/each}
+										</div>
+									{/if}
+								</details>
+							{/each}
+						</div>
+					</details>
+				{/each}
+			</div>
+		</div>
+	{/if}
+
 	{#if globalError}
 		<p class="text-sm text-ayu-red">{globalError}</p>
 	{/if}
@@ -193,13 +422,14 @@
 		<p class="text-ayu-muted">No scores submitted yet.</p>
 	{:else}
 		<div class="space-y-4">
-			{#each gameGroups as { game, scores }}
+			{#each gameGroups as { game, scores, isSpecial }}
 				<div class="overflow-hidden rounded-xl border border-ayu-border">
 					<div
 						class="flex items-center gap-2 border-b border-ayu-border bg-ayu-surface2 px-4 py-2.5"
 					>
 						{#if game.icon_emoji}<span>{game.icon_emoji}</span>{/if}
 						<span class="text-sm font-semibold text-white">{game.name}</span>
+						{#if isSpecial}<span class="text-xs text-ayu-gold" title="Featured game">⭐</span>{/if}
 						<span class="text-xs text-ayu-muted"
 							>{scores.length} submission{scores.length === 1 ? '' : 's'}</span
 						>

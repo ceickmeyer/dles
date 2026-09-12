@@ -1,8 +1,36 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { fmtSeconds } from '$lib/utils';
+	import { canHover } from '$lib/hover';
 	import EloMultiChart from '$components/EloMultiChart.svelte';
 
 	let { data } = $props();
+
+	let openEloRowId = $state<string | null>(null);
+	let openStatKey = $state<string | null>(null);
+
+	// Tap-to-toggle for info tooltips. Only wired on touch devices — see
+	// $lib/hover for why hover and tap-toggle are never layered on one trigger.
+	// A tap that lands on the player-name link inside the row should navigate,
+	// not toggle the tooltip, so it's excluded before the toggle fires.
+	function toggleTip(isOpen: boolean, open: () => void, close: () => void) {
+		return (e: MouseEvent) => {
+			if ((e.target as HTMLElement).closest('a')) return;
+			e.stopPropagation();
+			if (isOpen) close();
+			else open();
+		};
+	}
+
+	onMount(() => {
+		if (canHover) return;
+		function closeAll() {
+			openEloRowId = null;
+			openStatKey = null;
+		}
+		document.addEventListener('click', closeAll);
+		return () => document.removeEventListener('click', closeAll);
+	});
 
 	// Same palette as EloMultiChart — keeps player colors consistent across the page
 	const CATPPUCCIN = [
@@ -60,8 +88,19 @@
 			</div>
 			<div class="space-y-0.5">
 				{#each data.eloRankings as row, i}
+					<!-- svelte-ignore a11y_no_static_element_interactions -->
+					<!-- svelte-ignore a11y_click_events_have_key_events -->
 					<div
-						class="group relative flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-ayu-surface2"
+						class="relative flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-ayu-surface2"
+						onmouseenter={canHover ? () => (openEloRowId = row.player_id) : undefined}
+						onmouseleave={canHover ? () => (openEloRowId = null) : undefined}
+						onclick={!canHover
+							? toggleTip(
+									openEloRowId === row.player_id,
+									() => (openEloRowId = row.player_id),
+									() => (openEloRowId = null)
+								)
+							: undefined}
 					>
 						<span
 							class="w-5 shrink-0 text-center text-xs font-bold
@@ -142,7 +181,10 @@
 						{#if row.yesterdayBreakdown && row.yesterdayBreakdown.length > 0}
 							{@const total = row.delta ?? 0}
 							<div
-								class="pointer-events-none absolute top-full right-0 z-10 mt-1 w-52 rounded-lg border border-ayu-border bg-zinc-900 p-3 text-xs opacity-0 shadow-lg transition-opacity group-hover:opacity-100"
+								class="pointer-events-none absolute top-full right-0 z-10 mt-1 w-52 rounded-lg border border-ayu-border bg-zinc-900 p-3 text-xs shadow-lg transition-opacity {openEloRowId ===
+								row.player_id
+									? 'opacity-100'
+									: 'opacity-0'}"
 							>
 								<p class="mb-2 font-semibold tracking-wider text-ayu-muted uppercase">
 									{row.yesterdaySessionName ?? 'Last session'}
@@ -224,8 +266,20 @@
 					<!-- Player rows -->
 					<div class="space-y-2">
 						{#each game.rows.slice(0, 6) as row, i (row.player_id)}
+							{@const statKey = `${game.id}::${row.player_id}`}
+							<!-- svelte-ignore a11y_no_static_element_interactions -->
+							<!-- svelte-ignore a11y_click_events_have_key_events -->
 							<div
-								class="group relative flex items-center gap-3 rounded-lg px-1 py-1 transition-colors hover:bg-ayu-surface2"
+								class="relative flex items-center gap-3 rounded-lg px-1 py-1 transition-colors hover:bg-ayu-surface2"
+								onmouseenter={canHover ? () => (openStatKey = statKey) : undefined}
+								onmouseleave={canHover ? () => (openStatKey = null) : undefined}
+								onclick={!canHover
+									? toggleTip(
+											openStatKey === statKey,
+											() => (openStatKey = statKey),
+											() => (openStatKey = null)
+										)
+									: undefined}
 							>
 								<span
 									class="w-4 shrink-0 text-center text-xs {i === 0
@@ -245,7 +299,10 @@
 
 								<!-- Hover tooltip -->
 								<div
-									class="pointer-events-none absolute top-full right-0 z-10 mt-1 w-48 rounded-lg border border-ayu-border bg-zinc-900 p-3 text-xs opacity-0 shadow-lg transition-opacity group-hover:opacity-100"
+									class="pointer-events-none absolute top-full right-0 z-10 mt-1 w-48 rounded-lg border border-ayu-border bg-zinc-900 p-3 text-xs shadow-lg transition-opacity {openStatKey ===
+									statKey
+										? 'opacity-100'
+										: 'opacity-0'}"
 								>
 									<div class="space-y-1 text-zinc-300">
 										<div class="flex justify-between">

@@ -141,6 +141,26 @@ async function loadPrevWinners(excludeSessionId: string | null) {
 
 	const medalEmoji = (rank: number) => (rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉');
 
+	// Top ELO gainers from that same night — a separate axis from medal tally,
+	// since a favorite tying/losing to an underdog can outscore a low-stakes sweep.
+	const nameById = new Map<string, string>();
+	for (const s of prevScores) nameById.set(s.player_id, displayName(s.player));
+	const { data: playerElos } = await supabase.from('player_elo').select('player_id, history');
+	const eloWinners = (playerElos ?? [])
+		.map((row) => {
+			const history = (row.history ?? []) as { session_id: string; delta: number }[];
+			const entry = history.find((h) => h.session_id === prevId);
+			if (!entry) return null;
+			return {
+				player_id: row.player_id,
+				player_name: nameById.get(row.player_id) ?? '?',
+				delta: Math.round(entry.delta)
+			};
+		})
+		.filter((x): x is NonNullable<typeof x> => x !== null && x.delta > 0)
+		.sort((a, b) => b.delta - a.delta)
+		.slice(0, 3);
+
 	return {
 		winners: tally
 			.map((t, idx) => ({ ...t, rank: ranks[idx].rank }))
@@ -155,7 +175,8 @@ async function loadPrevWinners(excludeSessionId: string | null) {
 				goldStreak: t.rank === 1 && goldStreak >= 2 ? goldStreak : null
 			})),
 		ranks,
-		fullRanking
+		fullRanking,
+		eloWinners
 	};
 }
 
@@ -184,7 +205,8 @@ export const load: PageServerLoad = async () => {
 			nextSession,
 			prevWinners: prevData?.winners ?? null,
 			prevRanks: prevData?.ranks ?? [],
-			prevFullRanking: prevData?.fullRanking ?? []
+			prevFullRanking: prevData?.fullRanking ?? [],
+			prevEloWinners: prevData?.eloWinners ?? []
 		};
 	}
 
@@ -201,6 +223,7 @@ export const load: PageServerLoad = async () => {
 		nextSession: null,
 		prevWinners: prevData?.winners ?? null,
 		prevRanks: prevData?.ranks ?? [],
-		prevFullRanking: prevData?.fullRanking ?? []
+		prevFullRanking: prevData?.fullRanking ?? [],
+		prevEloWinners: prevData?.eloWinners ?? []
 	};
 };

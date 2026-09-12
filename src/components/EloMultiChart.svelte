@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+	import { canHover } from '$lib/hover';
+
 	interface PlayerLine {
 		player_id: string;
 		name: string;
@@ -126,6 +129,16 @@
 	function tipY(y: number) {
 		return y - TH / 2 < PT ? PT : y - TH / 2;
 	}
+
+	onMount(() => {
+		if (canHover) return;
+		function closeAll() {
+			hoveredPlayer = null;
+			hoveredDot = null;
+		}
+		document.addEventListener('click', closeAll);
+		return () => document.removeEventListener('click', closeAll);
+	});
 </script>
 
 <div>
@@ -177,13 +190,21 @@
 								style="transition: opacity 0.12s, stroke-width 0.12s"
 							/>
 							<!-- svelte-ignore a11y_no_static_element_interactions -->
+							<!-- svelte-ignore a11y_click_events_have_key_events -->
 							<path
 								d={smoothPath(seg)}
 								fill="none"
 								stroke="transparent"
 								stroke-width="14"
 								style="cursor: pointer;"
-								onmouseenter={() => (hoveredPlayer = player.player_id)}
+								onmouseenter={canHover ? () => (hoveredPlayer = player.player_id) : undefined}
+								onclick={!canHover
+									? (e) => {
+											e.stopPropagation();
+											hoveredPlayer = hoveredPlayer === player.player_id ? null : player.player_id;
+											hoveredDot = null;
+										}
+									: undefined}
 							/>
 						{:else if seg.length === 1}
 							<circle
@@ -208,17 +229,32 @@
 							style="transition: opacity 0.12s"
 						/>
 						<!-- svelte-ignore a11y_no_static_element_interactions -->
+						<!-- svelte-ignore a11y_click_events_have_key_events -->
 						<circle
 							cx={dot.x}
 							cy={dot.y}
 							r={9}
 							fill="transparent"
 							style="cursor: pointer;"
-							onmouseenter={() => {
-								hoveredPlayer = player.player_id;
-								hoveredDot = { player_id: player.player_id, elo: dot.elo, x: dot.x, y: dot.y };
-							}}
-							onmouseleave={() => (hoveredDot = null)}
+							onmouseenter={canHover
+								? () => {
+										hoveredPlayer = player.player_id;
+										hoveredDot = { player_id: player.player_id, elo: dot.elo, x: dot.x, y: dot.y };
+									}
+								: undefined}
+							onmouseleave={canHover ? () => (hoveredDot = null) : undefined}
+							onclick={!canHover
+								? (e) => {
+										e.stopPropagation();
+										if (hoveredDot?.x === dot.x && hoveredDot?.y === dot.y) {
+											hoveredDot = null;
+											hoveredPlayer = null;
+										} else {
+											hoveredPlayer = player.player_id;
+											hoveredDot = { player_id: player.player_id, elo: dot.elo, x: dot.x, y: dot.y };
+										}
+									}
+								: undefined}
 						/>
 					{/each}
 				{/if}
@@ -272,8 +308,15 @@
 			<button
 				class="flex items-center gap-1.5 text-xs transition-opacity"
 				style="opacity: {hoveredPlayer === null || hoveredPlayer === player.player_id ? 1 : 0.35}"
-				onmouseenter={() => (hoveredPlayer = player.player_id)}
-				onmouseleave={() => (hoveredPlayer = null)}
+				onmouseenter={canHover ? () => (hoveredPlayer = player.player_id) : undefined}
+				onmouseleave={canHover ? () => (hoveredPlayer = null) : undefined}
+				onclick={!canHover
+					? (e) => {
+							e.stopPropagation();
+							hoveredPlayer = hoveredPlayer === player.player_id ? null : player.player_id;
+							hoveredDot = null;
+						}
+					: undefined}
 			>
 				<span
 					class="inline-block h-2.5 w-2.5 shrink-0 rounded-full"

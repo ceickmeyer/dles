@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+	import { canHover } from '$lib/hover';
+
 	interface Session {
 		name: string;
 		date: string;
@@ -112,6 +115,15 @@
 		// Flip below if near top
 		return pt.y - TH / 2 < PT ? PT : pt.y - TH / 2;
 	}
+
+	onMount(() => {
+		if (canHover) return;
+		function closeAll() {
+			hoveredPt = null;
+		}
+		document.addEventListener('click', closeAll);
+		return () => document.removeEventListener('click', closeAll);
+	});
 </script>
 
 <svg viewBox="0 0 {W} {H}" class="w-full" style="overflow: visible; display: block;">
@@ -154,14 +166,21 @@
 		/>
 		<!-- Transparent larger hit area -->
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
 		<circle
 			cx={pt.x}
 			cy={pt.y}
 			r={10}
 			fill="transparent"
 			style="cursor: pointer;"
-			onmouseenter={() => (hoveredPt = pt)}
-			onmouseleave={() => (hoveredPt = null)}
+			onmouseenter={canHover ? () => (hoveredPt = pt) : undefined}
+			onmouseleave={canHover ? () => (hoveredPt = null) : undefined}
+			onclick={!canHover
+				? (e) => {
+						e.stopPropagation();
+						hoveredPt = hoveredPt === pt ? null : pt;
+					}
+				: undefined}
 		/>
 	{/each}
 
