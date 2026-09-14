@@ -27,14 +27,18 @@
 		aliasError = '';
 		if (player.id) {
 			loading = true;
-			const { data: row } = await supabase
+			const { data: row, error: dbError } = await supabase
 				.from('players')
 				.select('pin, alias')
 				.eq('id', player.id)
 				.maybeSingle();
+			loading = false;
+			if (dbError) {
+				aliasError = 'Failed to load — try again.';
+				return;
+			}
 			pin = row?.pin ?? null;
 			alias = row?.alias ?? '';
-			loading = false;
 		}
 	}
 

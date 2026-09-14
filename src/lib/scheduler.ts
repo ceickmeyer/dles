@@ -90,7 +90,11 @@ export async function runScheduler(supabase: SupabaseClient<Database>): Promise<
 	}));
 
 	if (gameInserts.length > 0) {
-		await supabase.from('session_games').insert(gameInserts);
+		const { error: gamesError } = await supabase.from('session_games').insert(gameInserts);
+		// Unchecked, this failed silently and left a session with zero games in
+		// the lineup while every caller believed it had succeeded.
+		if (gamesError)
+			throw new Error(`Session created but failed to add games: ${gamesError.message}`);
 	}
 
 	return { created: true, sessionName, finished };

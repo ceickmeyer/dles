@@ -72,8 +72,8 @@
 			else if (result.skippedReason === 'no_schedule') parts.push('No games configured for today');
 			scheduleMsg = parts.join(' · ');
 			scheduleMsgType = 'ok';
-		} catch {
-			scheduleMsg = 'Scheduler error — check console.';
+		} catch (e) {
+			scheduleMsg = e instanceof Error ? e.message : 'Scheduler error — check console.';
 			scheduleMsgType = 'err';
 		}
 		scheduling = false;

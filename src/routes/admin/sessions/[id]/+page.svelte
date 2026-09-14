@@ -112,10 +112,17 @@
 			data: { session: authSession }
 		} = await supabase.auth.getSession();
 		if (!authSession?.access_token) return;
-		fetch('/api/recalculate-elo', {
-			method: 'POST',
-			headers: { Authorization: `Bearer ${authSession.access_token}` }
-		});
+		try {
+			const res = await fetch('/api/recalculate-elo', {
+				method: 'POST',
+				headers: { Authorization: `Bearer ${authSession.access_token}` }
+			});
+			if (!res.ok) {
+				globalError = 'ELO recalculation failed — the cached ratings may now be stale.';
+			}
+		} catch {
+			globalError = 'ELO recalculation failed — the cached ratings may now be stale.';
+		}
 	}
 
 	async function removeGame(gameId: string) {
@@ -144,7 +151,7 @@
 			return;
 		}
 		confirmRemoveGameId = null;
-		recalculateEloIfFinished();
+		await recalculateEloIfFinished();
 		await invalidateAll();
 	}
 
@@ -177,7 +184,7 @@
 			return;
 		}
 		confirmDeleteId = null;
-		recalculateEloIfFinished();
+		await recalculateEloIfFinished();
 		await invalidateAll();
 	}
 

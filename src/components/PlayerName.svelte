@@ -16,14 +16,18 @@
 		loading = true;
 		error = '';
 
-		const { data: existing } = await supabase
+		const { data: existing, error: dbError } = await supabase
 			.from('players')
-			.select('id, name, pin')
+			.select('id, name')
 			.ilike('name', trimmed)
 			.maybeSingle();
 
 		loading = false;
 
+		if (dbError) {
+			error = 'Something went wrong — try again.';
+			return;
+		}
 		if (existing) {
 			step = 'pin-entry';
 		} else {
@@ -36,13 +40,17 @@
 		const trimmed = name.trim();
 		loading = true;
 		error = '';
-		const { data } = await supabase
+		const { data, error: dbError } = await supabase
 			.from('players')
 			.select('id, name')
 			.ilike('name', trimmed)
 			.eq('pin', pinInput.trim())
 			.maybeSingle();
 		loading = false;
+		if (dbError) {
+			error = 'Something went wrong — try again.';
+			return;
+		}
 		if (!data) {
 			error = 'Wrong PIN. Try again, or go back and use a different name.';
 			return;
