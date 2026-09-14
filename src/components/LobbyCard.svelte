@@ -406,7 +406,10 @@
 
 		{#if submitted}
 			<div class="flex items-center gap-2">
-				<div class="flex items-center gap-1.5 {myDnf ? 'text-ayu-red' : 'text-ayu-green'}">
+				<div
+					class="flex items-center gap-1.5 {myDnf ? 'text-ayu-red' : 'text-ayu-green'}"
+					role="status"
+				>
 					<span>{myDnf ? '✗' : '✓'}</span>
 					<span class="text-sm font-semibold tabular-nums">
 						{effectiveScore !== null ? formatScore(effectiveScore, game) : ''}
@@ -596,6 +599,7 @@
 					<button
 						onclick={onCopyResults}
 						title="Copy results"
+						aria-live="polite"
 						class="transition-colors {resultsCopied
 							? 'text-ayu-green'
 							: 'text-ayu-muted hover:text-white'}"

@@ -78,7 +78,12 @@
 	}
 
 	async function copyPin(p: Player) {
-		await navigator.clipboard.writeText(p.pin);
+		try {
+			await navigator.clipboard.writeText(p.pin);
+		} catch {
+			window.prompt('Copy PIN:', p.pin);
+			return;
+		}
 		copied = p.id;
 		setTimeout(() => {
 			copied = null;
@@ -89,7 +94,12 @@
 		const text = players
 			.map((p) => `${p.name}${p.alias ? ` (${p.alias})` : ''}: PIN ${p.pin}`)
 			.join('\n');
-		await navigator.clipboard.writeText(text);
+		try {
+			await navigator.clipboard.writeText(text);
+		} catch {
+			window.prompt('Copy PINs:', text);
+			return;
+		}
 		copied = 'all';
 		setTimeout(() => {
 			copied = null;
@@ -233,6 +243,7 @@
 										<input
 											type={showPins ? 'text' : 'password'}
 											value={editingPin[p.id] ?? p.pin}
+											aria-label="PIN for {p.name}"
 											onfocus={() => startEditPin(p)}
 											oninput={(e) => {
 												editingPin[p.id] = (e.target as HTMLInputElement).value;
@@ -268,6 +279,7 @@
 								<input
 									type="text"
 									value={editingAlias[p.id] ?? p.alias ?? ''}
+									aria-label="Alias for {p.name}"
 									placeholder="Set alias…"
 									onfocus={() => startEdit(p)}
 									oninput={(e) => {

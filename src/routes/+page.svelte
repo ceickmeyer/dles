@@ -626,20 +626,22 @@
 {/if}
 
 <!-- Score toasts -->
-{#if toasts.length > 0}
-	<div
-		class="pointer-events-none fixed top-4 left-1/2 z-50 flex -translate-x-1/2 flex-col items-center gap-2"
-	>
-		{#each toasts as toast (toast.id)}
-			<div
-				transition:fly={{ y: -16, duration: 200 }}
-				class="rounded-xl border border-ayu-border bg-zinc-950 px-5 py-3 text-base font-medium text-white shadow-2xl"
-			>
-				{toast.message}
-			</div>
-		{/each}
-	</div>
-{/if}
+<!-- Kept mounted (not behind {#if}) so screen readers are already watching
+     this live region before the first toast ever appears. -->
+<div
+	class="pointer-events-none fixed top-4 left-1/2 z-50 flex -translate-x-1/2 flex-col items-center gap-2"
+	aria-live="polite"
+	role="status"
+>
+	{#each toasts as toast (toast.id)}
+		<div
+			transition:fly={{ y: -16, duration: 200 }}
+			class="rounded-xl border border-ayu-border bg-zinc-950 px-5 py-3 text-base font-medium text-white shadow-2xl"
+		>
+			{toast.message}
+		</div>
+	{/each}
+</div>
 
 {#if !session}
 	{@const next = data.nextSession}
@@ -854,6 +856,7 @@
 				</div>
 				<button
 					onclick={share}
+					aria-live="polite"
 					class="shrink-0 rounded-lg bg-ayu-gold px-4 py-2 text-sm font-bold text-ayu-bg transition hover:brightness-110"
 				>
 					{#if shareCopied}
@@ -898,6 +901,7 @@
 						</h2>
 						<button
 							onclick={copyStandings}
+							aria-live="polite"
 							class="flex items-center gap-1 text-xs transition {standingsCopied
 								? 'text-ayu-green'
 								: 'text-ayu-muted hover:text-white'}"

@@ -280,6 +280,11 @@
 												{@const key = `${group.msg.id}-${si}`}
 												{@const revealed = revealedSpoilers.has(key)}
 												<!-- svelte-ignore a11y_no_static_element_interactions -->
+												<!-- svelte-ignore a11y_no_noninteractive_tabindex -- role/tabindex are
+												     paired correctly (both set, or both undefined, together) but the
+												     compiler can't verify that across a ternary. Kept as one element
+												     (not an {#if}/{:else} split) so the reveal fades via the CSS
+												     transition instead of snapping between two swapped nodes. -->
 												<span
 													onclick={revealed ? undefined : () => revealSpoiler(key)}
 													onkeydown={revealed ? undefined : (e) => e.key === 'Enter' && revealSpoiler(key)}
@@ -365,6 +370,7 @@
 					>
 						<input
 							bind:value={draft}
+							aria-label="Chat message"
 							placeholder="Say something…"
 							maxlength={500}
 							autocomplete="off"

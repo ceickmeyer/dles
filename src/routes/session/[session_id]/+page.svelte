@@ -12,7 +12,12 @@
 	let copied = $state(false);
 
 	async function copyShareText() {
-		await navigator.clipboard.writeText(data.shareText);
+		try {
+			await navigator.clipboard.writeText(data.shareText);
+		} catch {
+			window.prompt('Copy results:', data.shareText);
+			return;
+		}
 		copied = true;
 		setTimeout(() => {
 			copied = false;
@@ -39,6 +44,7 @@
 			<div class="flex shrink-0 items-center gap-3">
 				<button
 					onclick={copyShareText}
+					aria-live="polite"
 					class="rounded-lg border border-ayu-border px-3 py-1.5 text-xs font-medium text-zinc-300 transition hover:text-white"
 				>
 					{#if copied}

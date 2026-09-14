@@ -41,6 +41,7 @@
 <div class="space-y-3">
 	<textarea
 		bind:value={shareText}
+		aria-label="Decipher result"
 		rows={4}
 		placeholder="Paste your Decipher result…"
 		class="w-full resize-none rounded-lg border border-ayu-border bg-ayu-bg px-3 py-2 text-sm text-white placeholder-ayu-muted focus:border-ayu-gold focus:outline-none"

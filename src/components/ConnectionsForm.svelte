@@ -39,6 +39,7 @@
 <div class="space-y-3">
 	<textarea
 		bind:value={shareText}
+		aria-label="Connections result"
 		rows={7}
 		placeholder="Paste your Connections result…"
 		class="w-full resize-none rounded-lg border border-ayu-border bg-ayu-bg px-3 py-2 text-sm text-white placeholder-ayu-muted focus:border-ayu-gold focus:outline-none"

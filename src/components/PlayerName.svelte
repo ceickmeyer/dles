@@ -72,9 +72,14 @@
 </script>
 
 <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-	<div class="w-full max-w-sm rounded-2xl border border-ayu-border bg-ayu-surface p-8 shadow-2xl">
+	<div
+		class="w-full max-w-sm rounded-2xl border border-ayu-border bg-ayu-surface p-8 shadow-2xl"
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="player-modal-title"
+	>
 		{#if step === 'name'}
-			<h2 class="mb-1 text-2xl font-bold text-white">What's your name?</h2>
+			<h2 id="player-modal-title" class="mb-1 text-2xl font-bold text-white">What's your name?</h2>
 			<p class="mb-6 text-sm text-ayu-muted">
 				Used to track your scores. You'll set a PIN to sign in on other devices.
 			</p>
@@ -109,7 +114,7 @@
 				}}
 				class="mb-4 text-sm text-ayu-muted hover:text-white">← Back</button
 			>
-			<h2 class="mb-1 text-2xl font-bold text-white">Choose a PIN</h2>
+			<h2 id="player-modal-title" class="mb-1 text-2xl font-bold text-white">Choose a PIN</h2>
 			<p class="mb-6 text-sm text-ayu-muted">
 				Pick a 4-digit PIN — you'll use it to sign in on other devices.
 			</p>
@@ -145,7 +150,7 @@
 				}}
 				class="mb-4 text-sm text-ayu-muted hover:text-white">← Back</button
 			>
-			<h2 class="mb-1 text-2xl font-bold text-white">Welcome back, {name}!</h2>
+			<h2 id="player-modal-title" class="mb-1 text-2xl font-bold text-white">Welcome back, {name}!</h2>
 			<p class="mb-6 text-sm text-ayu-muted">
 				That name already exists. Enter your 4-digit PIN to sign in.
 			</p>

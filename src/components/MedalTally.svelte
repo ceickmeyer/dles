@@ -220,6 +220,11 @@
 
 					<td
 						class="hidden w-4 cursor-default py-2.5 sm:table-cell"
+						role={prevRankMap.has(row.player_id) ? 'button' : undefined}
+						tabindex={prevRankMap.has(row.player_id) ? 0 : undefined}
+						aria-label={prevRankMap.has(row.player_id)
+							? 'Rank change since last session'
+							: undefined}
 						onmouseenter={canHover
 							? (e) => {
 									if (prevRankMap.has(row.player_id)) {
@@ -241,6 +246,17 @@
 									showArrowTip(e, p.rank, ranks[i], p.outOf);
 								}
 							: undefined}
+						onkeydown={(e) => {
+							if (e.key !== 'Enter' && e.key !== ' ') return;
+							if (!prevRankMap.has(row.player_id)) return;
+							e.preventDefault();
+							if (arrowTipVisible) {
+								arrowTipVisible = false;
+								return;
+							}
+							const p = prevRankMap.get(row.player_id)!;
+							showArrowTip(e as unknown as MouseEvent, p.rank, ranks[i], p.outOf);
+						}}
 					>
 						{#if prevRankMap.has(row.player_id)}
 							{@const prev = prevRankMap.get(row.player_id)!}

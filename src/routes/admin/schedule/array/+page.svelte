@@ -254,15 +254,21 @@
 													? `Remove from ${DAYS[dayIdx]}`
 													: `Set as featured for ${DAYS[dayIdx]}`
 												: `Remove from ${DAYS[dayIdx]}`}
-										class="h-7 w-7 rounded-full transition-all duration-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ayu-gold
+										class="flex h-7 w-7 items-center justify-center rounded-full text-[10px] leading-none transition-all duration-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ayu-gold
 											{state === 0
-											? 'border border-zinc-700 hover:border-zinc-400 hover:bg-zinc-800'
+											? 'border border-zinc-700 text-transparent hover:border-zinc-400 hover:bg-zinc-800'
 											: state === 1
 												? rnd
-													? 'bg-ayu-blue/60 hover:bg-ayu-blue/40'
-													: 'bg-zinc-300 hover:bg-ayu-gold/50'
-												: 'bg-ayu-gold hover:bg-ayu-gold/70'}"
-									></button>
+													? 'bg-ayu-blue/60 text-white hover:bg-ayu-blue/40'
+													: 'bg-zinc-300 text-zinc-900 hover:bg-ayu-gold/50'
+												: 'bg-ayu-gold text-ayu-bg hover:bg-ayu-gold/70'}"
+									>
+										{#if state === 1}
+											{rnd ? '🎲' : '✓'}
+										{:else if state === 2}
+											⭐
+										{/if}
+									</button>
 								</div>
 							</td>
 						{/each}

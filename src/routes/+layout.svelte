@@ -267,6 +267,7 @@
 											<div class="flex items-center gap-2">
 												<input
 													bind:value={alias}
+													aria-label="Alias"
 													placeholder="Alias…"
 													maxlength={32}
 													class="min-w-0 flex-1 rounded-lg border border-ayu-border bg-ayu-bg px-2.5 py-1.5 text-xs text-white placeholder-ayu-muted focus:border-ayu-gold focus:outline-none"
@@ -280,9 +281,11 @@
 												</button>
 											</div>
 											{#if aliasError}
-												<p class="mt-1 text-xs text-ayu-red">{aliasError}</p>
+												<p class="mt-1 text-xs text-ayu-red" role="alert">{aliasError}</p>
 											{:else if aliasSaved}
-												<p class="mt-1 text-xs" style="color: var(--color-ayu-green)">✓ Saved</p>
+												<p class="mt-1 text-xs" style="color: var(--color-ayu-green)" role="status">
+													✓ Saved
+												</p>
 											{/if}
 										{/if}
 										<!-- PIN -->

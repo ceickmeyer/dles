@@ -75,7 +75,7 @@
 </script>
 
 {#if submitted}
-	<div class="rounded-xl border border-green-700 bg-green-900/20 p-5 text-center">
+	<div class="rounded-xl border border-green-700 bg-green-900/20 p-5 text-center" role="status">
 		<p class="text-xl font-bold text-green-400">Score submitted! ✓</p>
 	</div>
 {:else}

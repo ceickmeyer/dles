@@ -250,6 +250,7 @@
 					onclick={() => toggleRandom(selectedDay)}
 					role="switch"
 					aria-checked={d.randomSpecial}
+					aria-label="Random featured game"
 					class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors
 						{d.randomSpecial ? 'bg-ayu-gold' : 'bg-ayu-border'}"
 				>

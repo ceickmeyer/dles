@@ -33,6 +33,7 @@
 			}}
 		>
 			<label class="mb-1.5 block text-sm text-zinc-400" for="email">Email</label>
+			<!-- svelte-ignore a11y_autofocus -- single field on a dedicated login page, opened just to sign in -->
 			<input
 				id="email"
 				type="email"
