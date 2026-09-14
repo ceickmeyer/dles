@@ -1,5 +1,5 @@
 import { supabase } from '$lib/supabase';
-import { sortSessionGames, displayName } from '$lib/utils';
+import { sortSessionGames, displayName, paginateAll } from '$lib/utils';
 import { rankScores, computeSessionTally, sortTally } from '$lib/scoring';
 import type { PageServerLoad } from './$types';
 
@@ -83,32 +83,29 @@ async function loadPrevWinners(excludeSessionId: string | null) {
 	const { data: sessions } = await sessionsQuery;
 	if (!sessions?.length) return null;
 
-	const [{ data: allScores }, { data: specialGameRows }] = await Promise.all([
-		supabase
-			.from('scores')
-			.select(
-				'session_id, game_id, player_id, raw_score, player:players(name, alias), game:games(scoring_direction, max_score, allow_dnf)'
-			)
-			.in(
-				'session_id',
-				sessions.map((s) => s.id)
-			),
-		supabase
-			.from('session_games')
-			.select('session_id, game_id')
-			.eq('is_special', true)
-			.in(
-				'session_id',
-				sessions.map((s) => s.id)
-			)
+	const sessionIds = sessions.map((s) => s.id);
+	const [allScores, { data: specialGameRows }] = await Promise.all([
+		paginateAll<ScoreRow>((from, to) =>
+			supabase
+				.from('scores')
+				.select(
+					'session_id, game_id, player_id, raw_score, player:players(name, alias), game:games(scoring_direction, max_score, allow_dnf)'
+				)
+				.in('session_id', sessionIds)
+				.range(from, to) as unknown as PromiseLike<{ data: ScoreRow[] | null }>
+		),
+		supabase.from('session_games').select('session_id, game_id').eq('is_special', true).in(
+			'session_id',
+			sessionIds
+		)
 	]);
 
-	if (!allScores?.length) return null;
+	if (!allScores.length) return null;
 
 	const specialGameMap = new Map((specialGameRows ?? []).map((sg) => [sg.session_id, sg.game_id]));
 
 	const prevId = sessions[0].id;
-	const prevScores = (allScores as ScoreRow[]).filter((s) => s.session_id === prevId);
+	const prevScores = allScores.filter((s) => s.session_id === prevId);
 	if (!prevScores.length) return null;
 
 	const tally = tallyFromScores(prevScores, specialGameMap.get(prevId));
@@ -132,7 +129,7 @@ async function loadPrevWinners(excludeSessionId: string | null) {
 	const goldWinnerId = tally[0].player_id;
 	let goldStreak = 1;
 	for (let i = 1; i < sessions.length; i++) {
-		const sessionScores = (allScores as ScoreRow[]).filter((s) => s.session_id === sessions[i].id);
+		const sessionScores = allScores.filter((s) => s.session_id === sessions[i].id);
 		const winner =
 			tallyFromScores(sessionScores, specialGameMap.get(sessions[i].id))[0]?.player_id ?? null;
 		if (winner === goldWinnerId) goldStreak++;

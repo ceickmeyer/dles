@@ -1,19 +1,13 @@
 import { supabase } from '$lib/supabase';
+import { paginateAll } from '$lib/utils';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => {
 	const { data: players } = await supabase.from('players').select('*').order('name');
 
-	const allScoreMeta: { player_id: string; session_id: string }[] = [];
-	for (let from = 0; ; from += 1000) {
-		const { data: page } = await supabase
-			.from('scores')
-			.select('player_id, session_id')
-			.range(from, from + 999);
-		if (!page?.length) break;
-		allScoreMeta.push(...page);
-		if (page.length < 1000) break;
-	}
+	const allScoreMeta = await paginateAll<{ player_id: string; session_id: string }>((from, to) =>
+		supabase.from('scores').select('player_id, session_id').range(from, to)
+	);
 
 	const sessionsByPlayer = new Map<string, Set<string>>();
 	for (const s of allScoreMeta) {

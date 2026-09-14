@@ -1,7 +1,7 @@
 import { supabase } from '$lib/supabase';
 import { error } from '@sveltejs/kit';
 import { rankScores, computeSessionTally, sortTally } from '$lib/scoring';
-import { displayName } from '$lib/utils';
+import { displayName, paginateAll } from '$lib/utils';
 import { computeStreaks } from '$lib/badges';
 import type { PageServerLoad } from './$types';
 
@@ -57,9 +57,8 @@ export const load: PageServerLoad = async ({ params }) => {
 	};
 
 	// Fetch all scores — paginated to avoid Supabase's 1000-row default limit
-	const allScores: PlayerScoreRow[] = [];
-	for (let from = 0; ; from += 1000) {
-		const { data: page } = await supabase
+	const allScores = await paginateAll<PlayerScoreRow>((from, to) =>
+		supabase
 			.from('scores')
 			.select(
 				'*, player:players(name, alias), game:games(id, name, icon_emoji, scoring_direction, max_score, allow_dnf)'
@@ -68,11 +67,8 @@ export const load: PageServerLoad = async ({ params }) => {
 			.order('session_id')
 			.order('game_id')
 			.order('player_id')
-			.range(from, from + 999);
-		if (!page?.length) break;
-		allScores.push(...page);
-		if (page.length < 1000) break;
-	}
+			.range(from, to) as unknown as PromiseLike<{ data: PlayerScoreRow[] | null }>
+	);
 
 	const { data: specialGameRows } = await supabase
 		.from('session_games')

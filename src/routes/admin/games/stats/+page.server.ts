@@ -1,4 +1,5 @@
 import { supabase } from '$lib/supabase';
+import { paginateAll } from '$lib/utils';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => {
@@ -37,31 +38,24 @@ export const load: PageServerLoad = async () => {
 	const sessionDateMap = new Map(sessions!.map((s) => [s.id, s.date]));
 
 	// Paginate both queries — PostgREST default row limit silently truncates large results
-	const sgAll: { game_id: string; session_id: string }[] = [];
-	for (let from = 0; ; from += 1000) {
-		const { data: page } = await supabase
+	const sgAll = await paginateAll<{ game_id: string; session_id: string }>((from, to) =>
+		supabase
 			.from('session_games')
 			.select('game_id, session_id')
 			.in('session_id', sessionIds)
 			.order('session_id')
-			.range(from, from + 999);
-		if (!page?.length) break;
-		sgAll.push(...page);
-		if (page.length < 1000) break;
-	}
+			.range(from, to)
+	);
 
-	const scoresAll: { game_id: string; session_id: string; player_id: string }[] = [];
-	for (let from = 0; ; from += 1000) {
-		const { data: page } = await supabase
-			.from('scores')
-			.select('game_id, session_id, player_id')
-			.in('session_id', sessionIds)
-			.order('submitted_at', { ascending: true })
-			.range(from, from + 999);
-		if (!page?.length) break;
-		scoresAll.push(...page);
-		if (page.length < 1000) break;
-	}
+	const scoresAll = await paginateAll<{ game_id: string; session_id: string; player_id: string }>(
+		(from, to) =>
+			supabase
+				.from('scores')
+				.select('game_id, session_id, player_id')
+				.in('session_id', sessionIds)
+				.order('submitted_at', { ascending: true })
+				.range(from, to)
+	);
 
 	// Per-game: which sessions it appeared in, and who submitted per session
 	type GameEntry = { sessions: Set<string>; submitters: Map<string, Set<string>> };

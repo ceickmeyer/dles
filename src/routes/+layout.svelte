@@ -4,6 +4,7 @@
 	import { playerStore } from '$lib/stores/player';
 	import { supabase } from '$lib/supabase';
 	import { computeAttendanceStreak } from '$lib/badges';
+	import { paginateAll } from '$lib/utils';
 
 	let { data, children } = $props();
 
@@ -146,21 +147,16 @@
 				.order('date', { ascending: true });
 			if (cancelled || !sessions?.length) return;
 			const sessionIds = sessions.map((s) => s.id);
-			// Paginated — Supabase caps unpaginated selects at 1000 rows, and a
-			// long-time player easily has more scores than that.
-			const playedSessionIds = new Set<string>();
-			for (let from = 0; ; from += 1000) {
-				const { data: page } = await supabase
+			const myScores = await paginateAll<{ session_id: string }>((from, to) =>
+				supabase
 					.from('scores')
 					.select('session_id')
 					.eq('player_id', pid)
 					.in('session_id', sessionIds)
-					.range(from, from + 999);
-				if (cancelled) return;
-				if (!page?.length) break;
-				for (const row of page) playedSessionIds.add(row.session_id);
-				if (page.length < 1000) break;
-			}
+					.range(from, to)
+			);
+			if (cancelled) return;
+			const playedSessionIds = new Set(myScores.map((row) => row.session_id));
 			// Tonight's game night isn't over yet — if it's still active and they
 			// haven't played it, that's "pending", not a miss, so don't let it
 			// break the streak. Drop it and score off the last completed night.

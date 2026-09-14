@@ -9,7 +9,7 @@
 	import { fireConfetti, fireMedalConfetti } from '$lib/confetti';
 	import { rankScores, computeSessionTally, sortTally } from '$lib/scoring';
 	import type { PlayerDayStat } from '$lib/scoring';
-	import { displayName, formatScore, isDnf, fmtSeconds } from '$lib/utils';
+	import { displayName, formatScore, isDnf, fmtSeconds, paginateAll } from '$lib/utils';
 	import type { ScoreWithPlayer, Game } from '$lib/database.types';
 	import PlayerName from '$components/PlayerName.svelte';
 	import LobbyCard from '$components/LobbyCard.svelte';
@@ -472,20 +472,29 @@
 			if (!dnf && player.id) {
 				const lower = game.scoring_direction === 'lower_is_better';
 				const dnfVal = game.allow_dnf && game.max_score !== null ? game.max_score + 1 : null;
-				const [pbRes, srRes] = await Promise.all([
+				const [pbRes, srRows] = await Promise.all([
 					supabase
 						.from('scores')
 						.select('raw_score')
 						.eq('game_id', game.id)
 						.eq('player_id', player.id!)
 						.neq('session_id', session!.id),
-					supabase.from('scores').select('raw_score,session_id,player_id').eq('game_id', game.id)
+					// All-players, all-time for this game — bounded queries above are
+					// safe unpaginated, this one isn't (a popular game across 20+
+					// players and 130+ nights already exceeds Supabase's 1000-row cap).
+					paginateAll<{ raw_score: number; session_id: string; player_id: string }>((from, to) =>
+						supabase
+							.from('scores')
+							.select('raw_score,session_id,player_id')
+							.eq('game_id', game.id)
+							.range(from, to)
+					)
 				]);
 				const filterDnf = (vals: number[]) =>
 					dnfVal !== null ? vals.filter((v) => v !== dnfVal) : vals;
 				const pbVals = filterDnf((pbRes.data ?? []).map((s) => s.raw_score));
 				const srVals = filterDnf(
-					(srRes.data ?? [])
+					srRows
 						.filter((s) => !(s.session_id === session!.id && s.player_id === player.id))
 						.map((s) => s.raw_score)
 				);

@@ -1,5 +1,5 @@
 import { supabase } from '$lib/supabase';
-import { displayName } from '$lib/utils';
+import { displayName, paginateAll } from '$lib/utils';
 import {
 	LEADERBOARD_MIN_PLAYS as MIN_PLAYS,
 	LEADERBOARD_ROLLING_WINDOW as ROLLING_WINDOW,
@@ -41,23 +41,17 @@ export const load: PageServerLoad = async () => {
 		};
 	};
 
-	const allScores: ScoreRow[] = [];
-	for (let from = 0; ; from += 1000) {
-		const { data: page } = await supabase
+	const sessionIds = sessions.map((s) => s.id);
+	const allScores = await paginateAll<ScoreRow>((from, to) =>
+		supabase
 			.from('scores')
 			.select(
 				'session_id, raw_score, player_id, game_id, submitted_at, player:players(name, alias), game:games(id, name, icon_emoji, scoring_direction, max_score, allow_dnf, share_parser)'
 			)
-			.in(
-				'session_id',
-				sessions.map((s) => s.id)
-			)
+			.in('session_id', sessionIds)
 			.order('submitted_at', { ascending: true })
-			.range(from, from + 999);
-		if (!page?.length) break;
-		allScores.push(...(page as ScoreRow[]));
-		if (page.length < 1000) break;
-	}
+			.range(from, to) as unknown as PromiseLike<{ data: ScoreRow[] | null }>
+	);
 
 	if (allScores.length === 0)
 		return {

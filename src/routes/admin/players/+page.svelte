@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
 	import { supabase } from '$lib/supabase';
+	import { paginateAll } from '$lib/utils';
 	import type { Player } from '$lib/database.types';
 
 	let { data } = $props();
@@ -111,21 +112,27 @@
 
 	async function executeMerge() {
 		if (!mergeSourceId || !mergeTargetId) return;
+		const sourceId = mergeSourceId;
+		const targetId = mergeTargetId;
 		merging = true;
 		globalError = '';
 
-		const [{ data: sourceScores }, { data: targetScores }] = await Promise.all([
-			supabase.from('scores').select('id, session_id, game_id').eq('player_id', mergeSourceId),
-			supabase.from('scores').select('session_id, game_id').eq('player_id', mergeTargetId)
+		const [sourceScores, targetScores] = await Promise.all([
+			paginateAll<{ id: string; session_id: string; game_id: string }>((from, to) =>
+				supabase
+					.from('scores')
+					.select('id, session_id, game_id')
+					.eq('player_id', sourceId)
+					.range(from, to)
+			),
+			paginateAll<{ session_id: string; game_id: string }>((from, to) =>
+				supabase.from('scores').select('session_id, game_id').eq('player_id', targetId).range(from, to)
+			)
 		]);
 
-		const targetCombos = new Set((targetScores ?? []).map((s) => `${s.session_id}:${s.game_id}`));
-		const toMove = (sourceScores ?? []).filter(
-			(s) => !targetCombos.has(`${s.session_id}:${s.game_id}`)
-		);
-		const toDelete = (sourceScores ?? []).filter((s) =>
-			targetCombos.has(`${s.session_id}:${s.game_id}`)
-		);
+		const targetCombos = new Set(targetScores.map((s) => `${s.session_id}:${s.game_id}`));
+		const toMove = sourceScores.filter((s) => !targetCombos.has(`${s.session_id}:${s.game_id}`));
+		const toDelete = sourceScores.filter((s) => targetCombos.has(`${s.session_id}:${s.game_id}`));
 
 		if (toMove.length > 0) {
 			const { error: e } = await supabase

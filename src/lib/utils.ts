@@ -1,3 +1,19 @@
+// Supabase caps an unpaginated select() at 1000 rows. Any query over a table
+// that can plausibly exceed that (scores, above all) needs this instead of a
+// plain .select() — several call sites forgot to and silently truncated.
+export async function paginateAll<T>(
+	fetchPage: (from: number, to: number) => PromiseLike<{ data: T[] | null }>
+): Promise<T[]> {
+	const all: T[] = [];
+	for (let from = 0; ; from += 1000) {
+		const { data: page } = await fetchPage(from, from + 999);
+		if (!page?.length) break;
+		all.push(...page);
+		if (page.length < 1000) break;
+	}
+	return all;
+}
+
 export function displayName(player: { name: string; alias?: string | null }): string {
 	if (!player.alias?.trim()) return player.name;
 	return `${player.name} (${player.alias})`;

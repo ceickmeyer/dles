@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from './database.types';
 import { computeElo, type EloEntry } from './elo';
+import { paginateAll } from './utils';
 
 type ScoreRow = {
 	session_id: string;
@@ -27,20 +28,16 @@ export async function refreshEloCache(supabase: SupabaseClient<Database>): Promi
 	if (!sessions?.length) return;
 
 	const sessionIds = sessions.map((s) => s.id);
-	const allScores: ScoreRow[] = [];
-	for (let from = 0; ; from += 1000) {
-		const { data: page } = await supabase
+	const allScores = await paginateAll<ScoreRow>((from, to) =>
+		supabase
 			.from('scores')
 			.select(
 				'session_id, game_id, player_id, raw_score, game:games(scoring_direction, allow_dnf, max_score)'
 			)
 			.in('session_id', sessionIds)
 			.order('submitted_at', { ascending: true })
-			.range(from, from + 999);
-		if (!page?.length) break;
-		allScores.push(...(page as unknown as ScoreRow[]));
-		if (page.length < 1000) break;
-	}
+			.range(from, to) as unknown as PromiseLike<{ data: ScoreRow[] | null }>
+	);
 
 	const entries: EloEntry[] = allScores.map((s) => ({
 		session_id: s.session_id,

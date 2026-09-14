@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { supabase } from '$lib/supabase';
+	import { paginateAll } from '$lib/utils';
 
 	let exporting = $state(false);
 	let exportError = $state('');
@@ -12,16 +13,24 @@
 		exporting = true;
 		exportError = '';
 		try {
-			const [players, games, sessions, session_games, scores, schedules] = await Promise.all([
+			// players/games/sessions/schedules are all safely bounded (dozens to a
+			// few hundred rows) — session_games and scores are not: both already
+			// exceed Supabase's 1000-row default cap, so an unpaginated select()
+			// here silently dropped the majority of them.
+			const [players, games, sessions, schedules, session_games, scores] = await Promise.all([
 				supabase.from('players').select('*').order('created_at'),
 				supabase.from('games').select('*').order('created_at'),
 				supabase.from('sessions').select('*').order('created_at'),
-				supabase.from('session_games').select('*'),
-				supabase.from('scores').select('*').order('submitted_at'),
-				supabase.from('schedules').select('*').order('created_at')
+				supabase.from('schedules').select('*').order('created_at'),
+				paginateAll<Record<string, unknown>>((from, to) =>
+					supabase.from('session_games').select('*').order('id').range(from, to)
+				),
+				paginateAll<Record<string, unknown>>((from, to) =>
+					supabase.from('scores').select('*').order('submitted_at').range(from, to)
+				)
 			]);
 
-			const errors = [players, games, sessions, session_games, scores, schedules]
+			const errors = [players, games, sessions, schedules]
 				.map((r) => r.error?.message)
 				.filter(Boolean);
 			if (errors.length) throw new Error(errors.join('; '));
@@ -32,8 +41,8 @@
 				players: players.data,
 				games: games.data,
 				sessions: sessions.data,
-				session_games: session_games.data,
-				scores: scores.data,
+				session_games,
+				scores,
 				schedules: schedules.data
 			};
 
