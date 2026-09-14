@@ -218,3 +218,24 @@ drop policy if exists "scheduler_runs_select" on scheduler_runs;
 create policy "scheduler_runs_select" on scheduler_runs for select using (auth.role() = 'authenticated');
 -- No insert/update/delete policy: only ever written by server code using the
 -- service-role key, which bypasses RLS entirely.
+
+-- player_elo predates this file (created directly in the SQL editor) and was
+-- never added here, so it also never got RLS — anyone with the anon key
+-- could rewrite any player's rating. Nothing needs anon/authenticated write
+-- access: every write goes through eloCache.ts using the service-role key,
+-- which bypasses RLS regardless, so locking this down changes no behavior.
+create table if not exists player_elo (
+  player_id uuid primary key references players(id) on delete cascade,
+  elo integer not null default 1000,
+  prev_elo integer,
+  sessions integer not null default 0,
+  matchups integer not null default 0,
+  history jsonb not null default '[]',
+  updated_at timestamptz default now()
+);
+
+alter table player_elo enable row level security;
+drop policy if exists "player_elo_select" on player_elo;
+create policy "player_elo_select" on player_elo for select using (true);
+-- No insert/update/delete policy: only ever written by server code using the
+-- service-role key.
