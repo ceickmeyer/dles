@@ -176,6 +176,7 @@ export const load: PageServerLoad = async () => {
 	// ELO chart — last 10 sessions, running ELO per qualified player
 	const displaySessions = sessions.slice(0, 10).reverse(); // most-recent-10, chronological
 	const eloChartDates = displaySessions.map((s) => s.date);
+	const allSessionsAsc = [...sessions].reverse(); // full history, chronological
 	const eloChartPlayers = qualified.map((r) => {
 		const eloAtSession = new Map<string, number>();
 		let running = 1000;
@@ -183,11 +184,19 @@ export const load: PageServerLoad = async () => {
 			running += h.delta;
 			eloAtSession.set(h.session_id, Math.round(running));
 		}
+		// Carry the rating forward across their FULL history (not just the
+		// display window) so a veteran's line spans the whole chart even if
+		// they haven't played recently — only actually-played nights get a dot.
 		let lastKnown: number | null = null;
-		const points = displaySessions.map((s) => {
+		const eloAsOf = new Map<string, number>();
+		for (const s of allSessionsAsc) {
 			if (eloAtSession.has(s.id)) lastKnown = eloAtSession.get(s.id)!;
-			return lastKnown;
-		});
+			if (lastKnown !== null) eloAsOf.set(s.id, lastKnown);
+		}
+		const points = displaySessions.map((s) => ({
+			elo: eloAsOf.get(s.id) ?? null,
+			played: eloAtSession.has(s.id)
+		}));
 		return { player_id: r.player_id, name: r.name, points };
 	});
 

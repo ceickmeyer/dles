@@ -5,7 +5,7 @@
 	interface PlayerLine {
 		player_id: string;
 		name: string;
-		points: (number | null)[];
+		points: { elo: number | null; played: boolean }[];
 	}
 
 	let { players, dates }: { players: PlayerLine[]; dates: string[] } = $props();
@@ -38,7 +38,7 @@
 	const n = $derived(dates.length);
 
 	const allValues = $derived(
-		players.flatMap((p) => p.points.filter((v): v is number => v !== null))
+		players.flatMap((p) => p.points.map((pt) => pt.elo).filter((v): v is number => v !== null))
 	);
 	const minElo = $derived(allValues.length ? Math.min(...allValues, 1000) - 20 : 950);
 	const maxElo = $derived(allValues.length ? Math.max(...allValues, 1000) + 20 : 1050);
@@ -56,24 +56,19 @@
 		y: number;
 		elo: number;
 		idx: number;
+		played: boolean;
 	}
 
-	function buildSegments(points: (number | null)[]): Seg[][] {
-		const segs: Seg[][] = [];
-		let cur: Seg[] = [];
+	// `elo` is already carried forward across nights a player skipped (server-side),
+	// so the line stays continuous — it only stops where they have no rating yet
+	// at all. `played` marks which points get a dot: only nights they actually played.
+	function buildLine(points: { elo: number | null; played: boolean }[]): Seg[] {
+		const line: Seg[] = [];
 		for (let i = 0; i < points.length; i++) {
-			const v = points[i];
-			if (v !== null) {
-				cur.push({ x: xAt(i), y: yAt(v), elo: v, idx: i });
-			} else {
-				if (cur.length) {
-					segs.push(cur);
-					cur = [];
-				}
-			}
+			const p = points[i];
+			if (p.elo !== null) line.push({ x: xAt(i), y: yAt(p.elo), elo: p.elo, idx: i, played: p.played });
 		}
-		if (cur.length) segs.push(cur);
-		return segs;
+		return line;
 	}
 
 	function smoothPath(pts: Seg[]): string {
@@ -97,7 +92,7 @@
 		players.map((p, i) => ({
 			...p,
 			color: COLORS[i % COLORS.length],
-			segments: buildSegments(p.points)
+			line: buildLine(p.points)
 		}))
 	);
 
@@ -178,48 +173,46 @@
 			{#each colored as player}
 				{@const active = hoveredPlayer === null || hoveredPlayer === player.player_id}
 				{#if isHovered === (hoveredPlayer === player.player_id || hoveredPlayer === null)}
-					{#each player.segments as seg}
-						{#if seg.length >= 2}
-							<path
-								d={smoothPath(seg)}
-								fill="none"
-								stroke={player.color}
-								stroke-width={hoveredPlayer === player.player_id ? 2.5 : 2}
-								stroke-linecap="round"
-								opacity={active ? 1 : 0.1}
-								style="transition: opacity 0.12s, stroke-width 0.12s"
-							/>
-							<!-- svelte-ignore a11y_no_static_element_interactions -->
-							<!-- svelte-ignore a11y_click_events_have_key_events -->
-							<path
-								d={smoothPath(seg)}
-								fill="none"
-								stroke="transparent"
-								stroke-width="14"
-								style="cursor: pointer;"
-								onmouseenter={canHover ? () => (hoveredPlayer = player.player_id) : undefined}
-								onclick={!canHover
-									? (e) => {
-											e.stopPropagation();
-											hoveredPlayer = hoveredPlayer === player.player_id ? null : player.player_id;
-											hoveredDot = null;
-										}
-									: undefined}
-							/>
-						{:else if seg.length === 1}
-							<circle
-								cx={seg[0].x}
-								cy={seg[0].y}
-								r={3}
-								fill={player.color}
-								opacity={active ? 1 : 0.1}
-								style="transition: opacity 0.12s"
-							/>
-						{/if}
-					{/each}
+					{#if player.line.length >= 2}
+						<path
+							d={smoothPath(player.line)}
+							fill="none"
+							stroke={player.color}
+							stroke-width={hoveredPlayer === player.player_id ? 2.5 : 2}
+							stroke-linecap="round"
+							opacity={active ? 1 : 0.1}
+							style="transition: opacity 0.12s, stroke-width 0.12s"
+						/>
+						<!-- svelte-ignore a11y_no_static_element_interactions -->
+						<!-- svelte-ignore a11y_click_events_have_key_events -->
+						<path
+							d={smoothPath(player.line)}
+							fill="none"
+							stroke="transparent"
+							stroke-width="14"
+							style="cursor: pointer;"
+							onmouseenter={canHover ? () => (hoveredPlayer = player.player_id) : undefined}
+							onclick={!canHover
+								? (e) => {
+										e.stopPropagation();
+										hoveredPlayer = hoveredPlayer === player.player_id ? null : player.player_id;
+										hoveredDot = null;
+									}
+								: undefined}
+						/>
+					{:else if player.line.length === 1}
+						<circle
+							cx={player.line[0].x}
+							cy={player.line[0].y}
+							r={3}
+							fill={player.color}
+							opacity={active ? 1 : 0.1}
+							style="transition: opacity 0.12s"
+						/>
+					{/if}
 
-					<!-- Dots -->
-					{#each player.segments.flat() as dot}
+					<!-- Dots — only on nights actually played -->
+					{#each player.line.filter((d) => d.played) as dot}
 						<circle
 							cx={dot.x}
 							cy={dot.y}

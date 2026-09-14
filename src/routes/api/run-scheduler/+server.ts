@@ -7,8 +7,11 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ request }) => {
+	// Vercel Cron automatically sends `Authorization: Bearer ${CRON_SECRET}` —
+	// that's the env var it reads, not SCHEDULER_SECRET, so checking the wrong
+	// one meant this endpoint silently 401'd on every scheduled invocation.
 	const auth = request.headers.get('authorization');
-	if (!env.SCHEDULER_SECRET || auth !== `Bearer ${env.SCHEDULER_SECRET}`) {
+	if (!env.CRON_SECRET || auth !== `Bearer ${env.CRON_SECRET}`) {
 		return new Response('Unauthorized', { status: 401 });
 	}
 
