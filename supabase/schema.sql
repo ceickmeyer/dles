@@ -200,3 +200,21 @@ create policy "weekly_schedule_select" on weekly_schedule for select using (true
 create policy "weekly_schedule_insert" on weekly_schedule for insert with check (auth.role() = 'authenticated');
 create policy "weekly_schedule_update" on weekly_schedule for update using (auth.role() = 'authenticated');
 create policy "weekly_schedule_delete" on weekly_schedule for delete using (auth.role() = 'authenticated');
+
+-- Durable record of each cron/admin-triggered scheduler & ELO recompute run,
+-- since Vercel's own function logs aren't reachable on the Hobby plan.
+create table if not exists scheduler_runs (
+  id uuid primary key default gen_random_uuid(),
+  endpoint text not null,
+  ok boolean not null,
+  error text,
+  context jsonb,
+  duration_ms integer,
+  created_at timestamptz default now()
+);
+
+alter table scheduler_runs enable row level security;
+drop policy if exists "scheduler_runs_select" on scheduler_runs;
+create policy "scheduler_runs_select" on scheduler_runs for select using (auth.role() = 'authenticated');
+-- No insert/update/delete policy: only ever written by server code using the
+-- service-role key, which bypasses RLS entirely.

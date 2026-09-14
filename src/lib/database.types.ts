@@ -326,6 +326,36 @@ export interface Database {
 					}
 				];
 			};
+			scheduler_runs: {
+				Row: {
+					id: string;
+					endpoint: string;
+					ok: boolean;
+					error: string | null;
+					context: Json | null;
+					duration_ms: number | null;
+					created_at: string;
+				};
+				Insert: {
+					id?: string;
+					endpoint: string;
+					ok: boolean;
+					error?: string | null;
+					context?: Json | null;
+					duration_ms?: number | null;
+					created_at?: string;
+				};
+				Update: {
+					id?: string;
+					endpoint?: string;
+					ok?: boolean;
+					error?: string | null;
+					context?: Json | null;
+					duration_ms?: number | null;
+					created_at?: string;
+				};
+				Relationships: [];
+			};
 		};
 		Views: Record<string, never>;
 		Functions: Record<string, never>;
