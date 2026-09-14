@@ -1,6 +1,31 @@
 declare const confetti: (opts: object) => void;
 
-export function fireConfetti() {
+// This is the only feature in the app that uses tsparticles/confetti, so it's
+// loaded on demand instead of via a static <script> in app.html — that tag
+// was pulling in a 150KB bundle on every route, including every admin page,
+// for a script only ever needed on the main session page after a score.
+let confettiScriptPromise: Promise<void> | null = null;
+function loadConfettiScript(): Promise<void> {
+	if (typeof document === 'undefined') return Promise.resolve();
+	if (typeof confetti !== 'undefined') return Promise.resolve();
+	if (!confettiScriptPromise) {
+		confettiScriptPromise = new Promise((resolve, reject) => {
+			const script = document.createElement('script');
+			script.src = '/tsparticles.confetti.bundle.min.js';
+			script.onload = () => resolve();
+			script.onerror = () => reject(new Error('Failed to load confetti script'));
+			document.head.appendChild(script);
+		});
+	}
+	return confettiScriptPromise;
+}
+
+export async function fireConfetti() {
+	try {
+		await loadConfettiScript();
+	} catch {
+		return;
+	}
 	if (typeof confetti === 'undefined') return;
 	const count = 200;
 	const defaults = { origin: { y: 0.7 } };
@@ -22,7 +47,12 @@ const MEDAL_IMAGES: Record<'gold' | 'silver' | 'bronze', string> = {
 	bronze: '/third_place_medal.png'
 };
 
-export function fireMedalConfetti(medal: 'gold' | 'silver' | 'bronze') {
+export async function fireMedalConfetti(medal: 'gold' | 'silver' | 'bronze') {
+	try {
+		await loadConfettiScript();
+	} catch {
+		return;
+	}
 	if (typeof confetti === 'undefined') return;
 	confetti({
 		spread: 360,

@@ -17,6 +17,17 @@
 	let myRank = $state<number | null>(null);
 	let loadedScores = $state(false);
 
+	const rankedScores = $derived(
+		rankScores(
+			scores.map((s) => ({
+				player_id: s.player_id,
+				player_name: displayName(s.player as { name: string; alias?: string | null }),
+				raw_score: s.raw_score
+			})),
+			game.scoring_direction
+		)
+	);
+
 	$effect(() => {
 		if (!player.id) return;
 		loadScores();
@@ -123,7 +134,7 @@
 				Scores so far
 			</h2>
 			<div class="space-y-1.5">
-				{#each rankScores( scores.map( (s) => ({ player_id: s.player_id, player_name: displayName(s.player as { name: string; alias?: string | null }), raw_score: s.raw_score }) ), game.scoring_direction ) as ranked}
+				{#each rankedScores as ranked (ranked.player_id)}
 					<div
 						class="flex items-center justify-between rounded-lg px-4 py-2 text-sm
 						{ranked.player_id === player.id ? 'border border-ayu-gold/40 bg-ayu-gold/10' : 'bg-ayu-surface2'}"
