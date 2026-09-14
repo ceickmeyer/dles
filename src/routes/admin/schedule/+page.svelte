@@ -45,6 +45,7 @@
 	let scheduleMsgType = $state<'ok' | 'err'>('ok');
 
 	const gameMap = $derived(new Map((data.games as GameInfo[]).map((g) => [g.id, g])));
+	const d = $derived(drafts[selectedDay]);
 
 	// Games sorted: featured pinned first (when fixed), then A-Z
 	const displayOrder = $derived(
@@ -144,7 +145,6 @@
 	}
 
 	const anyDirty = $derived(drafts.some((d) => d.dirty));
-	const d = $derived(drafts[selectedDay]);
 </script>
 
 <div class="space-y-5">

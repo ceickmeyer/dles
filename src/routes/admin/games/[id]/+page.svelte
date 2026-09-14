@@ -5,23 +5,60 @@
 
 	let { data } = $props();
 
+	// svelte-ignore state_referenced_locally -- intentional: seeded once here,
+	// then re-synced by the $effect below whenever data.game.id changes.
 	let name = $state(data.game.name);
+	// svelte-ignore state_referenced_locally
 	let url = $state(data.game.url ?? '');
+	// svelte-ignore state_referenced_locally
 	let description = $state(data.game.description ?? '');
+	// svelte-ignore state_referenced_locally
 	let iconEmoji = $state(data.game.icon_emoji ?? '');
+	// svelte-ignore state_referenced_locally
 	let scoringDirection = $state<'higher_is_better' | 'lower_is_better'>(
 		data.game.scoring_direction
 	);
+	// svelte-ignore state_referenced_locally
 	let maxScore = $state(data.game.max_score?.toString() ?? '');
+	// svelte-ignore state_referenced_locally
 	let shareParser = $state(data.game.share_parser ?? '');
+	// svelte-ignore state_referenced_locally
 	let shareRegex = $state(data.game.share_regex ?? '');
 	let regexSample = $state('');
+	// svelte-ignore state_referenced_locally
 	let allowDnf = $state(data.game.allow_dnf);
+	// svelte-ignore state_referenced_locally
 	let inputMode = $state<'auto' | 'buttons' | 'parser' | 'manual'>(data.game.input_mode ?? 'auto');
 	let saving = $state(false);
 	let deleting = $state(false);
 	let confirmDelete = $state(false);
 	let error = $state('');
+
+	// $state above only captures data.game's value at mount — this route is
+	// reused (not remounted) when navigating between two games' edit pages,
+	// so without this, editing game A then following a same-route link to
+	// game B would show (and could save) A's still-loaded values onto B.
+	// svelte-ignore state_referenced_locally
+	let loadedGameId = data.game.id;
+	$effect(() => {
+		if (data.game.id === loadedGameId) return;
+		loadedGameId = data.game.id;
+		name = data.game.name;
+		url = data.game.url ?? '';
+		description = data.game.description ?? '';
+		iconEmoji = data.game.icon_emoji ?? '';
+		scoringDirection = data.game.scoring_direction;
+		maxScore = data.game.max_score?.toString() ?? '';
+		shareParser = data.game.share_parser ?? '';
+		shareRegex = data.game.share_regex ?? '';
+		regexSample = '';
+		allowDnf = data.game.allow_dnf;
+		inputMode = data.game.input_mode ?? 'auto';
+		saving = false;
+		deleting = false;
+		confirmDelete = false;
+		error = '';
+	});
 
 	const regexTestResult = $derived.by(() => {
 		if (!shareRegex.trim() || !regexSample.trim()) return null;

@@ -76,7 +76,7 @@
 		ogSession ? `${ogSession.name} — The DLES Olympics` : 'The DLES Olympics'
 	);
 
-	const ogDescription = $derived(() => {
+	const ogDescription = $derived.by(() => {
 		if (!ogSession) return 'Track scores across your daily word game nights.';
 		const games = ogSession.session_games
 			.map(
@@ -192,10 +192,10 @@
 	<meta property="og:site_name" content="The DLES Olympics" />
 	<meta property="og:type" content="website" />
 	<meta property="og:title" content={ogTitle} />
-	<meta property="og:description" content={ogDescription()} />
+	<meta property="og:description" content={ogDescription} />
 	<meta name="twitter:card" content="summary" />
 	<meta name="twitter:title" content={ogTitle} />
-	<meta name="twitter:description" content={ogDescription()} />
+	<meta name="twitter:description" content={ogDescription} />
 </svelte:head>
 
 <div class="min-h-screen bg-ayu-bg text-ayu-text">

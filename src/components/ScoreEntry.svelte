@@ -14,29 +14,20 @@
 
 	let shareText = $state('');
 	let manualScore = $state('');
-	let parsedScore = $state<number | null>(null);
-	let parseError = $state('');
 	let submitting = $state(false);
 	let submitted = $state(false);
 	let error = $state('');
 
 	// Auto-parse whenever the pasted text changes
-	$effect(() => {
+	const parsed = $derived.by(() => {
 		const trimmed = shareText.trim();
-		if (!trimmed) {
-			parsedScore = null;
-			parseError = '';
-			return;
-		}
+		if (!trimmed) return { score: null, error: '' };
 		const result = parseShareText(trimmed, game.share_parser, game.share_regex);
-		if (result !== null) {
-			parsedScore = result;
-			parseError = '';
-		} else {
-			parsedScore = null;
-			parseError = 'Could not parse — enter your score manually below.';
-		}
+		if (result !== null) return { score: result, error: '' };
+		return { score: null, error: 'Could not parse — enter your score manually below.' };
 	});
+	const parsedScore = $derived(parsed.score);
+	const parseError = $derived(parsed.error);
 
 	function validateScore(score: number): string {
 		if (!Number.isFinite(score)) return 'Enter a valid number.';

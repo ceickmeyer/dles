@@ -343,7 +343,7 @@
 	}
 
 	// Play finished sound when player submits all games for the session
-	let prevMyScoresSize = $state<number | null>(null);
+	let prevMyScoresSize: number | null = null;
 	$effect(() => {
 		const total = session?.session_games.length ?? 0;
 		const current = myScores.size;
