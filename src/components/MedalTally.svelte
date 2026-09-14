@@ -194,7 +194,7 @@
 			</tr>
 		</thead>
 		<tbody>
-			{#each tally as row, i}
+			{#each tally as row, i (row.player_id)}
 				<tr
 					class="border-b border-zinc-800 transition-colors
 					{ranks[i] === 1

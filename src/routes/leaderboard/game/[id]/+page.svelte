@@ -96,7 +96,7 @@
 					</tr>
 				</thead>
 				<tbody>
-					{#each sorted as row, i}
+					{#each sorted as row, i (row.player_id)}
 						<tr
 							class="border-b border-ayu-border bg-ayu-surface transition-colors last:border-0 hover:bg-ayu-surface2"
 						>

@@ -644,7 +644,7 @@
 				{/if}
 			</div>
 			<div class="space-y-1.5">
-				{#each rankedScores as s}
+				{#each rankedScores as s (s.player_id)}
 					<!-- svelte-ignore a11y_no_static_element_interactions -->
 					<!-- svelte-ignore a11y_click_events_have_key_events -->
 					<div
