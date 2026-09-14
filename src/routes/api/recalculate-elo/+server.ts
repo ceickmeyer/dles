@@ -1,11 +1,9 @@
-import { createClient } from '@supabase/supabase-js';
-import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { env } from '$env/dynamic/private';
 import { json } from '@sveltejs/kit';
 import { supabase } from '$lib/supabase';
+import { createAdminClient } from '$lib/supabaseAdmin';
 import { refreshEloCache } from '$lib/eloCache';
 import { logRun } from '$lib/schedulerLog';
-import type { Database } from '$lib/database.types';
 import type { Config } from '@sveltejs/adapter-vercel';
 import type { RequestHandler } from './$types';
 
@@ -32,7 +30,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
 	// Service-role client so the scheduler_runs log write bypasses RLS
 	// regardless of the caller's own session.
-	const admin = createClient<Database>(PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+	const admin = createAdminClient(env.SUPABASE_SERVICE_ROLE_KEY);
 	const startedAt = Date.now();
 	try {
 		await refreshEloCache(admin);

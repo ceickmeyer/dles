@@ -1,7 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
-import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { env } from '$env/dynamic/private';
-import type { Database } from '$lib/database.types';
+import { createAdminClient } from '$lib/supabaseAdmin';
 import { runScheduler } from '$lib/scheduler';
 import { logRun } from '$lib/schedulerLog';
 import { json } from '@sveltejs/kit';
@@ -26,8 +24,7 @@ export const GET: RequestHandler = async ({ request }) => {
 		return new Response('Server misconfigured', { status: 500 });
 	}
 
-	// Service role key bypasses RLS — required for server-side session creation
-	const supabase = createClient<Database>(PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+	const supabase = createAdminClient(env.SUPABASE_SERVICE_ROLE_KEY);
 	const startedAt = Date.now();
 	try {
 		const result = await runScheduler(supabase);

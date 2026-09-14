@@ -31,10 +31,16 @@ export function isDnf(
 	return dnfScore(game) === score;
 }
 
+// The one bit actually shared between fmtSeconds (verbose, used for score
+// displays) and decipher.ts's formatTime (compact, used in its inline
+// "Xm Ys + hint = Zm Ws" breakdown) — the split itself, not the wording.
+export function splitMinutesSeconds(totalSeconds: number): { m: number; s: number } {
+	const rounded = Math.round(totalSeconds);
+	return { m: Math.floor(rounded / 60), s: rounded % 60 };
+}
+
 export function fmtSeconds(totalSeconds: number): string {
-	const s = Math.round(totalSeconds);
-	const m = Math.floor(s / 60);
-	const sec = s % 60;
+	const { m, s: sec } = splitMinutesSeconds(totalSeconds);
 	if (m === 0) return `${sec} sec`;
 	if (sec === 0) return `${m} min`;
 	return `${m} min ${sec} sec`;

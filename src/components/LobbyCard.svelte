@@ -117,7 +117,7 @@
 		wikigame: 'Connect the Wiki pages with the fewest clicks possible. Ties broken by faster speed.'
 	};
 	const tip = $derived(
-		(game as any).description || (game.share_parser ? (GAME_TIPS[game.share_parser] ?? null) : null)
+		game.description || (game.share_parser ? (GAME_TIPS[game.share_parser] ?? null) : null)
 	);
 
 	let tipVisible = $state(false);

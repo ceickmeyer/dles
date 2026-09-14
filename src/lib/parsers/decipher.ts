@@ -1,4 +1,5 @@
 import type { Parser } from './index';
+import { splitMinutesSeconds } from '$lib/utils';
 
 export interface DecipherResult {
 	solved: boolean;
@@ -22,8 +23,7 @@ function extractSeconds(text: string): number | null {
 }
 
 export function formatTime(seconds: number): string {
-	const m = Math.floor(seconds / 60);
-	const s = seconds % 60;
+	const { m, s } = splitMinutesSeconds(seconds);
 	return m > 0 ? `${m}m ${s}s` : `${s}s`;
 }
 

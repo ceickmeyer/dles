@@ -456,7 +456,9 @@
 			const name = myEntry
 				? displayName(myEntry.player as { name: string; alias?: string | null })
 				: (player.name ?? 'Someone');
-			const rankSuffix = dnf ? '' : buildRankSuffix(ranked, player.id!, prevLeader, newLeader);
+			const myId = player.id;
+			const rankSuffix =
+				dnf || !myId ? '' : buildRankSuffix(ranked, myId, prevLeader, newLeader);
 			const logMsg = dnf
 				? `${name} DNF'd ${game.icon_emoji ?? '🎮'} ${game.name}`
 				: `${name} scored ${formatScore(rawScore, game)} on ${game.icon_emoji ?? '🎮'} ${game.name}${rankSuffix}`;
@@ -469,7 +471,7 @@
 			if (logErr) console.error('log insert failed:', logErr);
 
 			// Check for personal best / server record (non-DNF only, compared against finished sessions)
-			if (!dnf && player.id) {
+			if (!dnf && myId) {
 				const lower = game.scoring_direction === 'lower_is_better';
 				const dnfVal = game.allow_dnf && game.max_score !== null ? game.max_score + 1 : null;
 				const [pbRes, srRows] = await Promise.all([
@@ -477,7 +479,7 @@
 						.from('scores')
 						.select('raw_score')
 						.eq('game_id', game.id)
-						.eq('player_id', player.id!)
+						.eq('player_id', myId)
 						.neq('session_id', session!.id),
 					// All-players, all-time for this game — bounded queries above are
 					// safe unpaginated, this one isn't (a popular game across 20+

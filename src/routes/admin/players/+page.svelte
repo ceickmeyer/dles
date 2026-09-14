@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
 	import { supabase } from '$lib/supabase';
-	import { paginateAll } from '$lib/utils';
+	import { paginateAll, displayName } from '$lib/utils';
 	import type { Player } from '$lib/database.types';
 
 	let { data } = $props();
@@ -92,7 +92,7 @@
 
 	async function copyAll() {
 		const text = players
-			.map((p) => `${p.name}${p.alias ? ` (${p.alias})` : ''}: PIN ${p.pin}`)
+			.map((p) => `${displayName(p)}: PIN ${p.pin}`)
 			.join('\n');
 		try {
 			await navigator.clipboard.writeText(text);
@@ -383,7 +383,7 @@
 												<option value="">Select player…</option>
 												{#each players.filter((x) => x.id !== p.id) as target}
 													<option value={target.id}>
-														{target.name}{target.alias ? ` (${target.alias})` : ''} — {target.sessions_played}
+														{displayName(target)} — {target.sessions_played}
 														sessions
 													</option>
 												{/each}

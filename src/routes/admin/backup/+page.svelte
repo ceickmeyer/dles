@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { supabase } from '$lib/supabase';
 	import { paginateAll } from '$lib/utils';
+	import type { Database } from '$lib/database.types';
 
 	let exporting = $state(false);
 	let exportError = $state('');
@@ -71,7 +72,11 @@
 			const backup = JSON.parse(text);
 			if (backup.version !== 1) throw new Error('Unknown backup version');
 
-			const tables: Array<{ name: string; key: keyof typeof backup; conflict: string }> = [
+			const tables: Array<{
+				name: keyof Database['public']['Tables'];
+				key: keyof typeof backup;
+				conflict: string;
+			}> = [
 				{ name: 'players', key: 'players', conflict: 'id' },
 				{ name: 'games', key: 'games', conflict: 'id' },
 				{ name: 'sessions', key: 'sessions', conflict: 'id' },
@@ -84,8 +89,10 @@
 			for (const { name, key, conflict } of tables) {
 				const rows = backup[key];
 				if (!Array.isArray(rows) || rows.length === 0) continue;
+				// `rows` is arbitrary parsed JSON from an uploaded file — its shape
+				// can't be verified at compile time, only that the table name is real.
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				const { error } = await (supabase.from(name as any) as any).upsert(rows, {
+				const { error } = await (supabase.from(name) as any).upsert(rows, {
 					onConflict: conflict
 				});
 				if (error) throw new Error(`${name}: ${error.message}`);

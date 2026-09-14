@@ -9,6 +9,20 @@ export interface SchedulerResult {
 	finished?: number;
 }
 
+// Shared by the two schedule editor routes (a day-by-day view and a full
+// game-by-day grid) — their data needs are identical, only the UI differs.
+export async function loadWeeklySchedule(supabase: SupabaseClient<Database>) {
+	const [{ data: schedule }, { data: games }] = await Promise.all([
+		supabase.from('weekly_schedule').select('*').order('day_of_week'),
+		supabase.from('games').select('id, name, icon_emoji').order('name')
+	]);
+
+	return {
+		schedule: schedule ?? [],
+		games: games ?? []
+	};
+}
+
 function getNYDate(date: Date): { dateStr: string; dayOfWeek: number } {
 	const dateStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(date);
 	const [y, m, d] = dateStr.split('-').map(Number);
