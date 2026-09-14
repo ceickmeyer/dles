@@ -122,3 +122,24 @@ export function computeStreaks(history: { won: boolean; podium: boolean }[]): {
 
 	return { winStreak, podiumStreak, bestWinStreak, bestPodiumStreak };
 }
+
+// Attendance streak: consecutive game nights (any game, any result) a player
+// took part in. `played` is chronological (oldest first).
+export function computeAttendanceStreak(played: boolean[]): { current: number; max: number } {
+	let current = 0;
+	for (let i = played.length - 1; i >= 0; i--) {
+		if (played[i]) current++;
+		else break;
+	}
+
+	let max = 0,
+		run = 0;
+	for (const p of played) {
+		if (p) {
+			run++;
+			max = Math.max(max, run);
+		} else run = 0;
+	}
+
+	return { current, max };
+}

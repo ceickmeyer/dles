@@ -3,6 +3,7 @@
 	import { onDestroy } from 'svelte';
 	import { playerStore } from '$lib/stores/player';
 	import { supabase } from '$lib/supabase';
+	import { computeAttendanceStreak } from '$lib/badges';
 
 	let { data, children } = $props();
 
@@ -125,6 +126,60 @@
 	onDestroy(() => {
 		if (timer) clearInterval(timer);
 	});
+
+	// Attendance streak — consecutive game nights (any game, any result) the
+	// logged-in player has taken part in. Recomputed whenever the player changes.
+	let streak = $state<{ current: number; max: number } | null>(null);
+
+	$effect(() => {
+		const pid = player.id;
+		if (!pid) {
+			streak = null;
+			return;
+		}
+		let cancelled = false;
+		(async () => {
+			const { data: sessions } = await supabase
+				.from('sessions')
+				.select('id, status')
+				.in('status', ['finished', 'active'])
+				.order('date', { ascending: true });
+			if (cancelled || !sessions?.length) return;
+			const sessionIds = sessions.map((s) => s.id);
+			// Paginated — Supabase caps unpaginated selects at 1000 rows, and a
+			// long-time player easily has more scores than that.
+			const playedSessionIds = new Set<string>();
+			for (let from = 0; ; from += 1000) {
+				const { data: page } = await supabase
+					.from('scores')
+					.select('session_id')
+					.eq('player_id', pid)
+					.in('session_id', sessionIds)
+					.range(from, from + 999);
+				if (cancelled) return;
+				if (!page?.length) break;
+				for (const row of page) playedSessionIds.add(row.session_id);
+				if (page.length < 1000) break;
+			}
+			// Tonight's game night isn't over yet — if it's still active and they
+			// haven't played it, that's "pending", not a miss, so don't let it
+			// break the streak. Drop it and score off the last completed night.
+			const relevant = [...sessions];
+			const last = relevant[relevant.length - 1];
+			if (last.status === 'active' && !playedSessionIds.has(last.id)) relevant.pop();
+			streak = computeAttendanceStreak(relevant.map((s) => playedSessionIds.has(s.id)));
+		})();
+		return () => {
+			cancelled = true;
+		};
+	});
+
+	function streakColor(current: number): string {
+		if (current <= 0) return 'text-ayu-muted';
+		if (current < 4) return 'text-zinc-300';
+		if (current < 10) return 'text-ayu-gold';
+		return 'text-ayu-red';
+	}
 </script>
 
 <svelte:head>
@@ -162,24 +217,28 @@
 							class="truncate text-sm font-semibold text-white transition-colors hover:text-ayu-gold"
 							>{ogSession.name}</a
 						>
-						<span
-							class="shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold tracking-wider uppercase {ogSession.status ===
-							'active'
-								? 'bg-ayu-green text-ayu-bg'
-								: ogSession.status === 'paused'
-									? 'bg-amber-700 text-white'
-									: 'bg-ayu-surface2 text-ayu-muted'}"
-						>
-							{ogSession.status === 'active'
-								? '● Live'
-								: ogSession.status === 'paused'
-									? '⏸ Paused'
-									: 'Lobby'}
-						</span>
+						{#if ogSession.status === 'paused'}
+							<span
+								class="shrink-0 rounded-full bg-amber-700 px-2 py-0.5 text-xs font-semibold tracking-wider text-white uppercase"
+							>
+								⏸ Paused
+							</span>
+						{:else if ogSession.status !== 'active'}
+							<span
+								class="shrink-0 rounded-full bg-ayu-surface2 px-2 py-0.5 text-xs font-semibold tracking-wider text-ayu-muted uppercase"
+							>
+								Lobby
+							</span>
+						{/if}
 						{#if timeLeft}
 							<span class="shrink-0 font-mono text-xs text-ayu-muted">{timeLeft}</span>
 						{/if}
 					</div>
+				{/if}
+				{#if streak && streak.max > 0}
+					<p class="truncate text-xs font-semibold {streakColor(streak.current)}">
+						🔥 Current Streak {streak.current} · Max Streak {streak.max}
+					</p>
 				{/if}
 			</div>
 
