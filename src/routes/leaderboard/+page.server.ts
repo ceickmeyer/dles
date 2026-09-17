@@ -197,12 +197,19 @@ export const load: PageServerLoad = async () => {
 	const eloRankings = qualified.map((r, i) => {
 		const prevRank = prevRankMap.get(r.player_id) ?? null;
 		const movement = prevRank !== null ? prevRank - (i + 1) : null;
-		const delta = r.prevElo !== null ? r.elo - r.prevElo : null;
 
 		type HistoryEntry = { session_id: string; delta: number; games?: { game_id: string; delta: number }[] };
 		const lastEntry = mostRecentSessionId
 			? (r.history as HistoryEntry[]).find((h) => h.session_id === mostRecentSessionId)
 			: null;
+		// Was `r.elo - r.prevElo` — the difference of two independently-rounded
+		// cumulative totals, which doesn't always equal the actual single-session
+		// delta (round(a) - round(b) != round(a - b) whenever their fractional
+		// parts straddle a rounding boundary differently). Reading the exact
+		// per-session delta already stored in history (same source the homepage's
+		// "yesterday's ELO winners" and admin session-detail page use) fixes the
+		// occasional ±1 mismatch between this page and those.
+		const delta = lastEntry ? Math.round(lastEntry.delta) : r.prevElo !== null ? r.elo - r.prevElo : null;
 		const yesterdayBreakdown = lastEntry?.games
 			?.map((g) => ({
 				name: gameData.get(g.game_id)?.name ?? '?',
