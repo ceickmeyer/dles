@@ -657,7 +657,7 @@
 				<!-- svelte-ignore a11y_click_events_have_key_events -->
 				<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 				<p
-					class="mb-2 inline-block cursor-default border-b border-dotted border-ayu-gold/50 text-xs font-semibold tracking-widest text-ayu-gold uppercase transition-colors hover:border-ayu-gold hover:text-white"
+					class="mb-1.5 inline-block cursor-default border-b border-dotted border-ayu-gold/50 text-xs font-semibold tracking-widest text-ayu-gold uppercase transition-colors hover:border-ayu-gold hover:text-white"
 					onmouseenter={canHover ? showPrevRankingTip : undefined}
 					onmouseleave={canHover ? hidePrevRankingTip : undefined}
 					onclick={!canHover
@@ -666,80 +666,100 @@
 				>
 					Yesterday's Winners
 				</p>
-				<div
-					class="grid grid-cols-1 gap-4 {data.prevEloChanges?.length ? 'sm:grid-cols-2' : ''}"
-				>
+				<div class="grid grid-cols-1 gap-3 {data.prevEloChanges?.length ? 'sm:grid-cols-2' : ''}">
 					<!-- Medals: numbered by that night's overall standing, same as Elo -->
-					<div class="flex flex-col gap-1.5">
-						{#each data.prevWinners as w}
-							<a
-								href="/player/{w.player_id}"
-								class="flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs transition
-								{w.rank === 1
-									? 'border-ayu-gold/40 bg-yellow-400/10'
-									: w.rank === 2
-										? 'border-zinc-500/40 bg-slate-400/8'
-										: w.rank === 3
-											? 'border-amber-700/40 bg-amber-800/10'
-											: 'border-ayu-border bg-ayu-surface hover:border-ayu-gold/40'}"
-							>
-								<span
-									class="w-4 shrink-0 text-right font-mono font-bold {w.rank === 1
-										? 'text-ayu-gold'
-										: w.rank === 2
-											? 'text-zinc-400'
-											: w.rank === 3
-												? 'text-amber-700'
-												: 'text-zinc-600'}"
+					<div>
+						<p class="mb-1 text-[10px] font-semibold tracking-widest text-ayu-muted uppercase">
+							Yesterday's Medalists
+						</p>
+						<div class="flex flex-col gap-1">
+							{#each data.prevWinners as w}
+								<a
+									href="/player/{w.player_id}"
+									style={w.color
+										? `background-color:${w.color}1a;border-color:${w.color}4d`
+										: ''}
+									class="flex items-center gap-2 rounded-lg border px-2 py-1 text-xs transition hover:brightness-125
+									{w.color
+										? ''
+										: w.rank === 1
+											? 'border-ayu-gold/40 bg-yellow-400/10'
+											: w.rank === 2
+												? 'border-zinc-500/40 bg-slate-400/8'
+												: w.rank === 3
+													? 'border-amber-700/40 bg-amber-800/10'
+													: 'border-ayu-border bg-ayu-surface'}"
 								>
-									{w.rank <= 3 ? ['🥇', '🥈', '🥉'][w.rank - 1] : w.rank}
-								</span>
-								<span class="min-w-0 flex-1 truncate font-medium text-white">{w.player_name}</span>
-								{#if w.goldStreak}
-									<span class="shrink-0 text-orange-400">🔥×{w.goldStreak}</span>
-								{/if}
-								<span class="shrink-0 font-mono text-ayu-muted">
-									{[
-										w.gold > 0 ? `🥇×${w.gold}` : '',
-										w.silver > 0 ? `🥈×${w.silver}` : '',
-										w.bronze > 0 ? `🥉×${w.bronze}` : ''
-									]
-										.filter(Boolean)
-										.join(' ') || '—'}
-								</span>
-							</a>
-						{/each}
+									<span
+										class="w-4 shrink-0 text-right font-mono font-bold {w.rank === 1
+											? 'text-ayu-gold'
+											: w.rank === 2
+												? 'text-zinc-400'
+												: w.rank === 3
+													? 'text-amber-700'
+													: 'text-zinc-600'}"
+									>
+										{w.rank <= 3 ? ['🥇', '🥈', '🥉'][w.rank - 1] : w.rank}
+									</span>
+									<span class="min-w-0 flex-1 truncate font-medium text-white">{w.player_name}</span
+									>
+									{#if w.goldStreak}
+										<span class="shrink-0 text-orange-400">🔥×{w.goldStreak}</span>
+									{/if}
+									<span class="shrink-0 font-mono text-ayu-muted">
+										{[
+											w.gold > 0 ? `🥇×${w.gold}` : '',
+											w.silver > 0 ? `🥈×${w.silver}` : '',
+											w.bronze > 0 ? `🥉×${w.bronze}` : ''
+										]
+											.filter(Boolean)
+											.join(' ') || '—'}
+									</span>
+								</a>
+							{/each}
+						</div>
 					</div>
 
 					<!-- Elo: every player's change that night, gain or loss -->
 					{#if data.prevEloChanges?.length}
-						<div class="flex flex-col gap-1.5">
-							{#each data.prevEloChanges as w, i}
-								<a
-									href="/player/{w.player_id}"
-									class="flex items-center gap-2 rounded-lg border border-ayu-border bg-ayu-surface px-2.5 py-1.5 text-xs transition hover:border-ayu-gold/40"
-								>
-									<span
-										class="w-4 shrink-0 text-right font-mono font-bold {i === 0
-											? 'text-ayu-gold'
-											: i === 1
-												? 'text-zinc-400'
-												: i === 2
-													? 'text-amber-700'
-													: 'text-zinc-600'}">{i + 1}</span
+						<div>
+							<p class="mb-1 text-[10px] font-semibold tracking-widest text-ayu-muted uppercase">
+								Yesterday's Elo Change
+							</p>
+							<div class="flex flex-col gap-1">
+								{#each data.prevEloChanges as w, i}
+									<a
+										href="/player/{w.player_id}"
+										style={w.color
+											? `background-color:${w.color}1a;border-color:${w.color}4d`
+											: ''}
+										class="flex items-center gap-2 rounded-lg border px-2 py-1 text-xs transition hover:brightness-125
+										{w.color ? '' : 'border-ayu-border bg-ayu-surface'}"
 									>
-									<span class="min-w-0 flex-1 truncate font-medium text-white">{w.player_name}</span>
-									<span
-										class="shrink-0 font-mono font-semibold {w.delta > 0
-											? 'text-ayu-green'
-											: w.delta < 0
-												? 'text-ayu-red'
-												: 'text-ayu-muted'}"
-									>
-										{w.delta > 0 ? '+' : ''}{w.delta}
-									</span>
-								</a>
-							{/each}
+										<span
+											class="w-4 shrink-0 text-right font-mono font-bold {i === 0
+												? 'text-ayu-gold'
+												: i === 1
+													? 'text-zinc-400'
+													: i === 2
+														? 'text-amber-700'
+														: 'text-zinc-600'}">{i + 1}</span
+										>
+										<span class="min-w-0 flex-1 truncate font-medium text-white"
+											>{w.player_name}</span
+										>
+										<span
+											class="shrink-0 font-mono font-semibold {w.delta > 0
+												? 'text-ayu-green'
+												: w.delta < 0
+													? 'text-ayu-red'
+													: 'text-ayu-muted'}"
+										>
+											{w.delta > 0 ? '+' : ''}{w.delta}
+										</span>
+									</a>
+								{/each}
+							</div>
 						</div>
 					{/if}
 				</div>

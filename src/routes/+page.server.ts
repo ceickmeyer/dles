@@ -1,6 +1,7 @@
 import { supabase } from '$lib/supabase';
 import { sortSessionGames, displayName, paginateAll } from '$lib/utils';
-import { rankScores, computeSessionTally, sortTally } from '$lib/scoring';
+import { rankScores, computeSessionTally, sortTally, LEADERBOARD_MIN_DAYS } from '$lib/scoring';
+import { assignPlayerColors } from '$lib/playerColors';
 import type { PageServerLoad } from './$types';
 
 function computeNextSession(
@@ -141,7 +142,9 @@ async function loadPrevWinners(excludeSessionId: string | null) {
 	// underdog can outscore a low-stakes sweep.
 	const nameById = new Map<string, string>();
 	for (const s of prevScores) nameById.set(s.player_id, displayName(s.player));
-	const { data: playerElos } = await supabase.from('player_elo').select('player_id, history');
+	const { data: playerElos } = await supabase
+		.from('player_elo')
+		.select('player_id, elo, sessions, history');
 	const eloChanges = (playerElos ?? [])
 		.map((row) => {
 			const history = (row.history ?? []) as { session_id: string; delta: number }[];
@@ -155,6 +158,15 @@ async function loadPrevWinners(excludeSessionId: string | null) {
 		})
 		.filter((x): x is NonNullable<typeof x> => x !== null)
 		.sort((a, b) => b.delta - a.delta);
+
+	// Same color a player's line has on the ELO Over Time chart, so a row here
+	// is visually the same "person" as their chart line — only assigned once
+	// they've qualified for that chart (LEADERBOARD_MIN_DAYS sessions).
+	const qualifiedIdsByEloDesc = (playerElos ?? [])
+		.filter((r) => r.sessions >= LEADERBOARD_MIN_DAYS)
+		.sort((a, b) => b.elo - a.elo)
+		.map((r) => r.player_id);
+	const colorByPlayerId = assignPlayerColors(qualifiedIdsByEloDesc);
 
 	return {
 		// Every participant, not just medal-winners -- this is now a numbered
@@ -170,11 +182,12 @@ async function loadPrevWinners(excludeSessionId: string | null) {
 				gold: t.gold,
 				silver: t.silver,
 				bronze: t.bronze,
-				goldStreak: t.rank === 1 && goldStreak >= 2 ? goldStreak : null
+				goldStreak: t.rank === 1 && goldStreak >= 2 ? goldStreak : null,
+				color: colorByPlayerId.get(t.player_id) ?? null
 			})),
 		ranks,
 		fullRanking,
-		eloChanges
+		eloChanges: eloChanges.map((e) => ({ ...e, color: colorByPlayerId.get(e.player_id) ?? null }))
 	};
 }
 

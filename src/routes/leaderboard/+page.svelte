@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { fmtSeconds } from '$lib/utils';
 	import { canHover } from '$lib/hover';
+	import { PLAYER_COLORS } from '$lib/playerColors';
 	import EloMultiChart from '$components/EloMultiChart.svelte';
 
 	let { data } = $props();
@@ -32,24 +33,12 @@
 		return () => document.removeEventListener('click', closeAll);
 	});
 
-	// Same palette as EloMultiChart — keeps player colors consistent across the page
-	const CATPPUCCIN = [
-		'#f38ba8',
-		'#89b4fa',
-		'#a6e3a1',
-		'#cba6f7',
-		'#fab387',
-		'#89dceb',
-		'#f9e2af',
-		'#74c7ec',
-		'#f5c2e7',
-		'#94e2d5',
-		'#eba0ac',
-		'#b4befe'
-	];
 	const playerColors = $derived(
 		new Map(
-			(data.eloChartPlayers ?? []).map((p, i) => [p.player_id, CATPPUCCIN[i % CATPPUCCIN.length]])
+			(data.eloChartPlayers ?? []).map((p, i) => [
+				p.player_id,
+				PLAYER_COLORS[i % PLAYER_COLORS.length]
+			])
 		)
 	);
 

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { canHover } from '$lib/hover';
+	import { PLAYER_COLORS as COLORS } from '$lib/playerColors';
 
 	interface PlayerLine {
 		player_id: string;
@@ -9,22 +10,6 @@
 	}
 
 	let { players, dates }: { players: PlayerLine[]; dates: string[] } = $props();
-
-	// Catppuccin Mocha palette — 12 distinct colors
-	const COLORS = [
-		'#f38ba8', // red
-		'#89b4fa', // blue
-		'#a6e3a1', // green
-		'#cba6f7', // mauve
-		'#fab387', // peach
-		'#89dceb', // sky
-		'#f9e2af', // yellow
-		'#74c7ec', // sapphire
-		'#f5c2e7', // pink
-		'#94e2d5', // teal
-		'#eba0ac', // maroon
-		'#b4befe' // lavender
-	];
 
 	const W = 560,
 		H = 300;
