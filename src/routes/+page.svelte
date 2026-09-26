@@ -141,20 +141,6 @@
 	let copiedGameId = $state<string | null>(null);
 	let standingsCopied = $state(false);
 
-	let prevRankingTipVisible = $state(false);
-	let prevRankingTipX = $state(0);
-	let prevRankingTipY = $state(0);
-
-	function showPrevRankingTip(e: MouseEvent) {
-		const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-		prevRankingTipX = rect.left;
-		prevRankingTipY = rect.bottom + 8;
-		prevRankingTipVisible = true;
-	}
-	function hidePrevRankingTip() {
-		prevRankingTipVisible = false;
-	}
-
 	let featuredInfoVisible = $state(false);
 	let openBadgeId = $state<string | null>(null);
 
@@ -173,7 +159,6 @@
 	onMount(() => {
 		if (canHover) return;
 		function closeAll() {
-			prevRankingTipVisible = false;
 			featuredInfoVisible = false;
 			openBadgeId = null;
 		}
@@ -653,23 +638,10 @@
 		<!-- Yesterday's winners -->
 		{#if data.prevWinners?.length}
 			<div>
-				<!-- svelte-ignore a11y_no_static_element_interactions -->
-				<!-- svelte-ignore a11y_click_events_have_key_events -->
-				<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-				<p
-					class="mb-1.5 inline-block cursor-default border-b border-dotted border-ayu-gold/50 text-xs font-semibold tracking-widest text-ayu-gold uppercase transition-colors hover:border-ayu-gold hover:text-white"
-					onmouseenter={canHover ? showPrevRankingTip : undefined}
-					onmouseleave={canHover ? hidePrevRankingTip : undefined}
-					onclick={!canHover
-						? toggleTip(prevRankingTipVisible, showPrevRankingTip, hidePrevRankingTip)
-						: undefined}
-				>
-					Yesterday's Winners
-				</p>
 				<div class="grid grid-cols-1 gap-3 {data.prevEloChanges?.length ? 'sm:grid-cols-2' : ''}">
 					<!-- Medals: numbered by that night's overall standing, same as Elo -->
 					<div>
-						<p class="mb-1 text-[10px] font-semibold tracking-widest text-ayu-muted uppercase">
+						<p class="mb-1 text-[10px] font-semibold tracking-widest text-ayu-gold uppercase">
 							Yesterday's Medalists
 						</p>
 						<div class="flex flex-col gap-1">
@@ -723,7 +695,7 @@
 					<!-- Elo: every player's change that night, gain or loss -->
 					{#if data.prevEloChanges?.length}
 						<div>
-							<p class="mb-1 text-[10px] font-semibold tracking-widest text-ayu-muted uppercase">
+							<p class="mb-1 text-[10px] font-semibold tracking-widest text-ayu-gold uppercase">
 								Yesterday's Elo Change
 							</p>
 							<div class="flex flex-col gap-1">
@@ -1039,23 +1011,5 @@
 				</div>
 			{/if}
 		{/if}
-	</div>
-{/if}
-
-{#if prevRankingTipVisible && prevFullRanking.length > 0}
-	<div
-		class="pointer-events-none fixed z-50 w-52 rounded-lg border border-ayu-border bg-zinc-900 px-3 py-2 text-xs shadow-xl"
-		style="left:{prevRankingTipX}px;top:{prevRankingTipY}px"
-	>
-		<div class="space-y-1">
-			{#each prevFullRanking as r}
-				<div class="flex items-center justify-between gap-3">
-					<span class={r.rank === 1 ? 'text-ayu-gold' : 'text-zinc-300'}
-						>#{r.rank} {r.player_name}</span
-					>
-					<span class="font-mono text-ayu-muted">{r.total}</span>
-				</div>
-			{/each}
-		</div>
 	</div>
 {/if}
