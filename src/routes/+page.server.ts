@@ -1,6 +1,12 @@
 import { supabase } from '$lib/supabase';
 import { sortSessionGames, displayName, paginateAll } from '$lib/utils';
-import { rankScores, computeSessionTally, sortTally, LEADERBOARD_MIN_DAYS } from '$lib/scoring';
+import {
+	rankScores,
+	computeSessionTally,
+	sortTally,
+	LEADERBOARD_MIN_DAYS,
+	MEDAL_EMOJI
+} from '$lib/scoring';
 import { assignPlayerColors } from '$lib/playerColors';
 import type { PageServerLoad } from './$types';
 
@@ -54,15 +60,28 @@ type ScoreRow = {
 	};
 };
 
-function tallyFromScores(scores: ScoreRow[], specialGameId?: string): ReturnType<typeof sortTally> {
+type MedalGame = {
+	name: string;
+	emoji: string;
+	medalEmoji: string;
+	tier: number;
+	isFeatured: boolean;
+};
+
+function tallyFromScores(
+	scores: ScoreRow[],
+	specialGameId?: string
+): { tally: ReturnType<typeof sortTally>; medalsByPlayer: Map<string, MedalGame[]> } {
 	const byGame = new Map<string, ScoreRow[]>();
 	for (const s of scores) {
 		if (!byGame.has(s.game_id)) byGame.set(s.game_id, []);
 		byGame.get(s.game_id)!.push(s);
 	}
-	const gameResults = [...byGame.entries()].map(([gameId, group]) => ({
-		isSpecial: gameId === specialGameId,
-		scores: rankScores(
+	const medalTier = { gold: 0, silver: 1, bronze: 2 } as const;
+	const medalsByPlayer = new Map<string, MedalGame[]>();
+	const gameResults = [...byGame.entries()].map(([gameId, group]) => {
+		const isSpecial = gameId === specialGameId;
+		const ranked = rankScores(
 			group.map((s) => ({
 				player_id: s.player_id,
 				player_name: displayName(s.player),
@@ -72,9 +91,29 @@ function tallyFromScores(scores: ScoreRow[], specialGameId?: string): ReturnType
 			group[0].game.allow_dnf && group[0].game.max_score !== null
 				? group[0].game.max_score + 1
 				: null
-		)
-	}));
-	return sortTally([...computeSessionTally(gameResults).values()]);
+		);
+		for (const r of ranked) {
+			if (!r.medal) continue;
+			if (!medalsByPlayer.has(r.player_id)) medalsByPlayer.set(r.player_id, []);
+			medalsByPlayer.get(r.player_id)!.push({
+				name: group[0].game.name,
+				emoji: group[0].game.icon_emoji ?? '🎮',
+				medalEmoji: MEDAL_EMOJI[r.medal],
+				tier: medalTier[r.medal],
+				isFeatured: isSpecial
+			});
+		}
+		return { isSpecial, scores: ranked };
+	});
+	for (const games of medalsByPlayer.values()) {
+		games.sort((a, b) => {
+			if (a.isFeatured && !b.isFeatured) return -1;
+			if (!a.isFeatured && b.isFeatured) return 1;
+			if (a.tier !== b.tier) return a.tier - b.tier;
+			return a.name.localeCompare(b.name);
+		});
+	}
+	return { tally: sortTally([...computeSessionTally(gameResults).values()]), medalsByPlayer };
 }
 
 async function loadPrevWinners(excludeSessionId: string | null) {
@@ -115,7 +154,7 @@ async function loadPrevWinners(excludeSessionId: string | null) {
 	const prevScores = allScores.filter((s) => s.session_id === prevId);
 	if (!prevScores.length) return null;
 
-	const tally = tallyFromScores(prevScores, specialGameMap.get(prevId));
+	const { tally, medalsByPlayer } = tallyFromScores(prevScores, specialGameMap.get(prevId));
 	if (!tally.length) return null;
 
 	const outOf = tally.length;
@@ -138,7 +177,8 @@ async function loadPrevWinners(excludeSessionId: string | null) {
 	for (let i = 1; i < sessions.length; i++) {
 		const sessionScores = allScores.filter((s) => s.session_id === sessions[i].id);
 		const winner =
-			tallyFromScores(sessionScores, specialGameMap.get(sessions[i].id))[0]?.player_id ?? null;
+			tallyFromScores(sessionScores, specialGameMap.get(sessions[i].id)).tally[0]?.player_id ??
+			null;
 		if (winner === goldWinnerId) goldStreak++;
 		else break;
 	}
@@ -215,7 +255,14 @@ async function loadPrevWinners(excludeSessionId: string | null) {
 				silver: t.silver,
 				bronze: t.bronze,
 				goldStreak: t.rank === 1 && goldStreak >= 2 ? goldStreak : null,
-				color: colorByPlayerId.get(t.player_id) ?? null
+				color: colorByPlayerId.get(t.player_id) ?? null,
+				breakdown:
+					medalsByPlayer.get(t.player_id)?.map((g) => ({
+						name: g.name,
+						emoji: g.emoji,
+						medalEmoji: g.medalEmoji,
+						isFeatured: g.isFeatured
+					})) ?? null
 			})),
 		ranks,
 		fullRanking,

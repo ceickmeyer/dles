@@ -144,6 +144,8 @@
 	let featuredInfoVisible = $state(false);
 	let openBadgeId = $state<string | null>(null);
 	let openEloCardId = $state<string | null>(null);
+	let openMedalCardId = $state<string | null>(null);
+	let showAllPrevStandings = $state(false);
 
 	// Tap-to-toggle for info tooltips. Only wired on touch devices — see
 	// $lib/hover for why hover and tap-toggle are never layered on one trigger.
@@ -163,6 +165,7 @@
 			featuredInfoVisible = false;
 			openBadgeId = null;
 			openEloCardId = null;
+			openMedalCardId = null;
 		}
 		document.addEventListener('click', closeAll);
 		return () => document.removeEventListener('click', closeAll);
@@ -639,7 +642,14 @@
 	<div class="space-y-8">
 		<!-- Yesterday's winners -->
 		{#if data.prevWinners?.length}
-			<div>
+			{@const canExpand = data.prevWinners.length > 3}
+			{@const visibleWinners = showAllPrevStandings ? data.prevWinners : data.prevWinners.slice(0, 3)}
+			{@const visibleElo = showAllPrevStandings
+				? (data.prevEloChanges ?? [])
+				: (data.prevEloChanges ?? []).slice(0, 3)}
+			<!-- relative z-10 keeps this whole section (and its hover tooltips) painting
+			     above later same-level siblings like the Featured Game card. -->
+			<div class="relative z-10">
 				<div class="grid grid-cols-1 gap-3 {data.prevEloChanges?.length ? 'sm:grid-cols-2' : ''}">
 					<!-- Medals: numbered by that night's overall standing, same as Elo -->
 					<div>
@@ -647,13 +657,17 @@
 							Yesterday's Medalists
 						</p>
 						<div class="flex flex-col gap-1">
-							{#each data.prevWinners as w}
-								<a
-									href="/player/{w.player_id}"
+							{#each visibleWinners as w, i}
+								{@const isOpen = openMedalCardId === w.player_id}
+								{@const openUpward = i === visibleWinners.length - 1 && i > 0}
+								<!-- svelte-ignore a11y_no_static_element_interactions -->
+								<!-- svelte-ignore a11y_click_events_have_key_events -->
+								<div
 									style={w.color
 										? `background-color:${w.color}1a;border-color:${w.color}4d`
 										: ''}
-									class="flex items-center gap-2 rounded-lg border px-2 py-1 text-xs transition hover:brightness-125
+									class="relative flex items-center gap-2 rounded-lg border px-2 py-1 text-xs transition hover:brightness-125
+									{isOpen ? 'z-20' : ''}
 									{w.color
 										? ''
 										: w.rank === 1
@@ -663,6 +677,15 @@
 												: w.rank === 3
 													? 'border-amber-700/40 bg-amber-800/10'
 													: 'border-ayu-border bg-ayu-surface'}"
+									onmouseenter={canHover ? () => (openMedalCardId = w.player_id) : undefined}
+									onmouseleave={canHover ? () => (openMedalCardId = null) : undefined}
+									onclick={!canHover
+										? toggleTip(
+												isOpen,
+												() => (openMedalCardId = w.player_id),
+												() => (openMedalCardId = null)
+											)
+										: undefined}
 								>
 									<span
 										class="w-4 shrink-0 text-right font-mono font-bold {w.rank === 1
@@ -675,7 +698,10 @@
 									>
 										{w.rank <= 3 ? ['🥇', '🥈', '🥉'][w.rank - 1] : w.rank}
 									</span>
-									<span class="min-w-0 flex-1 truncate font-medium text-white">{w.player_name}</span
+									<a
+										href="/player/{w.player_id}"
+										class="min-w-0 flex-1 truncate font-medium text-white hover:underline"
+										>{w.player_name}</a
 									>
 									{#if w.goldStreak}
 										<span class="shrink-0 text-orange-400">🔥×{w.goldStreak}</span>
@@ -689,9 +715,49 @@
 											.filter(Boolean)
 											.join(' ') || '—'}
 									</span>
-								</a>
+
+									{#if w.breakdown && w.breakdown.length > 0}
+										<div
+											class="pointer-events-none absolute right-0 z-10 w-52 rounded-lg border border-ayu-border bg-zinc-900 p-3 text-xs shadow-lg transition-opacity
+											{openUpward ? 'bottom-full mb-1' : 'top-full mt-1'}
+											{isOpen ? 'opacity-100' : 'opacity-0'}"
+										>
+											<p class="mb-2 font-semibold tracking-wider text-ayu-muted uppercase">
+												{data.prevSessionName ?? 'Last session'}
+											</p>
+											<div class="space-y-1.5">
+												{#each w.breakdown as g}
+													<div class="flex items-center justify-between gap-2">
+														<span class="flex min-w-0 items-center gap-1.5 text-zinc-300">
+															<span class="shrink-0">{g.emoji}</span>
+															<span class="truncate">{g.name}</span>
+															{#if g.isFeatured}<span class="shrink-0 text-ayu-gold">⭐</span
+																>{/if}
+														</span>
+														<span class="shrink-0">{g.medalEmoji}</span>
+													</div>
+												{/each}
+											</div>
+										</div>
+									{/if}
+								</div>
 							{/each}
 						</div>
+						{#if canExpand}
+							<button
+								type="button"
+								class="mt-1.5 flex w-full items-center gap-2 text-[10px] text-ayu-muted transition hover:text-ayu-gold"
+								onclick={() => (showAllPrevStandings = !showAllPrevStandings)}
+							>
+								<span class="h-px flex-1 bg-ayu-border"></span>
+								<span
+									>{showAllPrevStandings
+										? '▴ Show less'
+										: `▾ Show ${data.prevWinners.length - 3} more`}</span
+								>
+								<span class="h-px flex-1 bg-ayu-border"></span>
+							</button>
+						{/if}
 					</div>
 
 					<!-- Elo: every player's change that night, gain or loss -->
@@ -701,7 +767,9 @@
 								Yesterday's Elo Change
 							</p>
 							<div class="flex flex-col gap-1">
-								{#each data.prevEloChanges as w, i}
+								{#each visibleElo as w, i}
+									{@const isOpen = openEloCardId === w.player_id}
+									{@const openUpward = i === visibleElo.length - 1 && i > 0}
 									<!-- svelte-ignore a11y_no_static_element_interactions -->
 									<!-- svelte-ignore a11y_click_events_have_key_events -->
 									<div
@@ -709,12 +777,13 @@
 											? `background-color:${w.color}1a;border-color:${w.color}4d`
 											: ''}
 										class="relative flex items-center gap-2 rounded-lg border px-2 py-1 text-xs transition hover:brightness-125
+										{isOpen ? 'z-20' : ''}
 										{w.color ? '' : 'border-ayu-border bg-ayu-surface'}"
 										onmouseenter={canHover ? () => (openEloCardId = w.player_id) : undefined}
 										onmouseleave={canHover ? () => (openEloCardId = null) : undefined}
 										onclick={!canHover
 											? toggleTip(
-													openEloCardId === w.player_id,
+													isOpen,
 													() => (openEloCardId = w.player_id),
 													() => (openEloCardId = null)
 												)
@@ -746,10 +815,9 @@
 
 										{#if w.breakdown && w.breakdown.length > 0}
 											<div
-												class="pointer-events-none absolute top-full right-0 z-10 mt-1 w-52 rounded-lg border border-ayu-border bg-zinc-900 p-3 text-xs shadow-lg transition-opacity {openEloCardId ===
-												w.player_id
-													? 'opacity-100'
-													: 'opacity-0'}"
+												class="pointer-events-none absolute right-0 z-10 w-52 rounded-lg border border-ayu-border bg-zinc-900 p-3 text-xs shadow-lg transition-opacity
+												{openUpward ? 'bottom-full mb-1' : 'top-full mt-1'}
+												{isOpen ? 'opacity-100' : 'opacity-0'}"
 											>
 												<p class="mb-2 font-semibold tracking-wider text-ayu-muted uppercase">
 													{data.prevSessionName ?? 'Last session'}
@@ -795,6 +863,21 @@
 									</div>
 								{/each}
 							</div>
+							{#if canExpand}
+								<button
+									type="button"
+									class="mt-1.5 flex w-full items-center gap-2 text-[10px] text-ayu-muted transition hover:text-ayu-gold"
+									onclick={() => (showAllPrevStandings = !showAllPrevStandings)}
+								>
+									<span class="h-px flex-1 bg-ayu-border"></span>
+									<span
+										>{showAllPrevStandings
+											? '▴ Show less'
+											: `▾ Show ${data.prevWinners.length - 3} more`}</span
+									>
+									<span class="h-px flex-1 bg-ayu-border"></span>
+								</button>
+							{/if}
 						</div>
 					{/if}
 				</div>
