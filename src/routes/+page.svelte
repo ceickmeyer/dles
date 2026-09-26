@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { canHover } from '$lib/hover';
-	import { fly } from 'svelte/transition';
+	import { fly, slide } from 'svelte/transition';
 	import { invalidateAll } from '$app/navigation';
 	import { playerStore } from '$lib/stores/player';
 	import { supabase } from '$lib/supabase';
@@ -447,8 +447,7 @@
 				? displayName(myEntry.player as { name: string; alias?: string | null })
 				: (player.name ?? 'Someone');
 			const myId = player.id;
-			const rankSuffix =
-				dnf || !myId ? '' : buildRankSuffix(ranked, myId, prevLeader, newLeader);
+			const rankSuffix = dnf || !myId ? '' : buildRankSuffix(ranked, myId, prevLeader, newLeader);
 			const logMsg = dnf
 				? `${name} DNF'd ${game.icon_emoji ?? '🎮'} ${game.name}`
 				: `${name} scored ${formatScore(rawScore, game)} on ${game.icon_emoji ?? '🎮'} ${game.name}${rankSuffix}`;
@@ -643,10 +642,7 @@
 		<!-- Yesterday's winners -->
 		{#if data.prevWinners?.length}
 			{@const canExpand = data.prevWinners.length > 3}
-			{@const visibleWinners = showAllPrevStandings ? data.prevWinners : data.prevWinners.slice(0, 3)}
-			{@const visibleElo = showAllPrevStandings
-				? (data.prevEloChanges ?? [])
-				: (data.prevEloChanges ?? []).slice(0, 3)}
+			{@const lastVisibleIdx = showAllPrevStandings ? data.prevWinners.length - 1 : 2}
 			<!-- relative z-10 keeps this whole section (and its hover tooltips) painting
 			     above later same-level siblings like the Featured Game card. -->
 			<div class="relative z-10">
@@ -657,107 +653,93 @@
 							Yesterday's Medalists
 						</p>
 						<div class="flex flex-col gap-1">
-							{#each visibleWinners as w, i}
-								{@const isOpen = openMedalCardId === w.player_id}
-								{@const openUpward = i === visibleWinners.length - 1 && i > 0}
-								<!-- svelte-ignore a11y_no_static_element_interactions -->
-								<!-- svelte-ignore a11y_click_events_have_key_events -->
-								<div
-									style={w.color
-										? `background-color:${w.color}1a;border-color:${w.color}4d`
-										: ''}
-									class="relative flex items-center gap-2 rounded-lg border px-2 py-1 text-xs transition hover:brightness-125
+							{#each data.prevWinners as w, i}
+								{#if i < 3 || showAllPrevStandings}
+									{@const isOpen = openMedalCardId === w.player_id}
+									{@const openUpward = showAllPrevStandings && i === lastVisibleIdx && i > 0}
+									<!-- svelte-ignore a11y_no_static_element_interactions -->
+									<!-- svelte-ignore a11y_click_events_have_key_events -->
+									<div
+										transition:slide={{ duration: 200 }}
+										style={w.color ? `background-color:${w.color}1a;border-color:${w.color}4d` : ''}
+										class="relative flex items-center gap-2 rounded-lg border px-2 py-1 text-xs transition hover:brightness-125
 									{isOpen ? 'z-20' : ''}
 									{w.color
-										? ''
-										: w.rank === 1
-											? 'border-ayu-gold/40 bg-yellow-400/10'
-											: w.rank === 2
-												? 'border-zinc-500/40 bg-slate-400/8'
-												: w.rank === 3
-													? 'border-amber-700/40 bg-amber-800/10'
-													: 'border-ayu-border bg-ayu-surface'}"
-									onmouseenter={canHover ? () => (openMedalCardId = w.player_id) : undefined}
-									onmouseleave={canHover ? () => (openMedalCardId = null) : undefined}
-									onclick={!canHover
-										? toggleTip(
-												isOpen,
-												() => (openMedalCardId = w.player_id),
-												() => (openMedalCardId = null)
-											)
-										: undefined}
-								>
-									<span
-										class="w-4 shrink-0 text-right font-mono font-bold {w.rank === 1
-											? 'text-ayu-gold'
-											: w.rank === 2
-												? 'text-zinc-400'
-												: w.rank === 3
-													? 'text-amber-700'
-													: 'text-zinc-600'}"
+											? ''
+											: w.rank === 1
+												? 'border-ayu-gold/40 bg-yellow-400/10'
+												: w.rank === 2
+													? 'border-zinc-500/40 bg-slate-400/8'
+													: w.rank === 3
+														? 'border-amber-700/40 bg-amber-800/10'
+														: 'border-ayu-border bg-ayu-surface'}"
+										onmouseenter={canHover ? () => (openMedalCardId = w.player_id) : undefined}
+										onmouseleave={canHover ? () => (openMedalCardId = null) : undefined}
+										onclick={!canHover
+											? toggleTip(
+													isOpen,
+													() => (openMedalCardId = w.player_id),
+													() => (openMedalCardId = null)
+												)
+											: undefined}
 									>
-										{w.rank <= 3 ? ['🥇', '🥈', '🥉'][w.rank - 1] : w.rank}
-									</span>
-									<a
-										href="/player/{w.player_id}"
-										class="min-w-0 flex-1 truncate font-medium text-white hover:underline"
-										>{w.player_name}</a
-									>
-									{#if w.goldStreak}
-										<span class="shrink-0 text-orange-400">🔥×{w.goldStreak}</span>
-									{/if}
-									<span class="shrink-0 font-mono text-ayu-muted">
-										{[
-											w.gold > 0 ? `🥇×${w.gold}` : '',
-											w.silver > 0 ? `🥈×${w.silver}` : '',
-											w.bronze > 0 ? `🥉×${w.bronze}` : ''
-										]
-											.filter(Boolean)
-											.join(' ') || '—'}
-									</span>
+										<span
+											class="w-4 shrink-0 text-right font-mono font-bold {w.rank === 1
+												? 'text-ayu-gold'
+												: w.rank === 2
+													? 'text-zinc-400'
+													: w.rank === 3
+														? 'text-amber-700'
+														: 'text-zinc-600'}"
+										>
+											{w.rank <= 3 ? ['🥇', '🥈', '🥉'][w.rank - 1] : w.rank}
+										</span>
+										<a
+											href="/player/{w.player_id}"
+											class="min-w-0 flex-1 truncate font-medium text-white hover:underline"
+											>{w.player_name}</a
+										>
+										{#if w.goldStreak}
+											<span class="shrink-0 text-orange-400">🔥×{w.goldStreak}</span>
+										{/if}
+										<span class="shrink-0 font-mono text-ayu-muted">
+											{[
+												w.gold > 0 ? `🥇×${w.gold}` : '',
+												w.silver > 0 ? `🥈×${w.silver}` : '',
+												w.bronze > 0 ? `🥉×${w.bronze}` : ''
+											]
+												.filter(Boolean)
+												.join(' ') || '—'}
+										</span>
 
-									{#if w.breakdown && w.breakdown.length > 0}
-										<div
-											class="pointer-events-none absolute right-0 z-10 w-52 rounded-lg border border-ayu-border bg-zinc-900 p-3 text-xs shadow-lg transition-opacity
+										{#if w.breakdown && w.breakdown.length > 0}
+											<div
+												class="pointer-events-none absolute right-0 z-10 w-52 rounded-lg border border-ayu-border bg-zinc-900 p-3 text-xs shadow-lg transition-opacity
 											{openUpward ? 'bottom-full mb-1' : 'top-full mt-1'}
 											{isOpen ? 'opacity-100' : 'opacity-0'}"
-										>
-											<p class="mb-2 font-semibold tracking-wider text-ayu-muted uppercase">
-												{data.prevSessionName ?? 'Last session'}
-											</p>
-											<div class="space-y-1.5">
-												{#each w.breakdown as g}
-													<div class="flex items-center justify-between gap-2">
-														<span class="flex min-w-0 items-center gap-1.5 text-zinc-300">
-															<span class="shrink-0">{g.emoji}</span>
-															<span class="truncate">{g.name}</span>
-															{#if g.isFeatured}<span class="shrink-0 text-ayu-gold">⭐</span
-																>{/if}
-														</span>
-														<span class="shrink-0">{g.medalEmoji}</span>
-													</div>
-												{/each}
+											>
+												<p class="mb-2 font-semibold tracking-wider text-ayu-muted uppercase">
+													{data.prevSessionName ?? 'Last session'}
+												</p>
+												<div class="space-y-1.5">
+													{#each w.breakdown as g}
+														<div class="flex items-center justify-between gap-2">
+															<span class="flex min-w-0 items-center gap-1.5 text-zinc-300">
+																<span class="shrink-0">{g.emoji}</span>
+																<span class="truncate">{g.name}</span>
+																{#if g.isFeatured}<span class="shrink-0 text-ayu-gold">⭐</span
+																	>{/if}
+															</span>
+															<span class="shrink-0">{g.medalEmoji}</span>
+														</div>
+													{/each}
+												</div>
 											</div>
-										</div>
-									{/if}
-								</div>
+										{/if}
+									</div>
+								{/if}
 							{/each}
 						</div>
-						{#if canExpand}
-							<button
-								type="button"
-								class="mt-1.5 flex w-full items-center gap-2 text-[10px] text-ayu-muted transition hover:text-ayu-gold"
-								onclick={() => (showAllPrevStandings = !showAllPrevStandings)}
-							>
-								<span class="h-px flex-1 bg-ayu-border"></span>
-								<span
-									>{showAllPrevStandings
-										? '▴ Show less'
-										: `▾ Show ${data.prevWinners.length - 3} more`}</span
-								>
-								<span class="h-px flex-1 bg-ayu-border"></span>
-							</button>
-						{/if}
 					</div>
 
 					<!-- Elo: every player's change that night, gain or loss -->
@@ -767,120 +749,123 @@
 								Yesterday's Elo Change
 							</p>
 							<div class="flex flex-col gap-1">
-								{#each visibleElo as w, i}
-									{@const isOpen = openEloCardId === w.player_id}
-									{@const openUpward = i === visibleElo.length - 1 && i > 0}
-									<!-- svelte-ignore a11y_no_static_element_interactions -->
-									<!-- svelte-ignore a11y_click_events_have_key_events -->
-									<div
-										style={w.color
-											? `background-color:${w.color}1a;border-color:${w.color}4d`
-											: ''}
-										class="relative flex items-center gap-2 rounded-lg border px-2 py-1 text-xs transition hover:brightness-125
+								{#each data.prevEloChanges as w, i}
+									{#if i < 3 || showAllPrevStandings}
+										{@const isOpen = openEloCardId === w.player_id}
+										{@const openUpward = showAllPrevStandings && i === lastVisibleIdx && i > 0}
+										<!-- svelte-ignore a11y_no_static_element_interactions -->
+										<!-- svelte-ignore a11y_click_events_have_key_events -->
+										<div
+											transition:slide={{ duration: 200 }}
+											style={w.color
+												? `background-color:${w.color}1a;border-color:${w.color}4d`
+												: ''}
+											class="relative flex items-center gap-2 rounded-lg border px-2 py-1 text-xs transition hover:brightness-125
 										{isOpen ? 'z-20' : ''}
 										{w.color ? '' : 'border-ayu-border bg-ayu-surface'}"
-										onmouseenter={canHover ? () => (openEloCardId = w.player_id) : undefined}
-										onmouseleave={canHover ? () => (openEloCardId = null) : undefined}
-										onclick={!canHover
-											? toggleTip(
-													isOpen,
-													() => (openEloCardId = w.player_id),
-													() => (openEloCardId = null)
-												)
-											: undefined}
-									>
-										<span
-											class="w-4 shrink-0 text-right font-mono font-bold {i === 0
-												? 'text-ayu-gold'
-												: i === 1
-													? 'text-zinc-400'
-													: i === 2
-														? 'text-amber-700'
-														: 'text-zinc-600'}">{i + 1}</span
+											onmouseenter={canHover ? () => (openEloCardId = w.player_id) : undefined}
+											onmouseleave={canHover ? () => (openEloCardId = null) : undefined}
+											onclick={!canHover
+												? toggleTip(
+														isOpen,
+														() => (openEloCardId = w.player_id),
+														() => (openEloCardId = null)
+													)
+												: undefined}
 										>
-										<a
-											href="/player/{w.player_id}"
-											class="min-w-0 flex-1 truncate font-medium text-white hover:underline"
-											>{w.player_name}</a
-										>
-										<span
-											class="shrink-0 font-mono font-semibold {w.delta > 0
-												? 'text-ayu-green'
-												: w.delta < 0
-													? 'text-ayu-red'
-													: 'text-ayu-muted'}"
-										>
-											{w.delta > 0 ? '+' : ''}{w.delta}
-										</span>
+											<span
+												class="w-4 shrink-0 text-right font-mono font-bold {i === 0
+													? 'text-ayu-gold'
+													: i === 1
+														? 'text-zinc-400'
+														: i === 2
+															? 'text-amber-700'
+															: 'text-zinc-600'}">{i + 1}</span
+											>
+											<a
+												href="/player/{w.player_id}"
+												class="min-w-0 flex-1 truncate font-medium text-white hover:underline"
+												>{w.player_name}</a
+											>
+											<span
+												class="shrink-0 font-mono font-semibold {w.delta > 0
+													? 'text-ayu-green'
+													: w.delta < 0
+														? 'text-ayu-red'
+														: 'text-ayu-muted'}"
+											>
+												{w.delta > 0 ? '+' : ''}{w.delta}
+											</span>
 
-										{#if w.breakdown && w.breakdown.length > 0}
-											<div
-												class="pointer-events-none absolute right-0 z-10 w-52 rounded-lg border border-ayu-border bg-zinc-900 p-3 text-xs shadow-lg transition-opacity
+											{#if w.breakdown && w.breakdown.length > 0}
+												<div
+													class="pointer-events-none absolute right-0 z-10 w-52 rounded-lg border border-ayu-border bg-zinc-900 p-3 text-xs shadow-lg transition-opacity
 												{openUpward ? 'bottom-full mb-1' : 'top-full mt-1'}
 												{isOpen ? 'opacity-100' : 'opacity-0'}"
-											>
-												<p class="mb-2 font-semibold tracking-wider text-ayu-muted uppercase">
-													{data.prevSessionName ?? 'Last session'}
-												</p>
-												<div class="space-y-1.5">
-													{#each w.breakdown as g}
-														{@const gd = Math.round(g.delta)}
-														<div class="flex items-center justify-between gap-2">
-															<span class="flex min-w-0 items-center gap-1.5 text-zinc-300">
-																<span class="shrink-0">{g.emoji}</span>
-																<span class="truncate">{g.name}</span>
-																{#if g.isFeatured}<span class="shrink-0 text-ayu-gold">⭐</span
-																	>{/if}
-															</span>
+												>
+													<p class="mb-2 font-semibold tracking-wider text-ayu-muted uppercase">
+														{data.prevSessionName ?? 'Last session'}
+													</p>
+													<div class="space-y-1.5">
+														{#each w.breakdown as g}
+															{@const gd = Math.round(g.delta)}
+															<div class="flex items-center justify-between gap-2">
+																<span class="flex min-w-0 items-center gap-1.5 text-zinc-300">
+																	<span class="shrink-0">{g.emoji}</span>
+																	<span class="truncate">{g.name}</span>
+																	{#if g.isFeatured}<span class="shrink-0 text-ayu-gold">⭐</span
+																		>{/if}
+																</span>
+																<span
+																	class="shrink-0 font-semibold tabular-nums {gd > 0
+																		? 'text-ayu-green'
+																		: gd < 0
+																			? 'text-ayu-red'
+																			: 'text-ayu-muted'}"
+																>
+																	{gd > 0 ? '+' : ''}{gd}
+																</span>
+															</div>
+														{/each}
+														<div
+															class="mt-2 flex items-center justify-between border-t border-zinc-700 pt-2"
+														>
+															<span class="font-semibold text-zinc-400">Total</span>
 															<span
-																class="shrink-0 font-semibold tabular-nums {gd > 0
+																class="font-bold tabular-nums {w.delta > 0
 																	? 'text-ayu-green'
-																	: gd < 0
+																	: w.delta < 0
 																		? 'text-ayu-red'
 																		: 'text-ayu-muted'}"
 															>
-																{gd > 0 ? '+' : ''}{gd}
+																{w.delta > 0 ? '+' : ''}{w.delta}
 															</span>
 														</div>
-													{/each}
-													<div
-														class="mt-2 flex items-center justify-between border-t border-zinc-700 pt-2"
-													>
-														<span class="font-semibold text-zinc-400">Total</span>
-														<span
-															class="font-bold tabular-nums {w.delta > 0
-																? 'text-ayu-green'
-																: w.delta < 0
-																	? 'text-ayu-red'
-																	: 'text-ayu-muted'}"
-														>
-															{w.delta > 0 ? '+' : ''}{w.delta}
-														</span>
 													</div>
 												</div>
-											</div>
-										{/if}
-									</div>
+											{/if}
+										</div>
+									{/if}
 								{/each}
 							</div>
-							{#if canExpand}
-								<button
-									type="button"
-									class="mt-1.5 flex w-full items-center gap-2 text-[10px] text-ayu-muted transition hover:text-ayu-gold"
-									onclick={() => (showAllPrevStandings = !showAllPrevStandings)}
-								>
-									<span class="h-px flex-1 bg-ayu-border"></span>
-									<span
-										>{showAllPrevStandings
-											? '▴ Show less'
-											: `▾ Show ${data.prevWinners.length - 3} more`}</span
-									>
-									<span class="h-px flex-1 bg-ayu-border"></span>
-								</button>
-							{/if}
 						</div>
 					{/if}
 				</div>
+				{#if canExpand}
+					<button
+						type="button"
+						class="mt-1.5 flex w-full items-center gap-2 text-[10px] text-ayu-muted transition hover:text-ayu-gold"
+						onclick={() => (showAllPrevStandings = !showAllPrevStandings)}
+					>
+						<span class="h-px flex-1 bg-ayu-border"></span>
+						<span
+							>{showAllPrevStandings
+								? '▴ Show less'
+								: `▾ Show ${data.prevWinners.length - 3} more`}</span
+						>
+						<span class="h-px flex-1 bg-ayu-border"></span>
+					</button>
+				{/if}
 			</div>
 		{/if}
 
