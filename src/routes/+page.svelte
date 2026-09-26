@@ -667,64 +667,62 @@
 					Yesterday's Winners
 				</p>
 				<div
-					class="grid gap-2"
-					style="grid-template-columns: repeat({data.prevWinners.length}, minmax(0, 1fr))"
+					class="grid grid-cols-1 gap-4 {data.prevEloWinners?.length ? 'sm:grid-cols-2' : ''}"
 				>
-					{#each data.prevWinners as w}
-						<div
-							class="rounded-xl border px-3 py-3 text-center
-							{w.medal === '🥇'
-								? 'border-ayu-gold/40 bg-yellow-400/10'
-								: w.medal === '🥈'
-									? 'border-zinc-500/40 bg-slate-400/8'
-									: 'border-amber-700/40 bg-amber-800/10'}"
-						>
-							<p class="text-2xl">{w.medal}</p>
+					<!-- Medals -->
+					<div class="flex flex-col gap-1.5">
+						{#each data.prevWinners as w}
 							<a
 								href="/player/{w.player_id}"
-								class="mt-1 block text-sm leading-tight font-semibold text-white transition hover:text-ayu-gold"
+								class="flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs transition
+								{w.medal === '🥇'
+									? 'border-ayu-gold/40 bg-yellow-400/10'
+									: w.medal === '🥈'
+										? 'border-zinc-500/40 bg-slate-400/8'
+										: 'border-amber-700/40 bg-amber-800/10'}"
 							>
-								{w.player_name}
-							</a>
-							{#if w.goldStreak}
-								<p class="mt-1 text-xs text-orange-400">🔥×{w.goldStreak}</p>
-							{/if}
-							<p class="mt-1 text-xs text-ayu-muted">
-								{[
-									w.gold > 0 ? `🥇×${w.gold}` : '',
-									w.silver > 0 ? `🥈×${w.silver}` : '',
-									w.bronze > 0 ? `🥉×${w.bronze}` : ''
-								]
-									.filter(Boolean)
-									.join(' ')}
-							</p>
-						</div>
-					{/each}
-				</div>
-
-				{#if data.prevEloWinners?.length}
-					<div class="mt-2 flex flex-wrap items-center gap-1.5">
-						<span class="text-[10px] font-semibold tracking-widest text-ayu-muted uppercase"
-							>⚡ Elo</span
-						>
-						{#each data.prevEloWinners as w, i}
-							<a
-								href="/player/{w.player_id}"
-								class="flex items-center gap-1.5 rounded-full border border-ayu-border bg-ayu-surface px-2.5 py-1 text-xs transition hover:border-ayu-gold/40"
-							>
-								<span
-									class="font-bold {i === 0
-										? 'text-ayu-gold'
-										: i === 1
-											? 'text-zinc-400'
-											: 'text-amber-700'}">{i + 1}</span
-								>
-								<span class="font-medium text-white">{w.player_name}</span>
-								<span class="font-mono font-semibold text-ayu-green">+{w.delta}</span>
+								<span class="shrink-0 text-sm">{w.medal}</span>
+								<span class="min-w-0 flex-1 truncate font-medium text-white">{w.player_name}</span>
+								{#if w.goldStreak}
+									<span class="shrink-0 text-orange-400">🔥×{w.goldStreak}</span>
+								{/if}
+								<span class="shrink-0 font-mono text-ayu-muted">
+									{[
+										w.gold > 0 ? `🥇×${w.gold}` : '',
+										w.silver > 0 ? `🥈×${w.silver}` : '',
+										w.bronze > 0 ? `🥉×${w.bronze}` : ''
+									]
+										.filter(Boolean)
+										.join(' ')}
+								</span>
 							</a>
 						{/each}
 					</div>
-				{/if}
+
+					<!-- Elo -->
+					{#if data.prevEloWinners?.length}
+						<div class="flex flex-col gap-1.5">
+							{#each data.prevEloWinners as w, i}
+								<a
+									href="/player/{w.player_id}"
+									class="flex items-center gap-2 rounded-lg border border-ayu-border bg-ayu-surface px-2.5 py-1.5 text-xs transition hover:border-ayu-gold/40"
+								>
+									<span
+										class="w-4 shrink-0 text-right font-mono font-bold {i === 0
+											? 'text-ayu-gold'
+											: i === 1
+												? 'text-zinc-400'
+												: i === 2
+													? 'text-amber-700'
+													: 'text-zinc-600'}">{i + 1}</span
+									>
+									<span class="min-w-0 flex-1 truncate font-medium text-white">{w.player_name}</span>
+									<span class="shrink-0 font-mono font-semibold text-ayu-green">+{w.delta}</span>
+								</a>
+							{/each}
+						</div>
+					{/if}
+				</div>
 			</div>
 		{/if}
 

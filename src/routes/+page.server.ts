@@ -136,7 +136,11 @@ async function loadPrevWinners(excludeSessionId: string | null) {
 		else break;
 	}
 
-	const medalEmoji = (rank: number) => (rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉');
+	// Leading emoji is the player's own best medal tier that night, not their
+	// overall rank — otherwise showing every medal-winner (not just the top 3)
+	// would put a bronze on someone in 8th who actually won two golds.
+	const bestMedalEmoji = (t: { gold: number; silver: number; bronze: number }) =>
+		t.gold > 0 ? '🥇' : t.silver > 0 ? '🥈' : '🥉';
 
 	// Top ELO gainers from that same night — a separate axis from medal tally,
 	// since a favorite tying/losing to an underdog can outscore a low-stakes sweep.
@@ -155,17 +159,16 @@ async function loadPrevWinners(excludeSessionId: string | null) {
 			};
 		})
 		.filter((x): x is NonNullable<typeof x> => x !== null && x.delta > 0)
-		.sort((a, b) => b.delta - a.delta)
-		.slice(0, 3);
+		.sort((a, b) => b.delta - a.delta);
 
 	return {
 		winners: tally
 			.map((t, idx) => ({ ...t, rank: ranks[idx].rank }))
-			.filter((t) => t.rank <= 3)
+			.filter((t) => t.gold > 0 || t.silver > 0 || t.bronze > 0)
 			.map((t) => ({
 				player_id: t.player_id,
 				player_name: t.player_name,
-				medal: medalEmoji(t.rank),
+				medal: bestMedalEmoji(t),
 				gold: t.gold,
 				silver: t.silver,
 				bronze: t.bronze,
