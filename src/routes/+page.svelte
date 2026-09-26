@@ -667,21 +667,33 @@
 					Yesterday's Winners
 				</p>
 				<div
-					class="grid grid-cols-1 gap-4 {data.prevEloWinners?.length ? 'sm:grid-cols-2' : ''}"
+					class="grid grid-cols-1 gap-4 {data.prevEloChanges?.length ? 'sm:grid-cols-2' : ''}"
 				>
-					<!-- Medals -->
+					<!-- Medals: numbered by that night's overall standing, same as Elo -->
 					<div class="flex flex-col gap-1.5">
 						{#each data.prevWinners as w}
 							<a
 								href="/player/{w.player_id}"
 								class="flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs transition
-								{w.medal === '🥇'
+								{w.rank === 1
 									? 'border-ayu-gold/40 bg-yellow-400/10'
-									: w.medal === '🥈'
+									: w.rank === 2
 										? 'border-zinc-500/40 bg-slate-400/8'
-										: 'border-amber-700/40 bg-amber-800/10'}"
+										: w.rank === 3
+											? 'border-amber-700/40 bg-amber-800/10'
+											: 'border-ayu-border bg-ayu-surface hover:border-ayu-gold/40'}"
 							>
-								<span class="shrink-0 text-sm">{w.medal}</span>
+								<span
+									class="w-4 shrink-0 text-right font-mono font-bold {w.rank === 1
+										? 'text-ayu-gold'
+										: w.rank === 2
+											? 'text-zinc-400'
+											: w.rank === 3
+												? 'text-amber-700'
+												: 'text-zinc-600'}"
+								>
+									{w.rank <= 3 ? ['🥇', '🥈', '🥉'][w.rank - 1] : w.rank}
+								</span>
 								<span class="min-w-0 flex-1 truncate font-medium text-white">{w.player_name}</span>
 								{#if w.goldStreak}
 									<span class="shrink-0 text-orange-400">🔥×{w.goldStreak}</span>
@@ -699,10 +711,10 @@
 						{/each}
 					</div>
 
-					<!-- Elo -->
-					{#if data.prevEloWinners?.length}
+					<!-- Elo: every player's change that night, gain or loss -->
+					{#if data.prevEloChanges?.length}
 						<div class="flex flex-col gap-1.5">
-							{#each data.prevEloWinners as w, i}
+							{#each data.prevEloChanges as w, i}
 								<a
 									href="/player/{w.player_id}"
 									class="flex items-center gap-2 rounded-lg border border-ayu-border bg-ayu-surface px-2.5 py-1.5 text-xs transition hover:border-ayu-gold/40"
@@ -717,7 +729,15 @@
 													: 'text-zinc-600'}">{i + 1}</span
 									>
 									<span class="min-w-0 flex-1 truncate font-medium text-white">{w.player_name}</span>
-									<span class="shrink-0 font-mono font-semibold text-ayu-green">+{w.delta}</span>
+									<span
+										class="shrink-0 font-mono font-semibold {w.delta > 0
+											? 'text-ayu-green'
+											: w.delta < 0
+												? 'text-ayu-red'
+												: 'text-ayu-muted'}"
+									>
+										{w.delta > 0 ? '+' : ''}{w.delta}
+									</span>
 								</a>
 							{/each}
 						</div>

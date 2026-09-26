@@ -136,18 +136,13 @@ async function loadPrevWinners(excludeSessionId: string | null) {
 		else break;
 	}
 
-	// Leading emoji is the player's own best medal tier that night, not their
-	// overall rank — otherwise showing every medal-winner (not just the top 3)
-	// would put a bronze on someone in 8th who actually won two golds.
-	const bestMedalEmoji = (t: { gold: number; silver: number; bronze: number }) =>
-		t.gold > 0 ? '🥇' : t.silver > 0 ? '🥈' : '🥉';
-
-	// Top ELO gainers from that same night — a separate axis from medal tally,
-	// since a favorite tying/losing to an underdog can outscore a low-stakes sweep.
+	// Every player who gained ELO, lost ELO, or held steady that night — a
+	// separate axis from medal tally, since a favorite tying/losing to an
+	// underdog can outscore a low-stakes sweep.
 	const nameById = new Map<string, string>();
 	for (const s of prevScores) nameById.set(s.player_id, displayName(s.player));
 	const { data: playerElos } = await supabase.from('player_elo').select('player_id, history');
-	const eloWinners = (playerElos ?? [])
+	const eloChanges = (playerElos ?? [])
 		.map((row) => {
 			const history = (row.history ?? []) as { session_id: string; delta: number }[];
 			const entry = history.find((h) => h.session_id === prevId);
@@ -158,7 +153,7 @@ async function loadPrevWinners(excludeSessionId: string | null) {
 				delta: Math.round(entry.delta)
 			};
 		})
-		.filter((x): x is NonNullable<typeof x> => x !== null && x.delta > 0)
+		.filter((x): x is NonNullable<typeof x> => x !== null)
 		.sort((a, b) => b.delta - a.delta);
 
 	return {
@@ -168,7 +163,7 @@ async function loadPrevWinners(excludeSessionId: string | null) {
 			.map((t) => ({
 				player_id: t.player_id,
 				player_name: t.player_name,
-				medal: bestMedalEmoji(t),
+				rank: t.rank,
 				gold: t.gold,
 				silver: t.silver,
 				bronze: t.bronze,
@@ -176,7 +171,7 @@ async function loadPrevWinners(excludeSessionId: string | null) {
 			})),
 		ranks,
 		fullRanking,
-		eloWinners
+		eloChanges
 	};
 }
 
@@ -206,7 +201,7 @@ export const load: PageServerLoad = async () => {
 			prevWinners: prevData?.winners ?? null,
 			prevRanks: prevData?.ranks ?? [],
 			prevFullRanking: prevData?.fullRanking ?? [],
-			prevEloWinners: prevData?.eloWinners ?? []
+			prevEloChanges: prevData?.eloChanges ?? []
 		};
 	}
 
@@ -224,6 +219,6 @@ export const load: PageServerLoad = async () => {
 		prevWinners: prevData?.winners ?? null,
 		prevRanks: prevData?.ranks ?? [],
 		prevFullRanking: prevData?.fullRanking ?? [],
-		prevEloWinners: prevData?.eloWinners ?? []
+		prevEloChanges: prevData?.eloChanges ?? []
 	};
 };
