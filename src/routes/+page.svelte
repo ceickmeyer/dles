@@ -143,6 +143,7 @@
 
 	let featuredInfoVisible = $state(false);
 	let openBadgeId = $state<string | null>(null);
+	let openEloCardId = $state<string | null>(null);
 
 	// Tap-to-toggle for info tooltips. Only wired on touch devices — see
 	// $lib/hover for why hover and tap-toggle are never layered on one trigger.
@@ -161,6 +162,7 @@
 		function closeAll() {
 			featuredInfoVisible = false;
 			openBadgeId = null;
+			openEloCardId = null;
 		}
 		document.addEventListener('click', closeAll);
 		return () => document.removeEventListener('click', closeAll);
@@ -700,13 +702,23 @@
 							</p>
 							<div class="flex flex-col gap-1">
 								{#each data.prevEloChanges as w, i}
-									<a
-										href="/player/{w.player_id}"
+									<!-- svelte-ignore a11y_no_static_element_interactions -->
+									<!-- svelte-ignore a11y_click_events_have_key_events -->
+									<div
 										style={w.color
 											? `background-color:${w.color}1a;border-color:${w.color}4d`
 											: ''}
-										class="flex items-center gap-2 rounded-lg border px-2 py-1 text-xs transition hover:brightness-125
+										class="relative flex items-center gap-2 rounded-lg border px-2 py-1 text-xs transition hover:brightness-125
 										{w.color ? '' : 'border-ayu-border bg-ayu-surface'}"
+										onmouseenter={canHover ? () => (openEloCardId = w.player_id) : undefined}
+										onmouseleave={canHover ? () => (openEloCardId = null) : undefined}
+										onclick={!canHover
+											? toggleTip(
+													openEloCardId === w.player_id,
+													() => (openEloCardId = w.player_id),
+													() => (openEloCardId = null)
+												)
+											: undefined}
 									>
 										<span
 											class="w-4 shrink-0 text-right font-mono font-bold {i === 0
@@ -717,8 +729,10 @@
 														? 'text-amber-700'
 														: 'text-zinc-600'}">{i + 1}</span
 										>
-										<span class="min-w-0 flex-1 truncate font-medium text-white"
-											>{w.player_name}</span
+										<a
+											href="/player/{w.player_id}"
+											class="min-w-0 flex-1 truncate font-medium text-white hover:underline"
+											>{w.player_name}</a
 										>
 										<span
 											class="shrink-0 font-mono font-semibold {w.delta > 0
@@ -729,7 +743,56 @@
 										>
 											{w.delta > 0 ? '+' : ''}{w.delta}
 										</span>
-									</a>
+
+										{#if w.breakdown && w.breakdown.length > 0}
+											<div
+												class="pointer-events-none absolute top-full right-0 z-10 mt-1 w-52 rounded-lg border border-ayu-border bg-zinc-900 p-3 text-xs shadow-lg transition-opacity {openEloCardId ===
+												w.player_id
+													? 'opacity-100'
+													: 'opacity-0'}"
+											>
+												<p class="mb-2 font-semibold tracking-wider text-ayu-muted uppercase">
+													{data.prevSessionName ?? 'Last session'}
+												</p>
+												<div class="space-y-1.5">
+													{#each w.breakdown as g}
+														{@const gd = Math.round(g.delta)}
+														<div class="flex items-center justify-between gap-2">
+															<span class="flex min-w-0 items-center gap-1.5 text-zinc-300">
+																<span class="shrink-0">{g.emoji}</span>
+																<span class="truncate">{g.name}</span>
+																{#if g.isFeatured}<span class="shrink-0 text-ayu-gold">⭐</span
+																	>{/if}
+															</span>
+															<span
+																class="shrink-0 font-semibold tabular-nums {gd > 0
+																	? 'text-ayu-green'
+																	: gd < 0
+																		? 'text-ayu-red'
+																		: 'text-ayu-muted'}"
+															>
+																{gd > 0 ? '+' : ''}{gd}
+															</span>
+														</div>
+													{/each}
+													<div
+														class="mt-2 flex items-center justify-between border-t border-zinc-700 pt-2"
+													>
+														<span class="font-semibold text-zinc-400">Total</span>
+														<span
+															class="font-bold tabular-nums {w.delta > 0
+																? 'text-ayu-green'
+																: w.delta < 0
+																	? 'text-ayu-red'
+																	: 'text-ayu-muted'}"
+														>
+															{w.delta > 0 ? '+' : ''}{w.delta}
+														</span>
+													</div>
+												</div>
+											</div>
+										{/if}
+									</div>
 								{/each}
 							</div>
 						</div>

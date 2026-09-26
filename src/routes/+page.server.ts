@@ -45,7 +45,13 @@ type ScoreRow = {
 	player_id: string;
 	raw_score: number;
 	player: { name: string; alias?: string | null };
-	game: { scoring_direction: string; max_score: number | null; allow_dnf: boolean };
+	game: {
+		name: string;
+		icon_emoji: string | null;
+		scoring_direction: string;
+		max_score: number | null;
+		allow_dnf: boolean;
+	};
 };
 
 function tallyFromScores(scores: ScoreRow[], specialGameId?: string): ReturnType<typeof sortTally> {
@@ -74,7 +80,7 @@ function tallyFromScores(scores: ScoreRow[], specialGameId?: string): ReturnType
 async function loadPrevWinners(excludeSessionId: string | null) {
 	let sessionsQuery = supabase
 		.from('sessions')
-		.select('id')
+		.select('id, name')
 		.eq('status', 'finished')
 		.order('date', { ascending: false })
 		.limit(10);
@@ -90,7 +96,7 @@ async function loadPrevWinners(excludeSessionId: string | null) {
 			supabase
 				.from('scores')
 				.select(
-					'session_id, game_id, player_id, raw_score, player:players(name, alias), game:games(scoring_direction, max_score, allow_dnf)'
+					'session_id, game_id, player_id, raw_score, player:players(name, alias), game:games(name, icon_emoji, scoring_direction, max_score, allow_dnf)'
 				)
 				.in('session_id', sessionIds)
 				.range(from, to) as unknown as PromiseLike<{ data: ScoreRow[] | null }>
@@ -141,19 +147,45 @@ async function loadPrevWinners(excludeSessionId: string | null) {
 	// separate axis from medal tally, since a favorite tying/losing to an
 	// underdog can outscore a low-stakes sweep.
 	const nameById = new Map<string, string>();
-	for (const s of prevScores) nameById.set(s.player_id, displayName(s.player));
+	const gameData = new Map<string, { name: string; emoji: string }>();
+	for (const s of prevScores) {
+		nameById.set(s.player_id, displayName(s.player));
+		gameData.set(s.game_id, { name: s.game.name, emoji: s.game.icon_emoji ?? '🎮' });
+	}
+	const prevFeaturedGameId = specialGameMap.get(prevId) ?? null;
+
 	const { data: playerElos } = await supabase
 		.from('player_elo')
 		.select('player_id, elo, sessions, history');
+	type HistoryEntry = {
+		session_id: string;
+		delta: number;
+		games?: { game_id: string; delta: number }[];
+	};
 	const eloChanges = (playerElos ?? [])
 		.map((row) => {
-			const history = (row.history ?? []) as { session_id: string; delta: number }[];
+			const history = (row.history ?? []) as HistoryEntry[];
 			const entry = history.find((h) => h.session_id === prevId);
 			if (!entry) return null;
+			// Same per-game breakdown shown on the leaderboard's ELO row tooltip.
+			const breakdown =
+				entry.games
+					?.map((g) => ({
+						name: gameData.get(g.game_id)?.name ?? '?',
+						emoji: gameData.get(g.game_id)?.emoji ?? '🎮',
+						delta: g.delta,
+						isFeatured: g.game_id === prevFeaturedGameId
+					}))
+					.sort((a, b) => {
+						if (a.isFeatured && !b.isFeatured) return -1;
+						if (!a.isFeatured && b.isFeatured) return 1;
+						return a.name.localeCompare(b.name);
+					}) ?? null;
 			return {
 				player_id: row.player_id,
 				player_name: nameById.get(row.player_id) ?? '?',
-				delta: Math.round(entry.delta)
+				delta: Math.round(entry.delta),
+				breakdown
 			};
 		})
 		.filter((x): x is NonNullable<typeof x> => x !== null)
@@ -187,7 +219,8 @@ async function loadPrevWinners(excludeSessionId: string | null) {
 			})),
 		ranks,
 		fullRanking,
-		eloChanges: eloChanges.map((e) => ({ ...e, color: colorByPlayerId.get(e.player_id) ?? null }))
+		eloChanges: eloChanges.map((e) => ({ ...e, color: colorByPlayerId.get(e.player_id) ?? null })),
+		sessionName: sessions[0].name as string
 	};
 }
 
@@ -217,7 +250,8 @@ export const load: PageServerLoad = async () => {
 			prevWinners: prevData?.winners ?? null,
 			prevRanks: prevData?.ranks ?? [],
 			prevFullRanking: prevData?.fullRanking ?? [],
-			prevEloChanges: prevData?.eloChanges ?? []
+			prevEloChanges: prevData?.eloChanges ?? [],
+			prevSessionName: prevData?.sessionName ?? null
 		};
 	}
 
@@ -235,6 +269,7 @@ export const load: PageServerLoad = async () => {
 		prevWinners: prevData?.winners ?? null,
 		prevRanks: prevData?.ranks ?? [],
 		prevFullRanking: prevData?.fullRanking ?? [],
-		prevEloChanges: prevData?.eloChanges ?? []
+		prevEloChanges: prevData?.eloChanges ?? [],
+		prevSessionName: prevData?.sessionName ?? null
 	};
 };
