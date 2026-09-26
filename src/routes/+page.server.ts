@@ -157,9 +157,12 @@ async function loadPrevWinners(excludeSessionId: string | null) {
 		.sort((a, b) => b.delta - a.delta);
 
 	return {
+		// Every participant, not just medal-winners -- this is now a numbered
+		// standings list (see the rank-based display), so it should cover the
+		// same roster as the Elo column rather than dropping anyone who went
+		// scoreless on medals but still played (and still moved in Elo).
 		winners: tally
 			.map((t, idx) => ({ ...t, rank: ranks[idx].rank }))
-			.filter((t) => t.gold > 0 || t.silver > 0 || t.bronze > 0)
 			.map((t) => ({
 				player_id: t.player_id,
 				player_name: t.player_name,

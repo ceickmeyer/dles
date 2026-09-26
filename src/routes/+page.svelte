@@ -705,7 +705,7 @@
 										w.bronze > 0 ? `🥉×${w.bronze}` : ''
 									]
 										.filter(Boolean)
-										.join(' ')}
+										.join(' ') || '—'}
 								</span>
 							</a>
 						{/each}
