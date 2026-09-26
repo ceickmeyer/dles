@@ -68,9 +68,6 @@
 	);
 	const gamesWithScores = $derived(gameResults.filter((gr) => gr.scores.length > 0));
 	const gameScoresMap = $derived(new Map(gameResults.map((gr) => [gr.game.id, gr.scores])));
-	const allDone = $derived(
-		!!session && session.session_games.length > 0 && myScores.size === session.session_games.length
-	);
 	const prevWinnerId = $derived(data.prevWinners?.[0]?.player_id ?? null);
 	const prevFullRanking = $derived(data.prevFullRanking ?? []);
 
@@ -139,7 +136,6 @@
 
 	let shareCopied = $state(false);
 	let copiedGameId = $state<string | null>(null);
-	let standingsCopied = $state(false);
 
 	let featuredInfoVisible = $state(false);
 	let openBadgeId = $state<string | null>(null);
@@ -170,51 +166,6 @@
 		document.addEventListener('click', closeAll);
 		return () => document.removeEventListener('click', closeAll);
 	});
-
-	function buildStandingsShare(): string {
-		if (!session) return '';
-		const date = parseLocalDate(session.date).toLocaleDateString('en-US', {
-			weekday: 'long',
-			month: 'long',
-			day: 'numeric'
-		});
-		const lines = [`Live Standings — ${date}`, ''];
-		const tallyRanks = tally.map((row, _, arr) => {
-			const first = arr.findIndex(
-				(r) => r.gold === row.gold && r.silver === row.silver && r.bronze === row.bronze
-			);
-			return first + 1;
-		});
-		for (let i = 0; i < tally.length; i++) {
-			const row = tally[i];
-			const rank = tallyRanks[i];
-			const rankStr = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `${rank}.`;
-			const medals = [
-				row.gold > 0 ? `🥇×${row.gold}` : '',
-				row.silver > 0 ? `🥈×${row.silver}` : '',
-				row.bronze > 0 ? `🥉×${row.bronze}` : ''
-			]
-				.filter(Boolean)
-				.join(' ');
-			lines.push(`${rankStr} ${row.player_name}${medals ? ' — ' + medals : ''}`);
-		}
-		lines.push('', 'https://dles.cooody.com');
-		return lines.join('\n');
-	}
-
-	async function copyStandings() {
-		const text = buildStandingsShare();
-		try {
-			await navigator.clipboard.writeText(text);
-		} catch {
-			window.prompt('Copy standings:', text);
-			return;
-		}
-		standingsCopied = true;
-		setTimeout(() => {
-			standingsCopied = false;
-		}, 2000);
-	}
 
 	async function copyGameResults(
 		game: (typeof gamesWithScores)[number]['game'],
@@ -981,50 +932,6 @@
 			</div>
 		{/if}
 
-		<!-- Share button — appears once the player has at least one score -->
-		{#if myScores.size > 0 && player.id}
-			<div
-				class="flex items-center justify-between gap-4 rounded-xl border border-ayu-border bg-ayu-surface px-5 py-4"
-			>
-				<div>
-					{#if allDone}
-						<p class="font-semibold text-white">All done! 🎉</p>
-						<p class="mt-0.5 text-xs text-ayu-muted">Share your scores with the group.</p>
-					{:else}
-						<p class="font-semibold text-white">Share your scores so far</p>
-						<p class="mt-0.5 text-xs text-ayu-muted">
-							{myScores.size}/{session.session_games.length} games submitted.
-						</p>
-					{/if}
-				</div>
-				<button
-					onclick={share}
-					aria-live="polite"
-					class="shrink-0 rounded-lg bg-ayu-gold px-4 py-2 text-sm font-bold text-ayu-bg transition hover:brightness-110"
-				>
-					{#if shareCopied}
-						✓ Copied!
-					{:else}
-						<span class="flex items-center gap-1.5">
-							<svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-								<path
-									fill-rule="evenodd"
-									clip-rule="evenodd"
-									d="M19.6495 0.799565C18.4834 -0.72981 16.0093 0.081426 16.0093 1.99313V3.91272C12.2371 3.86807 9.65665 5.16473 7.9378 6.97554C6.10034 8.9113 5.34458 11.3314 5.02788 12.9862C4.86954 13.8135 5.41223 14.4138 5.98257 14.6211C6.52743 14.8191 7.25549 14.7343 7.74136 14.1789C9.12036 12.6027 11.7995 10.4028 16.0093 10.5464V13.0069C16.0093 14.9186 18.4834 15.7298 19.6495 14.2004L23.3933 9.29034C24.2022 8.2294 24.2022 6.7706 23.3933 5.70966L19.6495 0.799565Z"
-									fill="currentColor"
-								/>
-								<path
-									d="M7 1.00391H4C2.34315 1.00391 1 2.34705 1 4.00391V20.0039C1 21.6608 2.34315 23.0039 4 23.0039H20C21.6569 23.0039 23 21.6608 23 20.0039V17.0039C23 16.4516 22.5523 16.0039 22 16.0039C21.4477 16.0039 21 16.4516 21 17.0039V20.0039C21 20.5562 20.5523 21.0039 20 21.0039H4C3.44772 21.0039 3 20.5562 3 20.0039V4.00391C3 3.45162 3.44772 3.00391 4 3.00391H7C7.55228 3.00391 8 2.55619 8 2.00391C8 1.45162 7.55228 1.00391 7 1.00391Z"
-									fill="currentColor"
-								/>
-							</svg>
-							Share
-						</span>
-					{/if}
-				</button>
-			</div>
-		{/if}
-
 		{#if scoresHidden}
 			<!-- Hidden scores banner -->
 			<div class="rounded-xl border border-ayu-border bg-ayu-surface px-5 py-8 text-center">
@@ -1042,41 +949,33 @@
 						<h2 class="text-xs font-semibold tracking-widest text-ayu-muted uppercase">
 							Live Standings
 						</h2>
-						<button
-							onclick={copyStandings}
-							aria-live="polite"
-							class="flex items-center gap-1 text-xs transition {standingsCopied
-								? 'text-ayu-green'
-								: 'text-ayu-muted hover:text-white'}"
-							title="Copy standings"
-						>
-							{#if standingsCopied}
-								<svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-									><path
-										d="M5 13l4 4L19 7"
-										stroke="currentColor"
-										stroke-width="2"
-										stroke-linecap="round"
-										stroke-linejoin="round"
-									/></svg
-								>
-								Copied!
-							{:else}
-								<svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-									<path
-										fill-rule="evenodd"
-										clip-rule="evenodd"
-										d="M19.6495 0.799565C18.4834 -0.72981 16.0093 0.081426 16.0093 1.99313V3.91272C12.2371 3.86807 9.65665 5.16473 7.9378 6.97554C6.10034 8.9113 5.34458 11.3314 5.02788 12.9862C4.86954 13.8135 5.41223 14.4138 5.98257 14.6211C6.52743 14.8191 7.25549 14.7343 7.74136 14.1789C9.12036 12.6027 11.7995 10.4028 16.0093 10.5464V13.0069C16.0093 14.9186 18.4834 15.7298 19.6495 14.2004L23.3933 9.29034C24.2022 8.2294 24.2022 6.7706 23.3933 5.70966L19.6495 0.799565Z"
-										fill="currentColor"
-									/>
-									<path
-										d="M7 1.00391H4C2.34315 1.00391 1 2.34705 1 4.00391V20.0039C1 21.6608 2.34315 23.0039 4 23.0039H20C21.6569 23.0039 23 21.6608 23 20.0039V17.0039C23 16.4516 22.5523 16.0039 22 16.0039C21.4477 16.0039 21 16.4516 21 17.0039V20.0039C21 20.5562 20.5523 21.0039 20 21.0039H4C3.44772 21.0039 3 20.5562 3 20.0039V4.00391C3 3.45162 3.44772 3.00391 4 3.00391H7C7.55228 3.00391 8 2.55619 8 2.00391C8 1.45162 7.55228 1.00391 7 1.00391Z"
-										fill="currentColor"
-									/>
-								</svg>
-								Share
-							{/if}
-						</button>
+						{#if myScores.size > 0 && player.id}
+							<button
+								onclick={share}
+								aria-live="polite"
+								class="shrink-0 rounded-md bg-ayu-gold px-2 py-1 text-xs font-bold text-ayu-bg transition hover:brightness-110"
+							>
+								{#if shareCopied}
+									✓ Copied!
+								{:else}
+									<span class="flex items-center gap-1">
+										<svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+											<path
+												fill-rule="evenodd"
+												clip-rule="evenodd"
+												d="M19.6495 0.799565C18.4834 -0.72981 16.0093 0.081426 16.0093 1.99313V3.91272C12.2371 3.86807 9.65665 5.16473 7.9378 6.97554C6.10034 8.9113 5.34458 11.3314 5.02788 12.9862C4.86954 13.8135 5.41223 14.4138 5.98257 14.6211C6.52743 14.8191 7.25549 14.7343 7.74136 14.1789C9.12036 12.6027 11.7995 10.4028 16.0093 10.5464V13.0069C16.0093 14.9186 18.4834 15.7298 19.6495 14.2004L23.3933 9.29034C24.2022 8.2294 24.2022 6.7706 23.3933 5.70966L19.6495 0.799565Z"
+												fill="currentColor"
+											/>
+											<path
+												d="M7 1.00391H4C2.34315 1.00391 1 2.34705 1 4.00391V20.0039C1 21.6608 2.34315 23.0039 4 23.0039H20C21.6569 23.0039 23 21.6608 23 20.0039V17.0039C23 16.4516 22.5523 16.0039 22 16.0039C21.4477 16.0039 21 16.4516 21 17.0039V20.0039C21 20.5562 20.5523 21.0039 20 21.0039H4C3.44772 21.0039 3 20.5562 3 20.0039V4.00391C3 3.45162 3.44772 3.00391 4 3.00391H7C7.55228 3.00391 8 2.55619 8 2.00391C8 1.45162 7.55228 1.00391 7 1.00391Z"
+												fill="currentColor"
+											/>
+										</svg>
+										Share
+									</span>
+								{/if}
+							</button>
+						{/if}
 					</div>
 					<div class="rounded-xl border border-ayu-border bg-ayu-surface p-4">
 						<MedalTally
