@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { parseShareText } from '$lib/parsers';
+	import { isDnf } from '$lib/utils';
 	import type { Game } from '$lib/database.types';
 
 	let {
@@ -32,7 +33,7 @@
 	function validateScore(score: number): string {
 		if (!Number.isFinite(score)) return 'Enter a valid number.';
 		if (score < 0) return 'Score cannot be negative.';
-		if (game.max_score !== null && score > game.max_score) {
+		if (game.max_score !== null && score > game.max_score && !isDnf(score, game)) {
 			return `Score cannot exceed ${game.max_score}.`;
 		}
 		return '';
@@ -95,7 +96,9 @@
 				{#if parsedScore !== null}
 					<div class="mt-2 flex items-center gap-3">
 						<span class="text-sm text-zinc-400">
-							Score: <strong class="text-amber-400">{parsedScore}</strong>
+							Score: <strong class="text-amber-400"
+								>{isDnf(parsedScore, game) ? 'DNF' : parsedScore}</strong
+							>
 						</span>
 						<button
 							onclick={submitParsed}
