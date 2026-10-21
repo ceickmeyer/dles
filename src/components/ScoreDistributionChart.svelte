@@ -196,11 +196,13 @@
 	});
 
 	let hoveredBin = $state<number | null>(null);
+	let hoveredMark = $state<number | null>(null);
 
 	onMount(() => {
 		if (canHover) return;
 		function closeAll() {
 			hoveredBin = null;
+			hoveredMark = null;
 		}
 		document.addEventListener('click', closeAll);
 		return () => document.removeEventListener('click', closeAll);
@@ -250,7 +252,9 @@
 					fill={mark.color}
 					font-family="ui-sans-serif, system-ui, sans-serif"
 				>
-					{mark.label}: {formatValue(mark.value)}
+					{mark.label}: {formatValue(mark.value)}{hoveredMark === i
+						? ` · ${ordinal(Math.round(percentileOf(mark.value)))} percentile`
+						: ''}
 				</text>
 			{/each}
 
@@ -283,6 +287,37 @@
 						? (e) => {
 								e.stopPropagation();
 								hoveredBin = hoveredBin === i ? null : i;
+								hoveredMark = null;
+							}
+						: undefined}
+				/>
+			{/each}
+
+			<!-- Mark hover/tap targets — drawn after the bin rects so a mark
+			     sitting on top of the curve wins the hit test at that point. -->
+			{#each marks as mark, i (mark.label)}
+				{@const mx = clampX(mark.value)}
+				{@const my = curveYAt(mx)}
+				<!-- svelte-ignore a11y_no_static_element_interactions -->
+				<!-- svelte-ignore a11y_click_events_have_key_events -->
+				<circle
+					cx={mx}
+					cy={my}
+					r="9"
+					fill="transparent"
+					style="cursor: pointer;"
+					onmouseenter={canHover
+						? () => {
+								hoveredMark = i;
+								hoveredBin = null;
+							}
+						: undefined}
+					onmouseleave={canHover ? () => (hoveredMark = null) : undefined}
+					onclick={!canHover
+						? (e) => {
+								e.stopPropagation();
+								hoveredMark = hoveredMark === i ? null : i;
+								hoveredBin = null;
 							}
 						: undefined}
 				/>
