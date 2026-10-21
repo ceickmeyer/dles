@@ -8,6 +8,21 @@
 	const player = $derived($playerStore);
 	const myRow = $derived(data.rows.find((r) => r.player_id === player.id) ?? null);
 
+	// A DNF tonight has no meaningful spot on the curve, same as historical
+	// DNFs — so it just doesn't produce a mark, rather than showing one at 0.
+	const myTodayScore = $derived.by(() => {
+		const raw = data.todayScores.find((s) => s.player_id === player.id)?.raw_score;
+		if (raw === undefined || isDnf(raw, game)) return null;
+		return raw;
+	});
+
+	const distributionMarks = $derived(
+		[
+			myRow ? { value: myRow.avg, label: 'Your avg', color: '#e6b450' } : null,
+			myTodayScore !== null ? { value: myTodayScore, label: 'Today', color: '#39bae6' } : null
+		].filter((m): m is NonNullable<typeof m> => m !== null)
+	);
+
 	type SortKey = 'avg' | 'best' | 'worst';
 	let sortBy = $state<SortKey>('avg');
 
@@ -74,8 +89,7 @@
 					<ScoreDistributionChart
 						scores={data.allScores}
 						dnfCount={data.dnfCount}
-						markValue={myRow?.avg ?? null}
-						markLabel="Your avg"
+						marks={distributionMarks}
 						formatValue={fmt}
 					/>
 				</div>

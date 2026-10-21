@@ -12,10 +12,36 @@ export const load: PageServerLoad = async ({ params }) => {
 
 	if (!game) error(404, 'Game not found');
 
+	// Tonight's score for this game, if the game is part of the session in
+	// progress and someone's already submitted — kept separate from the
+	// historical curve below since the night isn't locked in yet.
+	const { data: activeSession } = await supabase
+		.from('sessions')
+		.select('id, session_games(game_id)')
+		.in('status', ['active', 'lobby', 'paused'])
+		.order('created_at', { ascending: false })
+		.limit(1)
+		.maybeSingle();
+	const isGameTonight = !!activeSession?.session_games?.some((sg) => sg.game_id === params.id);
+	const { data: todayScores } = isGameTonight
+		? await supabase
+				.from('scores')
+				.select('player_id, raw_score')
+				.eq('session_id', activeSession!.id)
+				.eq('game_id', params.id)
+		: { data: [] };
+
 	const { data: sessions } = await supabase.from('sessions').select('id').eq('status', 'finished');
 
 	if (!sessions || sessions.length === 0) {
-		return { game, rows: [], sessionCount: 0, allScores: [], dnfCount: 0 };
+		return {
+			game,
+			rows: [],
+			sessionCount: 0,
+			allScores: [],
+			dnfCount: 0,
+			todayScores: todayScores ?? []
+		};
 	}
 
 	type ScoreRow = {
@@ -38,7 +64,14 @@ export const load: PageServerLoad = async ({ params }) => {
 	);
 
 	if (scores.length === 0) {
-		return { game, rows: [], sessionCount: sessions.length, allScores: [], dnfCount: 0 };
+		return {
+			game,
+			rows: [],
+			sessionCount: sessions.length,
+			allScores: [],
+			dnfCount: 0,
+			todayScores: todayScores ?? []
+		};
 	}
 
 	const asc = game.scoring_direction === 'lower_is_better';
@@ -72,5 +105,12 @@ export const load: PageServerLoad = async ({ params }) => {
 			: scores.map((s) => s.raw_score);
 	const dnfCount = scores.length - allScores.length;
 
-	return { game, rows, sessionCount: sessions.length, allScores, dnfCount };
+	return {
+		game,
+		rows,
+		sessionCount: sessions.length,
+		allScores,
+		dnfCount,
+		todayScores: todayScores ?? []
+	};
 };

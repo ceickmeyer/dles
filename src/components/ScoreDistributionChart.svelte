@@ -6,16 +6,20 @@
 		count: number;
 	}
 
+	interface Mark {
+		value: number;
+		label: string;
+		color: string;
+	}
+
 	let {
 		scores,
-		markValue = null,
-		markLabel = 'You',
+		marks = [],
 		dnfCount = 0,
 		formatValue
 	}: {
 		scores: number[];
-		markValue?: number | null;
-		markLabel?: string;
+		marks?: Mark[];
 		dnfCount?: number;
 		formatValue: (n: number) => string;
 	} = $props();
@@ -123,10 +127,9 @@
 		return PT + ph;
 	}
 
-	const markX = $derived(
-		markValue === null ? null : xAt(Math.min(rangeHi, Math.max(rangeLo, markValue)))
-	);
-	const markY = $derived(markX === null ? null : curveYAt(markX));
+	function clampX(v: number): number {
+		return xAt(Math.min(rangeHi, Math.max(rangeLo, v)));
+	}
 
 	// Bin midpoints land on clean integers in the one-bin-per-value case, but
 	// can fall mid-bucket (23.5) in the fixed-width case — round those for
@@ -158,30 +161,32 @@
 			<path d={areaPath} fill="#4a7a9b" opacity="0.18" />
 			<path d={linePath} fill="none" stroke="#4a7a9b" stroke-width="2" stroke-linecap="round" />
 
-			<!-- Mark: where the viewer's score falls -->
-			{#if markX !== null && markY !== null}
+			<!-- Marks: where the viewer's score(s) fall -->
+			{#each marks as mark, i (mark.label)}
+				{@const mx = clampX(mark.value)}
+				{@const my = curveYAt(mx)}
 				<line
-					x1={markX}
-					x2={markX}
+					x1={mx}
+					x2={mx}
 					y1={PT}
 					y2={PT + ph}
-					stroke="#e6b450"
+					stroke={mark.color}
 					stroke-width="1.5"
 					stroke-dasharray="3 3"
 				/>
-				<circle cx={markX} cy={markY} r="4" fill="#e6b450" />
+				<circle cx={mx} cy={my} r="4" fill={mark.color} />
 				<text
-					x={Math.min(W - PR - 2, Math.max(PL + 2, markX))}
-					y={PT - 4}
-					text-anchor={markX > W - 70 ? 'end' : markX < 70 ? 'start' : 'middle'}
+					x={Math.min(W - PR - 2, Math.max(PL + 2, mx))}
+					y={PT - 4 - i * 12}
+					text-anchor={mx > W - 70 ? 'end' : mx < 70 ? 'start' : 'middle'}
 					font-size="10"
 					font-weight="600"
-					fill="#e6b450"
+					fill={mark.color}
 					font-family="ui-sans-serif, system-ui, sans-serif"
 				>
-					{markLabel}: {formatValue(markValue ?? 0)}
+					{mark.label}: {formatValue(mark.value)}
 				</text>
-			{/if}
+			{/each}
 
 			<!-- X-axis labels -->
 			{#each xTicks as tick}
