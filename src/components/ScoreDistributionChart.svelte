@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+	import { canHover } from '$lib/hover';
+
 	interface Bin {
 		x0: number;
 		x1: number;
@@ -16,17 +19,19 @@
 		scores,
 		marks = [],
 		dnfCount = 0,
+		higherIsBetter = true,
 		formatValue
 	}: {
 		scores: number[];
 		marks?: Mark[];
 		dnfCount?: number;
+		higherIsBetter?: boolean;
 		formatValue: (n: number) => string;
 	} = $props();
 
 	const W = 560,
 		H = 180;
-	const PL = 10,
+	const PL = 30,
 		PR = 10,
 		PT = 14,
 		PB = 22;
@@ -109,7 +114,7 @@
 			: `${linePath} L${points[points.length - 1].x} ${PT + ph} L${points[0].x} ${PT + ph} Z`
 	);
 
-	// Height of the curve under the mark, by linear interpolation between the
+	// Height of the curve under a given x, by linear interpolation between the
 	// two nearest plotted points — close enough for a dot, no need to solve
 	// the bezier.
 	function curveYAt(x: number): number {
@@ -131,6 +136,35 @@
 		return xAt(Math.min(rangeHi, Math.max(rangeLo, v)));
 	}
 
+	// What share of every recorded score this value beats — ties split evenly,
+	// direction-aware so "higher percentile" always means "did better."
+	function percentileOf(v: number): number {
+		const total = scores.length;
+		if (total === 0) return 0;
+		let worse = 0,
+			equal = 0;
+		for (const s of scores) {
+			if (s === v) equal++;
+			else if (higherIsBetter ? s < v : s > v) worse++;
+		}
+		return ((worse + equal / 2) / total) * 100;
+	}
+
+	function ordinal(n: number): string {
+		const mod100 = n % 100;
+		if (mod100 >= 11 && mod100 <= 13) return `${n}th`;
+		switch (n % 10) {
+			case 1:
+				return `${n}st`;
+			case 2:
+				return `${n}nd`;
+			case 3:
+				return `${n}rd`;
+			default:
+				return `${n}th`;
+		}
+	}
+
 	// Bin midpoints land on clean integers in the one-bin-per-value case, but
 	// can fall mid-bucket (23.5) in the fixed-width case — round those for
 	// display when the underlying scores are integer-valued, so the label
@@ -149,13 +183,45 @@
 			{ x: xAt(bins[bins.length - 1].mid), label: tickLabel(rangeHi) }
 		];
 	});
+
+	// Y-axis reads in share of nights (density), not raw counts — comparable
+	// across games regardless of how many sessions they've been played.
+	const yTicks = $derived.by(() => {
+		const total = scores.length;
+		if (total === 0) return [];
+		return [0, maxCount / 2, maxCount].map((c) => ({
+			y: yAt(c),
+			label: `${Math.round((c / total) * 100)}%`
+		}));
+	});
+
+	let hoveredBin = $state<number | null>(null);
+
+	onMount(() => {
+		if (canHover) return;
+		function closeAll() {
+			hoveredBin = null;
+		}
+		document.addEventListener('click', closeAll);
+		return () => document.removeEventListener('click', closeAll);
+	});
 </script>
 
 {#if bins.length > 0}
 	<div>
 		<svg viewBox="0 0 {W} {H}" class="w-full" style="overflow: visible; display: block;">
-			<!-- Baseline -->
-			<line x1={PL} x2={W - PR} y1={PT + ph} y2={PT + ph} stroke="#1a2e44" stroke-width="1" />
+			<!-- Y-axis gridlines (share of nights) -->
+			{#each yTicks as tick}
+				<line x1={PL} x2={W - PR} y1={tick.y} y2={tick.y} stroke="#1a2e44" stroke-width="1" />
+				<text
+					x={PL - 4}
+					y={tick.y + 3}
+					text-anchor="end"
+					font-size="9"
+					fill="#4a6272"
+					font-family="ui-monospace, monospace">{tick.label}</text
+				>
+			{/each}
 
 			<!-- Distribution curve -->
 			<path d={areaPath} fill="#4a7a9b" opacity="0.18" />
@@ -199,6 +265,80 @@
 					font-family="ui-monospace, monospace">{tick.label}</text
 				>
 			{/each}
+
+			<!-- Per-bin hover/tap targets -->
+			{#each bins as bin, i}
+				<!-- svelte-ignore a11y_no_static_element_interactions -->
+				<!-- svelte-ignore a11y_click_events_have_key_events -->
+				<rect
+					x={xAt(bin.x0)}
+					y={PT}
+					width={Math.max(0, xAt(bin.x1) - xAt(bin.x0))}
+					height={ph}
+					fill="transparent"
+					style="cursor: pointer;"
+					onmouseenter={canHover ? () => (hoveredBin = i) : undefined}
+					onmouseleave={canHover ? () => (hoveredBin = null) : undefined}
+					onclick={!canHover
+						? (e) => {
+								e.stopPropagation();
+								hoveredBin = hoveredBin === i ? null : i;
+							}
+						: undefined}
+				/>
+			{/each}
+
+			<!-- Hover tooltip: count + percentile for the bin under the cursor -->
+			{#if hoveredBin !== null}
+				{@const bin = bins[hoveredBin]}
+				{@const hx = xAt(bin.mid)}
+				{@const hy = curveYAt(hx)}
+				{@const pct = Math.round(percentileOf(bin.mid))}
+				{@const tw = 104}
+				{@const th = 34}
+				{@const tx = Math.min(W - PR - tw, Math.max(PL, hx - tw / 2))}
+				{@const ty = Math.max(0, hy - th - 8)}
+				<line
+					x1={hx}
+					x2={hx}
+					y1={PT}
+					y2={PT + ph}
+					stroke="#2a3f56"
+					stroke-width="1"
+					stroke-dasharray="2 2"
+				/>
+				<circle cx={hx} cy={hy} r="3.5" fill="#b3b1ad" />
+				<g style="pointer-events: none;">
+					<rect
+						x={tx}
+						y={ty}
+						width={tw}
+						height={th}
+						rx="5"
+						fill="#0d1e30"
+						stroke="#2a3f56"
+						stroke-width="1"
+					/>
+					<text
+						x={tx + tw / 2}
+						y={ty + 14}
+						text-anchor="middle"
+						font-size="10"
+						font-weight="600"
+						fill="#e6e1cf"
+						font-family="ui-sans-serif, system-ui, sans-serif"
+						>{tickLabel(bin.mid)} · {bin.count} night{bin.count === 1 ? '' : 's'}</text
+					>
+					<text
+						x={tx + tw / 2}
+						y={ty + 27}
+						text-anchor="middle"
+						font-size="9"
+						fill="#4a7a9b"
+						font-family="ui-sans-serif, system-ui, sans-serif">{ordinal(pct)} percentile</text
+					>
+				</g>
+			{/if}
 		</svg>
 
 		{#if dnfCount > 0}

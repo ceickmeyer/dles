@@ -90,6 +90,7 @@
 						scores={data.allScores}
 						dnfCount={data.dnfCount}
 						marks={distributionMarks}
+						higherIsBetter={!asc}
 						formatValue={fmt}
 					/>
 				</div>
