@@ -1,8 +1,12 @@
 <script lang="ts">
 	import { isDnf } from '$lib/utils';
+	import { playerStore } from '$lib/stores/player';
+	import ScoreDistributionChart from '$components/ScoreDistributionChart.svelte';
 
 	let { data } = $props();
 	const game = $derived(data.game);
+	const player = $derived($playerStore);
+	const myRow = $derived(data.rows.find((r) => r.player_id === player.id) ?? null);
 
 	type SortKey = 'avg' | 'best' | 'worst';
 	let sortBy = $state<SortKey>('avg');
@@ -61,6 +65,23 @@
 			<p class="text-ayu-muted">No scores recorded yet for this game.</p>
 		</div>
 	{:else}
+		{#if data.allScores.length > 0}
+			<div>
+				<p class="mb-2 text-xs font-semibold tracking-widest text-ayu-muted uppercase">
+					Score Distribution
+				</p>
+				<div class="rounded-xl border border-ayu-border bg-ayu-surface p-4">
+					<ScoreDistributionChart
+						scores={data.allScores}
+						dnfCount={data.dnfCount}
+						markValue={myRow?.avg ?? null}
+						markLabel="Your avg"
+						formatValue={fmt}
+					/>
+				</div>
+			</div>
+		{/if}
+
 		<div class="overflow-x-auto rounded-xl border border-ayu-border">
 			<table class="w-full text-sm">
 				<thead>

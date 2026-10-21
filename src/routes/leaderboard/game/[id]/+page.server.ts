@@ -15,7 +15,7 @@ export const load: PageServerLoad = async ({ params }) => {
 	const { data: sessions } = await supabase.from('sessions').select('id').eq('status', 'finished');
 
 	if (!sessions || sessions.length === 0) {
-		return { game, rows: [], sessionCount: 0 };
+		return { game, rows: [], sessionCount: 0, allScores: [], dnfCount: 0 };
 	}
 
 	type ScoreRow = {
@@ -26,18 +26,19 @@ export const load: PageServerLoad = async ({ params }) => {
 	};
 
 	const sessionIds = sessions.map((s) => s.id);
-	const scores = await paginateAll<ScoreRow>((from, to) =>
-		supabase
-			.from('scores')
-			.select('player_id, raw_score, submitted_at, player:players(name, alias)')
-			.eq('game_id', params.id)
-			.in('session_id', sessionIds)
-			.order('submitted_at', { ascending: true })
-			.range(from, to) as unknown as PromiseLike<{ data: ScoreRow[] | null }>
+	const scores = await paginateAll<ScoreRow>(
+		(from, to) =>
+			supabase
+				.from('scores')
+				.select('player_id, raw_score, submitted_at, player:players(name, alias)')
+				.eq('game_id', params.id)
+				.in('session_id', sessionIds)
+				.order('submitted_at', { ascending: true })
+				.range(from, to) as unknown as PromiseLike<{ data: ScoreRow[] | null }>
 	);
 
 	if (scores.length === 0) {
-		return { game, rows: [], sessionCount: sessions.length };
+		return { game, rows: [], sessionCount: sessions.length, allScores: [], dnfCount: 0 };
 	}
 
 	const asc = game.scoring_direction === 'lower_is_better';
@@ -62,5 +63,14 @@ export const load: PageServerLoad = async ({ params }) => {
 		})
 		.sort((a, b) => (asc ? a.avg - b.avg : b.avg - a.avg));
 
-	return { game, rows, sessionCount: sessions.length };
+	// Every individual non-DNF score ever recorded for this game, across every
+	// player and session — the raw material for the distribution chart. DNFs
+	// are counted separately rather than folded into the numeric curve.
+	const allScores =
+		dnfValue !== null
+			? scores.map((s) => s.raw_score).filter((v) => v !== dnfValue)
+			: scores.map((s) => s.raw_score);
+	const dnfCount = scores.length - allScores.length;
+
+	return { game, rows, sessionCount: sessions.length, allScores, dnfCount };
 };
