@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { playerStore } from '$lib/stores/player';
 	import { supabase } from '$lib/supabase';
 
@@ -9,6 +10,65 @@
 	let pinInput = $state('');
 	let loading = $state(false);
 	let error = $state('');
+
+	// Existing names, fetched once so the "What's your name?" step can offer
+	// a pick-from-list dropdown instead of making a returning player retype
+	// (and risk misspelling) a name that already exists.
+	let allPlayers = $state<{ id: string; name: string }[]>([]);
+	let suggestionsOpen = $state(false);
+	let highlightedIndex = $state(-1);
+
+	onMount(async () => {
+		const { data } = await supabase.from('players').select('id, name').order('name');
+		allPlayers = data ?? [];
+	});
+
+	const suggestions = $derived.by(() => {
+		const q = name.trim().toLowerCase();
+		const pool = q ? allPlayers.filter((p) => p.name.toLowerCase().includes(q)) : allPlayers;
+		return pool.slice(0, 8);
+	});
+
+	// Using a `use:` action instead of the native `autofocus` attribute: with
+	// autofocus, the browser focuses the element before Svelte has attached
+	// this input's `onfocus` listener, so that first focus is silently
+	// dropped and the suggestions dropdown never opens on page load. Calling
+	// `.focus()` ourselves after mount fires focus the normal way instead.
+	function focusOnMount(node: HTMLInputElement) {
+		node.focus();
+	}
+
+	function closeSuggestions() {
+		// Delayed so a click on a suggestion registers before blur hides the list.
+		setTimeout(() => (suggestionsOpen = false), 150);
+	}
+
+	function pickSuggestion(p: { id: string; name: string }) {
+		name = p.name;
+		suggestionsOpen = false;
+		submitName();
+	}
+
+	function onNameKeydown(e: KeyboardEvent) {
+		if (!suggestionsOpen || suggestions.length === 0) return;
+		if (e.key === 'ArrowDown') {
+			e.preventDefault();
+			highlightedIndex = (highlightedIndex + 1) % suggestions.length;
+		} else if (e.key === 'ArrowUp') {
+			e.preventDefault();
+			highlightedIndex = (highlightedIndex - 1 + suggestions.length) % suggestions.length;
+		} else if (e.key === 'Enter' && highlightedIndex >= 0) {
+			e.preventDefault();
+			pickSuggestion(suggestions[highlightedIndex]);
+		} else if (e.key === 'Escape') {
+			suggestionsOpen = false;
+		}
+	}
+
+	$effect(() => {
+		void suggestions;
+		highlightedIndex = -1;
+	});
 
 	async function submitName() {
 		const trimmed = name.trim();
@@ -97,14 +157,44 @@
 					submitName();
 				}}
 			>
-				<!-- svelte-ignore a11y_autofocus -->
-				<input
-					class="mb-4 w-full rounded-lg border border-ayu-border bg-ayu-bg px-4 py-3 text-white placeholder-ayu-muted focus:border-ayu-gold focus:outline-none"
-					placeholder="Enter your name"
-					bind:value={name}
-					maxlength={40}
-					autofocus
-				/>
+				<div class="relative mb-4">
+					<input
+						class="w-full rounded-lg border border-ayu-border bg-ayu-bg px-4 py-3 text-white placeholder-ayu-muted focus:border-ayu-gold focus:outline-none"
+						placeholder="Enter your name"
+						bind:value={name}
+						maxlength={40}
+						autocomplete="off"
+						role="combobox"
+						aria-expanded={suggestionsOpen && suggestions.length > 0}
+						aria-controls="name-suggestions"
+						use:focusOnMount
+						onfocus={() => (suggestionsOpen = true)}
+						onblur={closeSuggestions}
+						onkeydown={onNameKeydown}
+					/>
+					{#if suggestionsOpen && suggestions.length > 0}
+						<ul
+							id="name-suggestions"
+							role="listbox"
+							class="absolute top-full right-0 left-0 z-10 mt-1 max-h-48 overflow-y-auto rounded-lg border border-ayu-border bg-zinc-900 py-1 shadow-xl"
+						>
+							{#each suggestions as p, i (p.id)}
+								<li role="option" aria-selected={i === highlightedIndex}>
+									<button
+										type="button"
+										onmousedown={(e) => e.preventDefault()}
+										onclick={() => pickSuggestion(p)}
+										class="w-full px-4 py-2 text-left text-sm transition {i === highlightedIndex
+											? 'bg-ayu-surface2 text-white'
+											: 'text-zinc-300 hover:bg-ayu-surface2 hover:text-white'}"
+									>
+										{p.name}
+									</button>
+								</li>
+							{/each}
+						</ul>
+					{/if}
+				</div>
 				{#if error}<p class="mb-3 text-sm text-ayu-red">{error}</p>{/if}
 				<button
 					type="submit"
@@ -158,7 +248,9 @@
 				}}
 				class="mb-4 text-sm text-ayu-muted hover:text-white">← Back</button
 			>
-			<h2 id="player-modal-title" class="mb-1 text-2xl font-bold text-white">Welcome back, {name}!</h2>
+			<h2 id="player-modal-title" class="mb-1 text-2xl font-bold text-white">
+				Welcome back, {name}!
+			</h2>
 			<p class="mb-6 text-sm text-ayu-muted">
 				That name already exists. Enter your 4-digit PIN to sign in.
 			</p>
