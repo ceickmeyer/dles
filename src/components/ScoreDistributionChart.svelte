@@ -177,10 +177,15 @@
 		if (bins.length === 0) return [];
 		if (bins.length <= 12) return bins.map((b) => ({ x: xAt(b.mid), label: tickLabel(b.mid) }));
 		const mid = bins[Math.floor(bins.length / 2)];
+		// The outer two ticks are labeled with the true min/max (rangeLo/
+		// rangeHi), so they must sit at xAt(rangeLo/rangeHi) too — not at
+		// the outer bins' midpoints, which are half a bin-width inward and
+		// would draw the label in the wrong place relative to marks near
+		// the edges.
 		return [
-			{ x: xAt(bins[0].mid), label: tickLabel(rangeLo) },
+			{ x: xAt(rangeLo), label: tickLabel(rangeLo) },
 			{ x: xAt(mid.mid), label: tickLabel(mid.mid) },
-			{ x: xAt(bins[bins.length - 1].mid), label: tickLabel(rangeHi) }
+			{ x: xAt(rangeHi), label: tickLabel(rangeHi) }
 		];
 	});
 
