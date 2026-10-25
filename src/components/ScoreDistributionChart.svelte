@@ -88,48 +88,102 @@
 		return PT + (1 - count / maxCount) * ph;
 	}
 
-	const points = $derived(bins.map((b) => ({ x: xAt(b.mid), y: yAt(b.count) })));
+	// Bin midpoints, plus a flat anchor at each edge of the range so the curve
+	// spans the whole x-axis — otherwise a score in the outer half of the
+	// first/last bin lands past the end of the drawn line.
+	const points = $derived.by(() => {
+		const mids = bins.map((b) => ({ x: xAt(b.mid), y: yAt(b.count) }));
+		if (mids.length === 0) return mids;
+		return [
+			{ x: xAt(rangeLo), y: mids[0].y },
+			...mids,
+			{ x: xAt(rangeHi), y: mids[mids.length - 1].y }
+		];
+	});
 
-	function smoothLine(pts: { x: number; y: number }[]): string {
-		if (pts.length < 2) return '';
-		const d = [`M${pts[0].x} ${pts[0].y}`];
-		for (let i = 0; i < pts.length - 1; i++) {
-			const p0 = pts[Math.max(0, i - 1)];
-			const p1 = pts[i];
-			const p2 = pts[i + 1];
-			const p3 = pts[Math.min(pts.length - 1, i + 2)];
-			const cp1x = (p1.x + (p2.x - p0.x) / 6).toFixed(1);
-			const cp1y = (p1.y + (p2.y - p0.y) / 6).toFixed(1);
-			const cp2x = (p2.x - (p3.x - p1.x) / 6).toFixed(1);
-			const cp2y = (p2.y - (p3.y - p1.y) / 6).toFixed(1);
-			d.push(`C${cp1x} ${cp1y} ${cp2x} ${cp2y} ${p2.x} ${p2.y}`);
-		}
-		return d.join(' ');
+	interface Segment {
+		x0: number;
+		y0: number;
+		c1x: number;
+		c1y: number;
+		c2x: number;
+		c2y: number;
+		x1: number;
+		y1: number;
 	}
 
-	const linePath = $derived(smoothLine(points));
+	// Monotone cubic (Steffen) → Bezier. Unlike Catmull-Rom it never
+	// overshoots a data point, so the peak stays at its bin's true height
+	// instead of bulging past the top gridline. Computed once and used both
+	// to draw the path and to place dots, so a dot always sits on the line.
+	const segments = $derived.by<Segment[]>(() => {
+		const pts = points;
+		const n = pts.length;
+		if (n < 2) return [];
+		const d: number[] = [];
+		for (let i = 0; i < n - 1; i++) {
+			d.push((pts[i + 1].y - pts[i].y) / Math.max(pts[i + 1].x - pts[i].x, 1e-9));
+		}
+		const m: number[] = [d[0]];
+		for (let i = 1; i < n - 1; i++) {
+			const h0 = pts[i].x - pts[i - 1].x;
+			const h1 = pts[i + 1].x - pts[i].x;
+			const p = (d[i - 1] * h1 + d[i] * h0) / Math.max(h0 + h1, 1e-9);
+			m.push(
+				(Math.sign(d[i - 1]) + Math.sign(d[i])) *
+					Math.min(Math.abs(d[i - 1]), Math.abs(d[i]), 0.5 * Math.abs(p))
+			);
+		}
+		m.push(d[n - 2]);
+		const out: Segment[] = [];
+		for (let i = 0; i < n - 1; i++) {
+			const h = pts[i + 1].x - pts[i].x;
+			out.push({
+				x0: pts[i].x,
+				y0: pts[i].y,
+				c1x: pts[i].x + h / 3,
+				c1y: pts[i].y + (m[i] * h) / 3,
+				c2x: pts[i + 1].x - h / 3,
+				c2y: pts[i + 1].y - (m[i + 1] * h) / 3,
+				x1: pts[i + 1].x,
+				y1: pts[i + 1].y
+			});
+		}
+		return out;
+	});
+
+	const linePath = $derived(
+		segments.length === 0
+			? ''
+			: `M${segments[0].x0} ${segments[0].y0} ` +
+					segments
+						.map(
+							(s) =>
+								`C${s.c1x.toFixed(1)} ${s.c1y.toFixed(1)} ${s.c2x.toFixed(1)} ${s.c2y.toFixed(1)} ${s.x1} ${s.y1}`
+						)
+						.join(' ')
+	);
 	const areaPath = $derived(
 		points.length < 2
 			? ''
 			: `${linePath} L${points[points.length - 1].x} ${PT + ph} L${points[0].x} ${PT + ph} Z`
 	);
 
-	// Height of the curve under a given x, by linear interpolation between the
-	// two nearest plotted points — close enough for a dot, no need to solve
-	// the bezier.
+	function bez(a: number, b: number, c: number, d: number, t: number): number {
+		const u = 1 - t;
+		return u * u * u * a + 3 * u * u * t * b + 3 * u * t * t * c + t * t * t * d;
+	}
+
+	// Height of the drawn curve at x. Control points sit at thirds of each
+	// segment, so the bezier's x is linear in t and t falls out directly.
 	function curveYAt(x: number): number {
-		if (points.length === 0) return PT + ph;
-		if (x <= points[0].x) return points[0].y;
-		if (x >= points[points.length - 1].x) return points[points.length - 1].y;
-		for (let i = 0; i < points.length - 1; i++) {
-			const a = points[i],
-				b = points[i + 1];
-			if (x >= a.x && x <= b.x) {
-				const t = (x - a.x) / Math.max(b.x - a.x, 1e-9);
-				return a.y + (b.y - a.y) * t;
-			}
-		}
-		return PT + ph;
+		if (segments.length === 0) return PT + ph;
+		if (x <= segments[0].x0) return segments[0].y0;
+		const last = segments[segments.length - 1];
+		if (x >= last.x1) return last.y1;
+		const s = segments.find((seg) => x >= seg.x0 && x <= seg.x1) ?? last;
+		const t = (x - s.x0) / Math.max(s.x1 - s.x0, 1e-9);
+		return bez(s.y0, s.c1y, s.c2y, s.y1, t);
 	}
 
 	function clampX(v: number): number {
